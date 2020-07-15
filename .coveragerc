@@ -1,0 +1,11 @@
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    def __getitem__
+    def __iter__
+    def __len__
+    raise AssertionError
+    raise NotImplementedError
+    if 0:
+    if __name__ == .__main__.:
