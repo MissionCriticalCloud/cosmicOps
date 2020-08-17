@@ -84,3 +84,44 @@ class CosmicSQL(object):
             cursor.close()
 
         return True
+
+    def list_ha_workers(self, hostname=''):
+        cursor = self.conn.cursor()
+
+        if hostname:
+            host_query = "AND host.name LIKE '%s%%'" % hostname
+        else:
+            host_query = ''
+
+        query = f"""
+        SELECT d.name AS domain,
+               vm.name AS vmname,
+               ha.type,
+               vm.state,
+               ha.created,
+               ha.taken,
+               ha.step,
+               host.name AS hypervisor,
+               ms.name AS mgtname,
+               ha.state
+        FROM cloud.op_ha_work ha
+        LEFT JOIN cloud.mshost ms ON ms.msid = ha.mgmt_server_id
+        LEFT JOIN cloud.vm_instance vm ON vm.id = ha.instance_id
+        LEFT JOIN cloud.host ON host.id = ha.host_id
+        LEFT JOIN cloud.domain d ON vm.domain_id = d.id
+        WHERE ha.created > DATE_SUB(NOW(), INTERVAL 1 DAY) {host_query}
+        GROUP BY vm.name
+        ORDER BY domain, ha.created DESC
+        """
+
+        try:
+            logging.debug(query)
+            cursor.execute(query)
+
+            result = cursor.fetchall()
+            return result
+        except pymysql.Error as e:
+            logging.error(f'Error while executing query "{query}": {e}')
+            raise
+        finally:
+            cursor.close()

@@ -14,7 +14,7 @@
 import configparser
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import patch, call
+from unittest.mock import patch, call, ANY
 
 import pymysql
 from testfixtures import tempdir
@@ -113,4 +113,21 @@ class TestCosmicSQL(TestCase):
         self.mock_cursor.execute.side_effect = pymysql.Error('Mock query error')
 
         self.assertFalse(self.cs.kill_jobs_of_instance('i-1-VM'))
+        self.mock_cursor.close.assert_called_once()
+
+    def test_list_ha_workers(self):
+        self.assertIsNotNone(self.cs.list_ha_workers())
+
+        self.mock_cursor.execute.assert_called_with(ANY)
+        self.mock_cursor.fetchall.assert_called()
+
+    def test_list_ha_workers_with_hostname(self):
+        self.assertIsNotNone(self.cs.list_ha_workers('host1'))
+
+        self.mock_cursor.execute.assert_called_with(ANY)
+
+    def test_list_ha_workers_query_failure(self):
+        self.mock_cursor.execute.side_effect = pymysql.Error('Mock query error')
+
+        self.assertRaises(pymysql.Error, self.cs.list_ha_workers)
         self.mock_cursor.close.assert_called_once()
