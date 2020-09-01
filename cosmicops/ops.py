@@ -23,6 +23,7 @@ from requests.exceptions import ConnectionError
 
 from .cluster import CosmicCluster
 from .host import CosmicHost
+from .systemvm import CosmicSystemVM
 
 
 def load_cloud_monkey_profile(profile):
@@ -76,6 +77,30 @@ class CosmicOps(object):
             return None
 
         return CosmicCluster(self, response[0])
+
+    def get_systemvm_by_name(self, systemvm_name):
+        response = self.cs.listSystemVms(name=systemvm_name).get('systemvm')
+
+        if not response:
+            logging.error(f"System VM '{systemvm_name}' not found")
+            return None
+        elif len(response) != 1:
+            logging.error(f"Lookup for system VM '{systemvm_name}' returned multiple results")
+            return None
+
+        return CosmicSystemVM(self, response[0])
+
+    def get_systemvm_by_id(self, systemvm_id):
+        response = self.cs.listSystemVms(id=systemvm_id).get('systemvm')
+
+        if not response:
+            logging.error(f"System VM with ID '{systemvm_id}' not found")
+            return None
+        elif len(response) != 1:
+            logging.error(f"Lookup for system VM with ID '{systemvm_id}' returned multiple results")
+            return None
+
+        return CosmicSystemVM(self, response[0])
 
     def wait_for_job(self, job_id, retries=10):
         job_status = 0

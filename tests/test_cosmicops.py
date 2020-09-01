@@ -122,6 +122,42 @@ class TestCosmicOps(TestCase):
         self.cs_instance.listClusters.return_value = {'cluster': [{}, {}]}
         self.assertIsNone(self.co.get_cluster_by_name('cluster1'))
 
+    def test_get_systemvm_by_name(self):
+        self.cs_instance.listSystemVms.return_value = {
+            'systemvm': [{
+                'id': 'svm1',
+                'name': 's-1-VM'
+            }]
+        }
+
+        result = self.co.get_systemvm_by_name('s-1-VM')
+        self.assertEqual(('svm1', 's-1-VM'), (result['id'], result['name']))
+
+    def test_get_systemvm_by_name_failure(self):
+        self.cs_instance.listSystemVms.return_value = {'systemvm': []}
+        self.assertIsNone(self.co.get_systemvm_by_name('s-1-VM'))
+
+        self.cs_instance.listSystemVms.return_value = {'systemvm': [{}, {}]}
+        self.assertIsNone(self.co.get_systemvm_by_name('s-1-VM'))
+
+    def test_get_systemvm_by_id(self):
+        self.cs_instance.listSystemVms.return_value = {
+            'systemvm': [{
+                'id': 'svm1',
+                'name': 's-1-VM'
+            }]
+        }
+
+        result = self.co.get_systemvm_by_id('svm1')
+        self.assertEqual(('svm1', 's-1-VM'), (result['id'], result['name']))
+
+    def test_get_systemvm_by_id_failure(self):
+        self.cs_instance.listSystemVms.return_value = {'systemvm': []}
+        self.assertIsNone(self.co.get_systemvm_by_id('svm1'))
+
+        self.cs_instance.listSystemVms.return_value = {'systemvm': [{}, {}]}
+        self.assertIsNone(self.co.get_systemvm_by_id('svm1'))
+
     def test_wait_for_job(self):
         self.cs_instance.queryAsyncJobResult.return_value = {'jobstatus': '1'}
         self.assertTrue(self.co.wait_for_job('job'))
