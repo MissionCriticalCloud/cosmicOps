@@ -102,6 +102,11 @@ class CosmicOps(object):
 
         return CosmicSystemVM(self, response[0])
 
+    def get_all_systemvms(self):
+        systemvms = self.cs.listSystemVms().get('systemvm', [])
+
+        return [CosmicSystemVM(self, systemvm) for systemvm in systemvms]
+
     def wait_for_job(self, job_id, retries=10):
         job_status = 0
 

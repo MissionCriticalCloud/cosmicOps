@@ -158,6 +158,20 @@ class TestCosmicOps(TestCase):
         self.cs_instance.listSystemVms.return_value = {'systemvm': [{}, {}]}
         self.assertIsNone(self.co.get_systemvm_by_id('svm1'))
 
+    def test_get_all_systemvms(self):
+        self.cs_instance.listSystemVms.return_value = {
+            'systemvm': [{
+                'id': 'svm1',
+                'name': 's-1-VM'
+            }, {
+                'id': 'svm2',
+                'name': 's-2-VM'
+            }]
+        }
+
+        result = self.co.get_all_systemvms()
+        self.assertEqual(('svm1', 's-1-VM', 'svm2', 's-2-VM'), (result[0]['id'], result[0]['name'], result[1]['id'], result[1]['name']))
+
     def test_wait_for_job(self):
         self.cs_instance.queryAsyncJobResult.return_value = {'jobstatus': '1'}
         self.assertTrue(self.co.wait_for_job('job'))
