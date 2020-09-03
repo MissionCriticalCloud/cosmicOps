@@ -24,15 +24,16 @@ from cosmicops import CosmicSQL
 @click.command()
 @click.option('--database-server', '-s', metavar='<address>', required=True,
               help='Address or alias of Cosmic database server')
+@click.option('--database-name', metavar='<database>', default='cloud', show_default=True, help='Name of the database')
 @click.option('--database-port', metavar='<port>', default=3306, show_default=True,
               help='Port number of the database server')
 @click.option('--database-user', '-u', metavar='<user>', default='cloud', show_default=True,
               help='Username of database account')
-@click.option('--database-password', '-p', metavar='<password>', required=True, help='Password of the database user')
+@click.option('--database-password', '-p', metavar='<password>', help='Password of the database user')
 @click.option('--dry-run', '-n', is_flag=True, help='Enable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO")
 @click.argument('instance_id')
-def main(database_server, database_port, database_user, database_password, dry_run, instance_id):
+def main(database_server, database_name, database_port, database_user, database_password, dry_run, instance_id):
     """Kills all jobs related to INSTANCE_ID"""
 
     click_log.basic_config()
@@ -40,7 +41,8 @@ def main(database_server, database_port, database_user, database_password, dry_r
     if dry_run:
         logging.warning('Running in dry-run mode, will only show changes')
 
-    cs = CosmicSQL(server=database_server, port=database_port, user=database_user, password=database_password,
+    cs = CosmicSQL(server=database_server, database=database_name, port=database_port, user=database_user,
+                   password=database_password,
                    dry_run=dry_run)
 
     cs.kill_jobs_of_instance(instance_id)

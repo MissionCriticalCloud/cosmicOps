@@ -1,5 +1,6 @@
 [mariadb-alias]
 host = localhost
+database = cloud
 port = 3306
 user = cloud
 password = secret

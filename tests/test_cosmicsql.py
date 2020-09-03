@@ -16,7 +16,7 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch, call
 
-import mariadb
+import pymysql
 from testfixtures import tempdir
 
 from cosmicops import CosmicSQL
@@ -24,9 +24,9 @@ from cosmicops import CosmicSQL
 
 class TestCosmicSQL(TestCase):
     def setUp(self):
-        mariadb_connect_patcher = patch('mariadb.connect')
-        self.mock_connect = mariadb_connect_patcher.start()
-        self.addCleanup(mariadb_connect_patcher.stop)
+        pymysql_connect_patcher = patch('pymysql.connect')
+        self.mock_connect = pymysql_connect_patcher.start()
+        self.addCleanup(pymysql_connect_patcher.stop)
         self.mock_cursor = self.mock_connect.return_value.cursor.return_value
 
         self.cs = CosmicSQL(server='localhost', password='password')
@@ -82,35 +82,35 @@ class TestCosmicSQL(TestCase):
             self.assertRaises(configparser.NoOptionError, CosmicSQL, server='testmariadb')
 
     def test_connect_failure(self):
-        self.mock_connect.side_effect = mariadb.Error('Mock connection error')
-        self.assertRaises(mariadb.Error, CosmicSQL, server='localhost', password='password')
+        self.mock_connect.side_effect = pymysql.Error('Mock connection error')
+        self.assertRaises(pymysql.Error, CosmicSQL, server='localhost', password='password')
 
     def test_kill_jobs_of_instance(self):
-        self.assertTrue(self.cs.kill_jobs_of_instance('i-1-VM'))
+        self.assertTrue(self.cs.kill_jobs_of_instance('1'))
 
         self.mock_cursor.execute.assert_has_calls([
-            call('DELETE FROM `async_job` WHERE `instance_id` = ?', ('i-1-VM',)),
-            call('DELETE FROM `vm_work_job` WHERE `vm_instance_id` = ?', ('i-1-VM',)),
-            call('DELETE FROM `sync_queue` WHERE `sync_objid` = ?', ('i-1-VM',))
+            call('DELETE FROM `async_job` WHERE `instance_id` = %s', ('1',)),
+            call('DELETE FROM `vm_work_job` WHERE `vm_instance_id` = %s', ('1',)),
+            call('DELETE FROM `sync_queue` WHERE `sync_objid` = %s', ('1',))
         ])
-        self.assertEqual(3, self.mock_cursor.commit.call_count)
+        self.assertEqual(3, self.mock_connect.return_value.commit.call_count)
         self.mock_cursor.close.assert_called_once()
 
     def test_kill_jobs_of_instance_dry_run(self):
         self.cs = CosmicSQL(server='localhost', password='password', dry_run=True)
 
-        self.assertTrue(self.cs.kill_jobs_of_instance('i-1-VM'))
+        self.assertTrue(self.cs.kill_jobs_of_instance('1'))
 
         self.mock_cursor.execute.assert_has_calls([
-            call('DELETE FROM `async_job` WHERE `instance_id` = ?', ('i-1-VM',)),
-            call('DELETE FROM `vm_work_job` WHERE `vm_instance_id` = ?', ('i-1-VM',)),
-            call('DELETE FROM `sync_queue` WHERE `sync_objid` = ?', ('i-1-VM',))
+            call('DELETE FROM `async_job` WHERE `instance_id` = %s', ('1',)),
+            call('DELETE FROM `vm_work_job` WHERE `vm_instance_id` = %s', ('1',)),
+            call('DELETE FROM `sync_queue` WHERE `sync_objid` = %s', ('1',))
         ])
-        self.mock_cursor.commit.assert_not_called()
+        self.mock_connect.return_value.commit.assert_not_called()
         self.mock_cursor.close.assert_called_once()
 
     def test_kill_jobs_of_instance_query_failure(self):
-        self.mock_cursor.execute.side_effect = mariadb.Error('Mock query error')
+        self.mock_cursor.execute.side_effect = pymysql.Error('Mock query error')
 
         self.assertFalse(self.cs.kill_jobs_of_instance('i-1-VM'))
         self.mock_cursor.close.assert_called_once()
