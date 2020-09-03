@@ -16,14 +16,15 @@ import logging
 from configparser import ConfigParser, NoOptionError
 from pathlib import Path
 
-import mariadb
+import pymysql
 
 
 class CosmicSQL(object):
-    def __init__(self, server, port=3306, password=None, user='cloud', dry_run=False):
+    def __init__(self, server, port=3306, password=None, user='cloud', database='cloud', dry_run=False):
         self.server = server
         self.port = port
         self.user = user
+        self.database = database
         self.password = password
         self.dry_run = dry_run
         self.conn = None
@@ -45,14 +46,16 @@ class CosmicSQL(object):
                 self.password = config.get(self.server, 'password')
                 self.user = config.get(self.server, 'user', fallback=self.user)
                 self.port = config.getint(self.server, 'port', fallback=self.port)
+                self.database = config.get(self.server, 'database', fallback=self.database)
                 self.server = config.get(self.server, 'host', fallback=self.server)
             except NoOptionError as e:
                 logging.error(f"Unable to read details from '{config_file}' for '{self.server}': {e}")
                 raise
 
         try:
-            self.conn = mariadb.connect(host=self.server, port=self.port, user=self.user, password=self.password)
-        except mariadb.Error as e:
+            self.conn = pymysql.connect(host=self.server, port=self.port, user=self.user, password=self.password,
+                                        database=self.database)
+        except pymysql.Error as e:
             logging.error(f"Error connecting to server '{self.server}': {e}")
             raise
 
@@ -63,19 +66,19 @@ class CosmicSQL(object):
 
         try:
             queries = [
-                'DELETE FROM `async_job` WHERE `instance_id` = ?',
-                'DELETE FROM `vm_work_job` WHERE `vm_instance_id` = ?',
-                'DELETE FROM `sync_queue` WHERE `sync_objid` = ?'
+                'DELETE FROM `async_job` WHERE `instance_id` = %s',
+                'DELETE FROM `vm_work_job` WHERE `vm_instance_id` = %s',
+                'DELETE FROM `sync_queue` WHERE `sync_objid` = %s'
             ]
 
             for query in queries:
                 cursor.execute(query, (instance_id,))
                 if self.dry_run:
-                    logging.info(f'Would have executed: {cursor.statement}')
+                    logging.info(f'Would have executed: {query % (instance_id,)}')
                 else:
-                    cursor.commit()
-        except mariadb.Error as e:
-            logging.error(f'Error while executing query "{cursor.statement}": {e}')
+                    self.conn.commit()
+        except pymysql.Error as e:
+            logging.error(f'Error while executing query "{query % (instance_id,)}": {e}')
             return False
         finally:
             cursor.close()

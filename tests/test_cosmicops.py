@@ -170,7 +170,8 @@ class TestCosmicOps(TestCase):
         }
 
         result = self.co.get_all_systemvms()
-        self.assertEqual(('svm1', 's-1-VM', 'svm2', 's-2-VM'), (result[0]['id'], result[0]['name'], result[1]['id'], result[1]['name']))
+        self.assertEqual(('svm1', 's-1-VM', 'svm2', 's-2-VM'),
+                         (result[0]['id'], result[0]['name'], result[1]['id'], result[1]['name']))
 
     def test_wait_for_job(self):
         self.cs_instance.queryAsyncJobResult.return_value = {'jobstatus': '1'}
