@@ -38,6 +38,8 @@ from cosmicops.host import RebootAction
 @click.option('--halt', 'reboot_action', flag_value=RebootAction.HALT, help='Instead of rebooting, halt the host')
 @click.option('--force-reset', 'reboot_action', flag_value=RebootAction.FORCE_RESET,
               help='Instead of reboot, force-reset the host')
+@click.option('--pxe', 'reboot_action', flag_value=RebootAction.PXE_REBOOT,
+              help='Reboot the host in pxe mode')
 @click.option('--skip-reboot', 'reboot_action', flag_value=RebootAction.SKIP, help='Skip rebooting the host')
 @click.option('--upgrade-firmware', 'reboot_action', flag_value=RebootAction.UPGRADE_FIRMWARE,
               help='Update the HP firmware and reboot')
