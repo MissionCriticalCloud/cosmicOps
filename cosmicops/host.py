@@ -30,6 +30,7 @@ class RebootAction(Enum):
     HALT = auto()
     FORCE_RESET = auto()
     UPGRADE_FIRMWARE = auto()
+    PXE_REBOOT = auto()
     SKIP = auto()
 
 
@@ -235,6 +236,9 @@ class CosmicHost(Mapping):
             elif action == RebootAction.UPGRADE_FIRMWARE:
                 logging.info(f"Rebooting '{self['name']}' after firmware upgrade")
                 self.execute("tmux new -d 'yes | sudo /usr/sbin/smartupdate upgrade && sudo reboot'")
+            elif action == RebootAction.PXE_REBOOT:
+                logging.info(f"PXE Rebooting '{self['name']}' in 10s")
+                self.execute("tmux new -d 'sleep 10 && sudo /usr/sbin/hp-reboot pxe'")
             elif action == RebootAction.SKIP:
                 logging.info(f"Skipping reboot for '{self['name']}'")
         except Exception as e:
