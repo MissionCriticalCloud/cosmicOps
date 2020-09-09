@@ -29,7 +29,7 @@ class TestCosmicSQL(TestCase):
         self.addCleanup(pymysql_connect_patcher.stop)
         self.mock_cursor = self.mock_connect.return_value.cursor.return_value
 
-        self.cs = CosmicSQL(server='localhost', password='password')
+        self.cs = CosmicSQL(server='localhost', password='password', dry_run=False)
 
     @tempdir()
     def test_load_from_config(self, tmp):

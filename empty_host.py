@@ -25,8 +25,8 @@ from cosmicops import CosmicOps
 @click.command()
 @click.option('--profile', '-p', metavar='<name>', default='config',
               help='Name of the CloudMonkey profile containing the credentials')
-@click.option('--dry-run', '-n', is_flag=True, help='Enable dry-run')
-@click_log.simple_verbosity_option(logging.getLogger(), default="INFO")
+@click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
+@click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('host')
 def main(profile, dry_run, host):
     """Empty HOST by migrating VMs to another host in the same cluster."""

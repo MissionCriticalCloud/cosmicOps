@@ -40,7 +40,7 @@ class TestCosmicHost(TestCase):
         self.mock_sleep = sleep_patcher.start()
         self.addCleanup(sleep_patcher.stop)
 
-        self.ops = CosmicOps(endpoint='https://localhost', key='key', secret='secret')
+        self.ops = CosmicOps(endpoint='https://localhost', key='key', secret='secret', dry_run=False)
 
         self.user_vm = CosmicVM(self.ops, {
             'id': 'v1',

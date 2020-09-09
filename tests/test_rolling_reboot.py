@@ -63,7 +63,7 @@ class TestRollingReboot(TestCase):
     def test_main(self):
         self._mock_cluster_with_hosts()
 
-        result = self.runner.invoke(rolling_reboot.main, ['cluster1'])
+        result = self.runner.invoke(rolling_reboot.main, ['--exec', 'cluster1'])
         self.assertEqual(0, result.exit_code)
 
         self.co.assert_called_with(profile='config', dry_run=False)
@@ -81,7 +81,7 @@ class TestRollingReboot(TestCase):
     def test_ignore_hosts(self):
         self._mock_cluster_with_hosts()
 
-        result = self.runner.invoke(rolling_reboot.main, ['--ignore-hosts', 'host2', 'cluster1'])
+        result = self.runner.invoke(rolling_reboot.main, ['--exec', '--ignore-hosts', 'host2', 'cluster1'])
         self.assertEqual(0, result.exit_code)
 
         self.hosts[0].reboot.assert_called_with(RebootAction.REBOOT)
@@ -91,7 +91,7 @@ class TestRollingReboot(TestCase):
     def test_only_hosts(self):
         self._mock_cluster_with_hosts()
 
-        result = self.runner.invoke(rolling_reboot.main, ['--only-hosts', 'host1,host2', 'cluster1'])
+        result = self.runner.invoke(rolling_reboot.main, ['--exec', '--only-hosts', 'host1,host2', 'cluster1'])
         self.assertEqual(0, result.exit_code)
 
         self.hosts[0].reboot.assert_not_called()
@@ -104,7 +104,7 @@ class TestRollingReboot(TestCase):
         self.hosts[1]._host['hypervisorversion'] = 'CentOS 7.7.1908'
         self.hosts[2]._host['hypervisorversion'] = 'CentOS 8.0.1905'
 
-        result = self.runner.invoke(rolling_reboot.main, ['--skip-os-version', 'CentOS 7', 'cluster1'])
+        result = self.runner.invoke(rolling_reboot.main, ['--exec', '--skip-os-version', 'CentOS 7', 'cluster1'])
         self.assertEqual(0, result.exit_code)
 
         self.hosts[0].reboot.assert_not_called()
@@ -114,7 +114,8 @@ class TestRollingReboot(TestCase):
     def test_scripts(self):
         self._mock_cluster_with_hosts()
 
-        result = self.runner.invoke(rolling_reboot.main, ['--pre-empty-script', 'pre_empty_script.sh',
+        result = self.runner.invoke(rolling_reboot.main, ['--exec',
+                                                          '--pre-empty-script', 'pre_empty_script.sh',
                                                           '--post-empty-script', 'post_empty_script.sh',
                                                           '--post-reboot-script', 'post_reboot_script.sh',
                                                           'cluster1'])
@@ -132,13 +133,13 @@ class TestRollingReboot(TestCase):
         # Cluster lookup failure
         self.co_instance.get_cluster_by_name.return_value = None
 
-        result = self.runner.invoke(rolling_reboot.main, ['cluster1'])
+        result = self.runner.invoke(rolling_reboot.main, ['--exec', 'cluster1'])
         self.assertEqual(1, result.exit_code)
 
         # Host disable failure
         self._mock_cluster_with_hosts()
         self.hosts[0].disable = Mock(return_value=False)
-        result = self.runner.invoke(rolling_reboot.main, ['cluster1'])
+        result = self.runner.invoke(rolling_reboot.main, ['--exec', 'cluster1'])
         self.assertEqual(1, result.exit_code)
 
         self.hosts[0].disable.assert_called()
@@ -146,7 +147,7 @@ class TestRollingReboot(TestCase):
         # Host disconnected
         self._mock_cluster_with_hosts()
         self.hosts[0]._host['state'] = 'Disconnected'
-        result = self.runner.invoke(rolling_reboot.main, ['cluster1'])
+        result = self.runner.invoke(rolling_reboot.main, ['--exec', 'cluster1'])
         self.assertEqual(1, result.exit_code)
 
         self.hosts[0].disable.assert_called()
@@ -154,7 +155,7 @@ class TestRollingReboot(TestCase):
         # Test if script continues after host empty failure
         self._mock_cluster_with_hosts()
         self.hosts[0].empty = Mock(side_effect=[(5, 0, 5), (5, 5, 0)])
-        result = self.runner.invoke(rolling_reboot.main, ['cluster1'])
+        result = self.runner.invoke(rolling_reboot.main, ['--exec', 'cluster1'])
         self.assertEqual(0, result.exit_code)
 
         self.hosts[0].empty.assert_called()
@@ -165,7 +166,7 @@ class TestRollingReboot(TestCase):
         # Host reboot failure
         self._mock_cluster_with_hosts()
         self.hosts[0].reboot = Mock(return_value=False)
-        result = self.runner.invoke(rolling_reboot.main, ['cluster1'])
+        result = self.runner.invoke(rolling_reboot.main, ['--exec', 'cluster1'])
         self.assertEqual(1, result.exit_code)
 
         self.hosts[0].reboot.assert_called()
@@ -173,7 +174,7 @@ class TestRollingReboot(TestCase):
         # Host enable failure
         self._mock_cluster_with_hosts()
         self.hosts[0].enable = Mock(return_value=False)
-        result = self.runner.invoke(rolling_reboot.main, ['cluster1'])
+        result = self.runner.invoke(rolling_reboot.main, ['--exec', 'cluster1'])
         self.assertEqual(1, result.exit_code)
 
         self.hosts[0].enable.assert_called()
@@ -181,6 +182,6 @@ class TestRollingReboot(TestCase):
     def test_dry_run(self):
         self._mock_cluster_with_hosts()
 
-        result = self.runner.invoke(rolling_reboot.main, ['--dry-run', 'cluster1'])
+        result = self.runner.invoke(rolling_reboot.main, ['cluster1'])
         self.assertEqual(0, result.exit_code)
         self.co.assert_called_with(profile='config', dry_run=True)

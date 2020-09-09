@@ -39,7 +39,7 @@ def load_cloud_monkey_profile(profile):
 
 
 class CosmicOps(object):
-    def __init__(self, endpoint=None, key=None, secret=None, profile=None, timeout=60, dry_run=False):
+    def __init__(self, endpoint=None, key=None, secret=None, profile=None, timeout=60, dry_run=True):
         if profile:
             (endpoint, key, secret) = load_cloud_monkey_profile(profile)
 

@@ -29,14 +29,14 @@ class TestKillJobs(TestCase):
         self.runner = CliRunner()
 
     def test_main(self):
-        result = self.runner.invoke(kill_jobs.main, ['-s', 'server_address', '-p', 'password', '1'])
+        result = self.runner.invoke(kill_jobs.main, ['--exec', '-s', 'server_address', '-p', 'password', '1'])
         self.cs.assert_called_with(server='server_address', database='cloud', port=3306, user='cloud',
                                    password='password', dry_run=False)
         self.cs_instance.kill_jobs_of_instance.assert_called_with('1')
         self.assertEqual(0, result.exit_code)
 
     def test_dry_run(self):
-        result = self.runner.invoke(kill_jobs.main, ['-s', 'server_address', '-p', 'password', '-n', '1'])
+        result = self.runner.invoke(kill_jobs.main, ['-s', 'server_address', '-p', 'password', '1'])
         self.cs.assert_called_with(server='server_address', database='cloud', port=3306, user='cloud',
                                    password='password', dry_run=True)
 
