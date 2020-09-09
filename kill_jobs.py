@@ -30,8 +30,8 @@ from cosmicops import CosmicSQL
 @click.option('--database-user', '-u', metavar='<user>', default='cloud', show_default=True,
               help='Username of database account')
 @click.option('--database-password', '-p', metavar='<password>', help='Password of the database user')
-@click.option('--dry-run', '-n', is_flag=True, help='Enable dry-run')
-@click_log.simple_verbosity_option(logging.getLogger(), default="INFO")
+@click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
+@click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('instance_id')
 def main(database_server, database_name, database_port, database_user, database_password, dry_run, instance_id):
     """Kills all jobs related to INSTANCE_ID"""

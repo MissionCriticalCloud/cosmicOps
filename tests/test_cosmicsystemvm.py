@@ -35,7 +35,7 @@ class TestCosmicSystemVM(TestCase):
             'hostname': 'host1'
         }
 
-        self.ops = CosmicOps(endpoint='https://localhost', key='key', secret='secret')
+        self.ops = CosmicOps(endpoint='https://localhost', key='key', secret='secret', dry_run=False)
         self.ops.wait_for_job = Mock(return_value=True)
         self.systemvm = CosmicSystemVM(self.ops, self._systemvm_json)
         self.target_host = CosmicHost(self.ops, {'id': 'h1', 'name': 'host1'})

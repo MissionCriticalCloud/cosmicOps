@@ -20,7 +20,7 @@ import pymysql
 
 
 class CosmicSQL(object):
-    def __init__(self, server, port=3306, password=None, user='cloud', database='cloud', dry_run=False):
+    def __init__(self, server, port=3306, password=None, user='cloud', database='cloud', dry_run=True):
         self.server = server
         self.port = port
         self.user = user

@@ -47,8 +47,8 @@ from cosmicops.host import RebootAction
 @click.option('--post-empty-script', metavar='<script>',
               help='Script to run on host after live migrations have completed')
 @click.option('--post-reboot-script', metavar='<script>', help='Script to run after host has rebooted')
-@click.option('--dry-run', '-n', is_flag=True, help='Enable dry-run')
-@click_log.simple_verbosity_option(logging.getLogger(), default="INFO")
+@click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
+@click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('cluster')
 def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_empty_script, post_empty_script,
          post_reboot_script, dry_run, cluster):
