@@ -393,6 +393,8 @@ class TestCosmicHost(TestCase):
         self.host.execute.assert_has_calls([call('sync', sudo=True), call('echo b > /proc/sysrq-trigger', sudo=True)])
         self.assertTrue(self.host.reboot(RebootAction.UPGRADE_FIRMWARE))
         self.host.execute.assert_called_with("tmux new -d 'yes | sudo /usr/sbin/smartupdate upgrade && sudo reboot'")
+        self.assertTrue(self.host.reboot(RebootAction.PXE_REBOOT))
+        self.host.execute.assert_called_with("tmux new -d 'sleep 10 && sudo /usr/sbin/hp-reboot pxe'")
         self.assertTrue(self.host.reboot(RebootAction.SKIP))
         self.host.execute.assert_called_with('virsh list | grep running | wc -l')
 
@@ -429,6 +431,15 @@ class TestCosmicHost(TestCase):
     def test_wait_until_online(self):
         self.host.execute = Mock()
         self.host.execute.side_effect = [Mock(return_code=1), Mock(return_code=0)]
+        self.socket_context.connect_ex.side_effect = [1, 0]
+
+        self.host.wait_until_online()
+        self.socket_context.connect_ex.assert_called_with(('host1', 22))
+        self.host.execute.assert_called_with('virsh list')
+
+    def test_wait_until_online_retry_on_connection_reset(self):
+        self.host.execute = Mock()
+        self.host.execute.side_effect = [Mock(return_code=1), ConnectionResetError, Mock(return_code=0)]
         self.socket_context.connect_ex.side_effect = [1, 0]
 
         self.host.wait_until_online()

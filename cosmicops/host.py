@@ -280,7 +280,13 @@ class CosmicHost(Mapping):
         else:
             logging.info(f"Waiting for libvirt on '{self['name']}'")
             with click_spinner.spinner():
-                while self.execute('virsh list').return_code != 0:
+                while True:
+                    try:
+                        if self.execute('virsh list').return_code == 0:
+                            break
+                    except ConnectionResetError:
+                        pass
+
                     time.sleep(5)
 
     def restart_vms_with_shutdown_policy(self):
