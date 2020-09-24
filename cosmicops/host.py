@@ -20,6 +20,7 @@ from enum import Enum, auto
 from operator import itemgetter
 
 import click_spinner
+import paramiko
 from fabric import Connection
 
 from .vm import CosmicVM
@@ -39,7 +40,18 @@ class CosmicHost(Mapping):
         self._ops = ops
         self._host = host
         self.dry_run = ops.dry_run
+
+        # Patch Fabric connection to use different host policy (see https://github.com/fabric/fabric/issues/2071)
+        def unsafe_open(self):
+            self.client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
+            Connection.open_orig(self)
+
+        Connection.open_orig = Connection.open
+        Connection.open = unsafe_open
+
+        # Setup our connection
         self._connection = Connection(self._host['name'])
+
         self.vms_with_shutdown_policy = []
 
     def __getitem__(self, item):
