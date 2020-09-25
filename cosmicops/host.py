@@ -25,6 +25,8 @@ from fabric import Connection
 
 from .vm import CosmicVM
 
+FABRIC_PATCHED = False
+
 
 class RebootAction(Enum):
     REBOOT = auto()
@@ -37,6 +39,7 @@ class RebootAction(Enum):
 
 class CosmicHost(Mapping):
     def __init__(self, ops, host):
+        global FABRIC_PATCHED
         self._ops = ops
         self._host = host
         self.dry_run = ops.dry_run
@@ -46,8 +49,10 @@ class CosmicHost(Mapping):
             self.client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
             Connection.open_orig(self)
 
-        Connection.open_orig = Connection.open
-        Connection.open = unsafe_open
+        if not FABRIC_PATCHED:
+            Connection.open_orig = Connection.open
+            Connection.open = unsafe_open
+            FABRIC_PATCHED = True
 
         # Setup our connection
         self._connection = Connection(self._host['name'])
