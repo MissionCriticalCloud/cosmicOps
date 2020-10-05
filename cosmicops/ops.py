@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import time
 from configparser import ConfigParser
 from pathlib import Path
@@ -23,10 +22,11 @@ from requests.exceptions import ConnectionError
 
 from .cluster import CosmicCluster
 from .host import CosmicHost
+from .log import logging
 from .systemvm import CosmicSystemVM
 
 
-def load_cloud_monkey_profile(profile):
+def _load_cloud_monkey_profile(profile):
     config_file = Path.home() / '.cloudmonkey' / 'config'
     config = ConfigParser()
     config.read(str(config_file))
@@ -39,16 +39,17 @@ def load_cloud_monkey_profile(profile):
 
 
 class CosmicOps(object):
-    def __init__(self, endpoint=None, key=None, secret=None, profile=None, timeout=60, dry_run=True):
+    def __init__(self, endpoint=None, key=None, secret=None, profile=None, timeout=60, dry_run=True,
+                 log_to_slack=False):
         if profile:
-            (endpoint, key, secret) = load_cloud_monkey_profile(profile)
+            (endpoint, key, secret) = _load_cloud_monkey_profile(profile)
 
         self.endpoint = endpoint
         self.key = key
         self.secret = secret
-
         self.timeout = timeout
         self.dry_run = dry_run
+        self.log_to_slack = log_to_slack
         self.cs = CloudStack(self.endpoint, self.key, self.secret, self.timeout)
 
     def get_host_by_name(self, host_name):

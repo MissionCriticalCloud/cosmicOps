@@ -13,12 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-
 import click
 import click_log
 
-from cosmicops import CosmicSQL
+from cosmicops import CosmicSQL, logging
 
 
 @click.command()

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import socket
 import time
 from collections.abc import Mapping
@@ -23,6 +22,7 @@ import click_spinner
 import paramiko
 from fabric import Connection
 
+from .log import logging
 from .vm import CosmicVM
 
 FABRIC_PATCHED = False
@@ -42,6 +42,7 @@ class CosmicHost(Mapping):
         global FABRIC_PATCHED
         self._ops = ops
         self._host = host
+        self.log_to_slack = ops.log_to_slack
         self.dry_run = ops.dry_run
 
         # Patch Fabric connection to use different host policy (see https://github.com/fabric/fabric/issues/2071)
@@ -76,10 +77,10 @@ class CosmicHost(Mapping):
             logging.info(f"Would disable host '{self['name']}'")
             return True
         else:
-            logging.info(f"Disabling host '{self['name']}'")
+            logging.info(f"Disabling host '{self['name']}'", self.log_to_slack)
 
         if not self._ops.cs.updateHost(id=self['id'], allocationstate='Disable').get('host'):
-            logging.error(f"Failed to disable host '{self['name']}'")
+            logging.error(f"Failed to disable host '{self['name']}'", self.log_to_slack)
             return False
 
         with click_spinner.spinner():
@@ -96,10 +97,10 @@ class CosmicHost(Mapping):
             logging.info(f"Would enable host '{self['name']}'")
             return True
         else:
-            logging.info(f"Enabling host '{self['name']}'")
+            logging.info(f"Enabling host '{self['name']}'", self.log_to_slack)
 
         if not self._ops.cs.updateHost(id=self['id'], allocationstate='Enable').get('host'):
-            logging.error(f"Failed to enable host '{self['name']}'")
+            logging.error(f"Failed to enable host '{self['name']}'", self.log_to_slack)
             return False
 
         with click_spinner.spinner():
@@ -236,30 +237,32 @@ class CosmicHost(Mapping):
             return True
 
         if self.execute('virsh list | grep running | wc -l').stdout.strip() != '0':
-            logging.error(f"Host '{self['name']}' has running VMs, will not reboot")
+            logging.error(f"Host '{self['name']}' has running VMs, will not reboot", self.log_to_slack)
             return False
 
         try:
             if action == RebootAction.REBOOT:
-                logging.info(f"Rebooting '{self['name']}' in 60s")
+                logging.info(f"Rebooting '{self['name']}' in 60s", self.log_to_slack)
                 self.execute('shutdown -r 1', sudo=True)
             elif action == RebootAction.HALT:
-                logging.info(f"Halting '{self['name']}' in 60s")
+                logging.info(
+                    f"Halting '{self['name']}' in 60s, be sure to start it manually to continue the rolling reboot",
+                    self.log_to_slack)
                 self.execute('shutdown -h 1', sudo=True)
             elif action == RebootAction.FORCE_RESET:
-                logging.info(f"Force resetting '{self['name']}'")
+                logging.info(f"Force resetting '{self['name']}'", self.log_to_slack)
                 self.execute('sync', sudo=True)
                 self.execute('echo b > /proc/sysrq-trigger', sudo=True)
             elif action == RebootAction.UPGRADE_FIRMWARE:
-                logging.info(f"Rebooting '{self['name']}' after firmware upgrade")
+                logging.info(f"Rebooting '{self['name']}' after firmware upgrade", self.log_to_slack)
                 self.execute("tmux new -d 'yes | sudo /usr/sbin/smartupdate upgrade && sudo reboot'")
             elif action == RebootAction.PXE_REBOOT:
-                logging.info(f"PXE Rebooting '{self['name']}' in 10s")
+                logging.info(f"PXE Rebooting '{self['name']}' in 10s", self.log_to_slack)
                 self.execute("tmux new -d 'sleep 10 && sudo /usr/sbin/hp-reboot pxe'")
             elif action == RebootAction.SKIP:
-                logging.info(f"Skipping reboot for '{self['name']}'")
+                logging.info(f"Skipping reboot for '{self['name']}'", self.log_to_slack)
         except Exception as e:
-            logging.warning(f"Ignoring exception as it's likely related to the reboot: {e}")
+            logging.warning(f"Ignoring exception as it's likely related to the reboot: {e}", self.log_to_slack)
 
         return True
 
@@ -267,7 +270,7 @@ class CosmicHost(Mapping):
         if self.dry_run:
             logging.info(f"Would wait for '{self['name']}' to complete it's reboot")
         else:
-            logging.info(f"Waiting for '{self['name']}' to complete it's reboot")
+            logging.info(f"Waiting for '{self['name']}' to complete it's reboot", self.log_to_slack)
             with click_spinner.spinner():
                 while True:
                     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -282,7 +285,7 @@ class CosmicHost(Mapping):
         if self.dry_run:
             logging.info(f"Would wait for '{self['name']}' to come back online")
         else:
-            logging.info(f"Waiting for '{self['name']}' to come back online")
+            logging.info(f"Waiting for '{self['name']}' to come back online", self.log_to_slack)
             with click_spinner.spinner():
                 while True:
                     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -295,7 +298,7 @@ class CosmicHost(Mapping):
         if self.dry_run:
             logging.info(f"Would wait for libvirt on '{self['name']}'")
         else:
-            logging.info(f"Waiting for libvirt on '{self['name']}'")
+            logging.info(f"Waiting for libvirt on '{self['name']}'", self.log_to_slack)
             with click_spinner.spinner():
                 while True:
                     try:
@@ -307,6 +310,11 @@ class CosmicHost(Mapping):
                     time.sleep(5)
 
     def restart_vms_with_shutdown_policy(self):
+        if self.dry_run:
+            logging.info(f"Would restart VMs with 'ShutdownAndStart' policy on host '{self['name']}'")
+        else:
+            logging.info(f"Starting VMs with 'ShutdownAndStart' policy on host '{self['name']}'", self.log_to_slack)
+
         for vm in self.vms_with_shutdown_policy:
             vm.start()
 
@@ -315,7 +323,7 @@ class CosmicHost(Mapping):
             logging.info(f"Would wait for agent to became up on host '{self['name']}'")
             return
         else:
-            logging.info(f"Waiting for agent on host '{self['name']}'")
+            logging.info(f"Waiting for agent on host '{self['name']}'", self.log_to_slack)
 
         with click_spinner.spinner():
             while True:

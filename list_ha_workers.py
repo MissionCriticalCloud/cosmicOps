@@ -13,14 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import sys
 
 import click
 import click_log
 from tabulate import tabulate
 
-from cosmicops import CosmicSQL
+from cosmicops import CosmicSQL, logging
 
 
 @click.command()

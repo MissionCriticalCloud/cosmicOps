@@ -18,6 +18,8 @@ from pathlib import Path
 
 import pymysql
 
+from .log import logging
+
 
 class CosmicSQL(object):
     def __init__(self, server, port=3306, password=None, user='cloud', database='cloud', dry_run=True):

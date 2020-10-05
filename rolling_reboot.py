@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import sys
 import time
 from operator import itemgetter
@@ -22,7 +21,7 @@ from pathlib import Path
 import click
 import click_log
 
-from cosmicops import CosmicOps
+from cosmicops import CosmicOps, logging
 from cosmicops.host import RebootAction
 
 
@@ -56,10 +55,18 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
 
     click_log.basic_config()
 
+    log_to_slack = True
+    logging.task = 'Rolling Reboot'
+    logging.slack_title = 'Hypervisor'
+    logging.instance_name = 'N/A'
+    logging.vm_name = 'N/A'
+    logging.cluster = cluster
+
     if dry_run:
+        log_to_slack = False
         logging.warning('Running in dry-run mode, will only show changes')
 
-    co = CosmicOps(profile=profile, dry_run=dry_run)
+    co = CosmicOps(profile=profile, dry_run=dry_run, log_to_slack=log_to_slack)
 
     cluster = co.get_cluster_by_name(cluster)
     if not cluster:
@@ -85,6 +92,10 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
     hosts.sort(key=itemgetter('name'))
 
     for host in hosts:
+        logging.slack_value = host['name']
+        logging.zone_name = host['zonename']
+
+        logging.info(f"Processing host {host['name']}", log_to_slack)
         for script in filter(None, (pre_empty_script, post_empty_script, post_reboot_script)):
             path = Path(script)
             host.copy_file(str(path), f'/tmp/{path.name}', mode=0o755)
@@ -97,16 +108,23 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
                 sys.exit(1)
 
         if host['state'] != 'Up' and not dry_run:
-            logging.error(f"Host '{host['name']} is not up (state: '{host['state']}'), aborting")
+            logging.error(f"Host '{host['name']} is not up (state: '{host['state']}'), aborting", log_to_slack)
             sys.exit(1)
+
+        running_vms = len(host.get_all_vms())
+        logging.info(
+            f"Found {running_vms} running on host '{host['name']}'. Will now start migrating them to other hosts in the same cluster",
+            log_to_slack)
 
         while True:
             (_, _, failed) = host.empty()
             if failed == 0 or dry_run:
                 break
 
-            logging.warning(f"Failed to empty host {host['name']}, retrying...")
+            logging.warning(f"Failed to empty host {host['name']}, retrying...", log_to_slack)
             time.sleep(5)
+
+        logging.info(f"Host {host['name']} is empty", log_to_slack)
 
         if post_empty_script:
             host.execute(f'/tmp/{Path(post_empty_script).name}', sudo=True)
