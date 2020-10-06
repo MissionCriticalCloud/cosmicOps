@@ -78,13 +78,13 @@ class TestCosmicLog(TestCase):
         attachment_fields = attachment['fields']
         self.assertEqual('test_message', attachment['text'])
         self.assertEqual('good', attachment['color'])
-        self.assertEqual('test_title', attachment_fields[0]['title'])
-        self.assertEqual('test_value', attachment_fields[0]['value'])
-        self.assertEqual('test_task', attachment_fields[1]['value'])
-        self.assertEqual('test_cluster', attachment_fields[2]['value'])
-        self.assertEqual('test_instance_name', attachment_fields[3]['value'])
-        self.assertEqual('test_vm_name', attachment_fields[4]['value'])
-        self.assertEqual('test_zone_name', attachment_fields[5]['value'])
+        self.assertEqual('test_title', attachment_fields[1]['title'])
+        self.assertEqual('test_value', attachment_fields[1]['value'])
+        self.assertEqual('test_task', attachment_fields[2]['value'])
+        self.assertEqual('test_cluster', attachment_fields[3]['value'])
+        self.assertEqual('test_instance_name', attachment_fields[4]['value'])
+        self.assertEqual('test_vm_name', attachment_fields[5]['value'])
+        self.assertEqual('test_zone_name', attachment_fields[6]['value'])
         self.assertEqual('cosmicOps', call_args[1]['username'])
 
     def test_send_slack_message_failure(self):

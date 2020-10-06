@@ -14,6 +14,7 @@
 
 import logging as logging_module
 from configparser import ConfigParser
+from datetime import datetime
 from logging import DEBUG, WARNING, ERROR, INFO
 from pathlib import Path
 
@@ -62,6 +63,10 @@ class CosmicLog(object):
         attachments = []
         attachment = {'text': message, 'color': color, 'mrkdwn_in': ['text', 'pretext', 'fields'], 'mrkdwn': 'true',
                       'fields': [
+                          {
+                              'title': 'Timestamp',
+                              'value': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                          },
                           {
                               'title': str(self.slack_title),
                               'value': str(self.slack_value),
