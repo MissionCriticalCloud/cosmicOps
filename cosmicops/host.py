@@ -129,16 +129,18 @@ class CosmicHost(Mapping):
 
         for vm in all_vms:
             if vm.get('maintenancepolicy') == 'ShutdownAndStart':
-                # TODO: currently the VM remains stopped, would be nice to have it start again if possible.
-                # * Do not try to start if the host is on NVMe
-                # * If it's on shared storage it can be started on another host after this one has been disabled
-                self.vms_with_shutdown_policy.append(vm)
-
                 if not vm.stop():
                     failed += 1
-                else:
-                    success += 1
+                    continue
 
+                success += 1
+
+                # If the host is disabled, try to restart the VM. Will fail if the host is on NVMe.
+                if self['resourcestate'] == 'Disabled':
+                    if vm.start():
+                        continue
+
+                self.vms_with_shutdown_policy.append(vm)
                 continue
 
             vm_on_dedicated_hv = False
