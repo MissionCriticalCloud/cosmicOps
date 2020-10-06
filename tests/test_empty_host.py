@@ -26,6 +26,11 @@ class TestEmptyHost(TestCase):
         self.co = co_patcher.start()
         self.addCleanup(co_patcher.stop)
         self.co_instance = self.co.return_value
+
+        slack_patcher = patch('cosmicops.log.Slack')
+        self.mock_slack = slack_patcher.start()
+        self.addCleanup(slack_patcher.stop)
+
         self.runner = CliRunner()
 
     def test_main(self):

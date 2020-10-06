@@ -21,7 +21,7 @@ from requests.exceptions import ConnectionError
 from testfixtures import tempdir
 
 from cosmicops import CosmicOps
-from cosmicops.ops import load_cloud_monkey_profile
+from cosmicops.ops import _load_cloud_monkey_profile
 
 
 class TestCosmicOps(TestCase):
@@ -31,13 +31,17 @@ class TestCosmicOps(TestCase):
         self.addCleanup(cs_patcher.stop)
         self.cs_instance = self.mock_cs.return_value
 
+        slack_patcher = patch('cosmicops.log.Slack')
+        self.mock_slack = slack_patcher.start()
+        self.addCleanup(slack_patcher.stop)
+
         sleep_patcher = patch('time.sleep', return_value=None)
         self.mock_sleep = sleep_patcher.start()
         self.addCleanup(sleep_patcher.stop)
 
         self.co = CosmicOps(endpoint='https://localhost', key='key', secret='secret')
 
-    @patch('cosmicops.ops.load_cloud_monkey_profile')
+    @patch('cosmicops.ops._load_cloud_monkey_profile')
     def test_init_with_profile(self, mock_load):
         mock_load.return_value = ('profile_endpoint', 'profile_key', 'profile_secret')
         CosmicOps(profile='config')
@@ -55,7 +59,7 @@ class TestCosmicOps(TestCase):
         tmp.write('.cloudmonkey/config', config)
         with patch('pathlib.Path.home') as path_home_mock:
             path_home_mock.return_value = Path(tmp.path)
-            (endpoint, key, secret) = load_cloud_monkey_profile('testprofile')
+            (endpoint, key, secret) = _load_cloud_monkey_profile('testprofile')
 
         self.assertEqual('http://localhost:8000/client/api', endpoint)
         self.assertEqual('test_api_key', key)
@@ -79,7 +83,7 @@ class TestCosmicOps(TestCase):
         tmp.write('.cloudmonkey/config', config)
         with patch('pathlib.Path.home') as path_home_mock:
             path_home_mock.return_value = Path(tmp.path)
-            (endpoint, key, secret) = load_cloud_monkey_profile('config')
+            (endpoint, key, secret) = _load_cloud_monkey_profile('config')
 
         self.assertEqual('http://localhost:8000/client/api/2', endpoint)
         self.assertEqual('test_api_key_2', key)

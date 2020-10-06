@@ -36,6 +36,10 @@ class TestCosmicHost(TestCase):
         self.addCleanup(socket_patcher.stop)
         self.socket_context = self.mock_socket.return_value.__enter__.return_value
 
+        slack_patcher = patch('cosmicops.log.Slack')
+        self.mock_slack = slack_patcher.start()
+        self.addCleanup(slack_patcher.stop)
+
         sleep_patcher = patch('time.sleep', return_value=None)
         self.mock_sleep = sleep_patcher.start()
         self.addCleanup(sleep_patcher.stop)
@@ -472,8 +476,10 @@ class TestCosmicHost(TestCase):
 
     def _mock_vms_with_shutdown_policy(self):
         self.host.vms_with_shutdown_policy = [
-            CosmicVM(self.ops, {'id': 'vm1', 'name': 'vm1'}),
-            CosmicVM(self.ops, {'id': 'vm2', 'name': 'vm2'})
+            CosmicVM(self.ops,
+                     {'id': 'vm1', 'name': 'vm1', 'hostname': 'host1', 'maintenancepolicy': 'ShutdownAndStart'}),
+            CosmicVM(self.ops,
+                     {'id': 'vm2', 'name': 'vm2', 'hostname': 'host1', 'maintenancepolicy': 'ShutdownAndStart'})
         ]
         self.host._ops.wait_for_job = Mock(side_effect=[False, True])
 

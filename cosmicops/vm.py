@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 from collections.abc import Mapping
 
 from cs import CloudStackException
+
+from .log import logging
 
 
 class CosmicVM(Mapping):
     def __init__(self, ops, vm):
         self._ops = ops
         self._vm = vm
+        self.log_to_slack = ops.log_to_slack
         self.dry_run = ops.dry_run
 
     def __getitem__(self, item):
@@ -35,11 +37,15 @@ class CosmicVM(Mapping):
 
     def stop(self):
         if self.dry_run:
-            logging.info(
-                f"Would shut down VM '{self['name']}' on host '{self['hostname']}' as it has a ShutdownAndStart policy")
+            logging.info(f"Would stop VM '{self['name']} on host '{self['hostname']}'")
             return True
 
-        logging.info(f"Stopping VM '{self['name']}'")
+        if self.get('maintenancepolicy') == 'ShutdownAndStart':
+            logging.info(
+                f"Stopping VM '{self['name']}' on host '{self['hostname']}' as it has a ShutdownAndStart policy",
+                self.log_to_slack)
+        else:
+            logging.info(f"Stopping VM '{self['name']}' on host '{self['hostname']}'", self.log_to_slack)
         stop_response = self._ops.cs.stopVirtualMachine(id=self['id'])
         if not self._ops.wait_for_job(stop_response['jobid']):
             logging.error(f"Failed to shutdown VM '{self['name']}' on host '{self['hostname']}'")
@@ -49,10 +55,10 @@ class CosmicVM(Mapping):
 
     def start(self):
         if self.dry_run:
-            logging.info(f"Would start VM '{self['name']}")
+            logging.info(f"Would start VM '{self['name']} on host '{self['hostname']}'")
             return True
 
-        logging.info(f"Starting VM '{self['name']}'")
+        logging.info(f"Starting VM '{self['name']}' on host '{self['hostname']}'", self.log_to_slack)
         start_response = self._ops.cs.startVirtualMachine(id=self['id'])
         if not self._ops.wait_for_job(start_response['jobid']):
             logging.error(f"Failed to start VM '{self['name']}'")
@@ -75,7 +81,7 @@ class CosmicVM(Mapping):
             return True
 
         try:
-            logging.info(f"Live migrating VM '{self['name']}' to '{target_host['name']}'")
+            logging.info(f"Live migrating VM '{self['name']}' to '{target_host['name']}'", self.log_to_slack)
 
             if 'instancename' in self:
                 if 'isoid' in self:

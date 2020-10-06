@@ -28,6 +28,10 @@ class TestRollingReboot(TestCase):
         self.addCleanup(co_patcher.stop)
         self.co_instance = self.co.return_value
 
+        slack_patcher = patch('cosmicops.log.Slack')
+        self.mock_slack = slack_patcher.start()
+        self.addCleanup(slack_patcher.stop)
+
         sleep_patcher = patch('time.sleep', return_value=None)
         self.mock_sleep = sleep_patcher.start()
         self.addCleanup(sleep_patcher.stop)
@@ -45,8 +49,10 @@ class TestRollingReboot(TestCase):
                 'name': f'host{i}',
                 'clusterid': 'c1',
                 'state': 'Up',
-                'resourcestate': 'Enabled'
+                'resourcestate': 'Enabled',
+                'zonename': 'zone1'
             })
+            host.get_all_vms = Mock(return_value=[1, 2, 3])
             host.empty = Mock(return_value=(0, 0, 0))
             host.disable = Mock(return_value=True)
             host.enable = Mock(return_value=True)
@@ -66,7 +72,7 @@ class TestRollingReboot(TestCase):
         result = self.runner.invoke(rolling_reboot.main, ['--exec', 'cluster1'])
         self.assertEqual(0, result.exit_code)
 
-        self.co.assert_called_with(profile='config', dry_run=False)
+        self.co.assert_called_with(profile='config', dry_run=False, log_to_slack=True)
         self.co_instance.get_cluster_by_name.assert_called_with('cluster1')
 
         self.cluster.get_all_hosts.assert_called()
@@ -184,4 +190,4 @@ class TestRollingReboot(TestCase):
 
         result = self.runner.invoke(rolling_reboot.main, ['cluster1'])
         self.assertEqual(0, result.exit_code)
-        self.co.assert_called_with(profile='config', dry_run=True)
+        self.co.assert_called_with(profile='config', dry_run=True, log_to_slack=False)
