@@ -78,7 +78,8 @@ class TestCosmicHost(TestCase):
         self.host = CosmicHost(self.ops, {
             'id': 'h1',
             'name': 'host1',
-            'clusterid': '1'
+            'clusterid': '1',
+            'resourcestate': 'Enabled'
         })
 
     def _mock_cosmic_vm_calls(self):
@@ -138,7 +139,8 @@ class TestCosmicHost(TestCase):
                 'memoryallocated': 1000,
                 'clusterid': '1',
                 'requiresStorageMotion': False,
-                'suitableformigration': True
+                'suitableformigration': True,
+                'resourcestate': 'Enabled'
             }, {
                 'id': 'host_explicit_group_2',
                 'name': 'host3',
@@ -146,7 +148,8 @@ class TestCosmicHost(TestCase):
                 'clusterid': '1',
                 'affinitygroupid': 'e2',
                 'requiresStorageMotion': False,
-                'suitableformigration': True
+                'suitableformigration': True,
+                'resourcestate': 'Enabled'
             }, {
                 'id': 'host_explicit_group_1',
                 'name': 'host4',
@@ -154,14 +157,16 @@ class TestCosmicHost(TestCase):
                 'clusterid': '1',
                 'affinitygroupid': 'e1',
                 'requiresStorageMotion': False,
-                'suitableformigration': True
+                'suitableformigration': True,
+                'resourcestate': 'Enabled'
             }, {
                 'id': 'host_normal',
                 'name': 'host5',
                 'memoryallocated': 0,
                 'clusterid': '1',
                 'requiresStorageMotion': False,
-                'suitableformigration': True
+                'suitableformigration': True,
+                'resourcestate': 'Enabled'
             }]
         }
 
@@ -234,6 +239,7 @@ class TestCosmicHost(TestCase):
 
         self.assertEqual((4, 4, 0), self.host.empty())
         self.user_vm.stop.assert_called_once()
+        self.user_vm.start.assert_not_called()
         self.assertEqual('v1', self.host.vms_with_shutdown_policy[0]['id'])
 
     def test_empty_with_shutdown_and_start_policy_and_failed_shutdown(self):
@@ -242,8 +248,28 @@ class TestCosmicHost(TestCase):
         self.user_vm.stop.return_value = False
 
         self.assertEqual((4, 3, 1), self.host.empty())
-
         self.user_vm.stop.assert_called_once()
+        self.user_vm.start.assert_not_called()
+
+    def test_empty_with_shutdown_and_start_policy_on_disabled_host(self):
+        self.user_vm._vm['maintenancepolicy'] = 'ShutdownAndStart'
+        self.host._host['resourcestate'] = 'Disabled'
+        self._mock_hosts_and_vms()
+
+        self.assertEqual((4, 4, 0), self.host.empty())
+        self.user_vm.stop.assert_called_once()
+        self.user_vm.start.assert_called_once()
+        self.assertEqual([], self.host.vms_with_shutdown_policy)
+
+    def test_empty_with_shutdown_and_start_policy_on_disabled_host_with_failed_start(self):
+        self.user_vm._vm['maintenancepolicy'] = 'ShutdownAndStart'
+        self.host._host['resourcestate'] = 'Disabled'
+        self._mock_hosts_and_vms()
+        self.user_vm.start.return_value = False
+
+        self.assertEqual((4, 4, 0), self.host.empty())
+        self.user_vm.stop.assert_called_once()
+        self.user_vm.start.assert_called_once()
         self.assertEqual('v1', self.host.vms_with_shutdown_policy[0]['id'])
 
     def test_empty_with_affinity_group(self):
