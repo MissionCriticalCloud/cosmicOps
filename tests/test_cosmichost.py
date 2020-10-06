@@ -374,6 +374,20 @@ class TestCosmicHost(TestCase):
         self.console_proxy.migrate.return_value = False
         self.assertEqual((4, 2, 2), self.host.empty())
 
+    def test_empty_with_target_host(self):
+        target_host = CosmicHost(self.ops, {
+            'id': 'target_host',
+            'name': 'target_host',
+            'clusterid': '1',
+            'resourcestate': 'Enabled'
+        })
+        self._mock_hosts_and_vms()
+        self.assertEqual((4, 4, 0), self.host.empty(target_host))
+
+        self.cs_instance.findHostsForMigration.assert_not_called()
+        for vm in self.all_vms:
+            self.assertEqual('target_host', vm.migrate.call_args[0][0]['id'])
+
     def test_get_all_vms(self):
         self._mock_cosmic_vm_calls()
         self.host.get_all_vms()

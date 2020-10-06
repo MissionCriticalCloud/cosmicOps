@@ -72,6 +72,9 @@ class CosmicHost(Mapping):
     def refresh(self):
         self._host = self._ops.get_host_json_by_id(self['id'])[0]
 
+    def get_host_json(self):
+        return self._host
+
     def disable(self):
         if self.dry_run:
             logging.info(f"Would disable host '{self['name']}'")
@@ -112,7 +115,7 @@ class CosmicHost(Mapping):
 
         return True
 
-    def empty(self):
+    def empty(self, target=None):
         total = success = failed = 0
 
         all_vms = self.get_all_vms()
@@ -143,50 +146,53 @@ class CosmicHost(Mapping):
                 self.vms_with_shutdown_policy.append(vm)
                 continue
 
-            vm_on_dedicated_hv = False
-            dedicated_affinity_id = None
-            for affinity_group in vm.get_affinity_groups():
-                if affinity_group['type'] == 'ExplicitDedication':
-                    vm_on_dedicated_hv = True
-                    dedicated_affinity_id = affinity_group['id']
+            if target:
+                migration_host = target.get_host_json()
+            else:
+                vm_on_dedicated_hv = False
+                dedicated_affinity_id = None
+                for affinity_group in vm.get_affinity_groups():
+                    if affinity_group['type'] == 'ExplicitDedication':
+                        vm_on_dedicated_hv = True
+                        dedicated_affinity_id = affinity_group['id']
 
-            available_hosts = self._ops.cs.findHostsForMigration(virtualmachineid=vm['id']).get('host', [])
-            available_hosts.sort(key=itemgetter('memoryallocated'))
-            migration_host = None
+                available_hosts = self._ops.cs.findHostsForMigration(virtualmachineid=vm['id']).get('host', [])
+                available_hosts.sort(key=itemgetter('memoryallocated'))
+                migration_host = None
 
-            for available_host in available_hosts:
-                # Skip hosts that require storage migration
-                if available_host['requiresStorageMotion']:
-                    logging.debug(
-                        f"Skipping '{available_host['name']}' because migrating VM '{vm['name']}' requires a storage migration")
-                    continue
-
-                # Only hosts in the same cluster
-                if available_host['clusterid'] != self['clusterid']:
-                    logging.debug(f"Skipping '{available_host['name']}' because it's part of a different cluster")
-                    continue
-
-                # Ensure host is suitable for migration
-                if not available_host['suitableformigration']:
-                    logging.debug(f"Skipping '{available_host['name']}' because it's not suitable for migration")
-                    continue
-
-                if vm_on_dedicated_hv:
-                    # Ensure the dedication group matches
-                    if available_host.get('affinitygroupid') != dedicated_affinity_id:
-                        logging.info(
-                            f"Skipping '{available_host['name']}' because host does not match the dedication group of VM '{vm['name']}'")
-                        continue
-                else:
-                    # VM isn't dedicated, so skip dedicated hosts
-                    if 'affinitygroupid' in available_host:
-                        logging.info(
-                            f"Skipping '{available_host['name']}' because host is dedicated and VM '{vm['name']}' is not")
+                for available_host in available_hosts:
+                    # Skip hosts that require storage migration
+                    if available_host['requiresStorageMotion']:
+                        logging.debug(
+                            f"Skipping '{available_host['name']}' because migrating VM '{vm['name']}' requires a storage migration")
                         continue
 
-                logging.debug(f"Selected '{available_host['name']}' for VM '{vm['name']}'")
-                migration_host = available_host
-                break
+                    # Only hosts in the same cluster
+                    if available_host['clusterid'] != self['clusterid']:
+                        logging.debug(f"Skipping '{available_host['name']}' because it's part of a different cluster")
+                        continue
+
+                    # Ensure host is suitable for migration
+                    if not available_host['suitableformigration']:
+                        logging.debug(f"Skipping '{available_host['name']}' because it's not suitable for migration")
+                        continue
+
+                    if vm_on_dedicated_hv:
+                        # Ensure the dedication group matches
+                        if available_host.get('affinitygroupid') != dedicated_affinity_id:
+                            logging.info(
+                                f"Skipping '{available_host['name']}' because host does not match the dedication group of VM '{vm['name']}'")
+                            continue
+                    else:
+                        # VM isn't dedicated, so skip dedicated hosts
+                        if 'affinitygroupid' in available_host:
+                            logging.info(
+                                f"Skipping '{available_host['name']}' because host is dedicated and VM '{vm['name']}' is not")
+                            continue
+
+                    logging.debug(f"Selected '{available_host['name']}' for VM '{vm['name']}'")
+                    migration_host = available_host
+                    break
 
             if not migration_host:
                 logging.error(

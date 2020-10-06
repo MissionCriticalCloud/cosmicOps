@@ -24,11 +24,13 @@ from cosmicops import CosmicOps, logging
 @click.command()
 @click.option('--profile', '-p', metavar='<name>', default='config',
               help='Name of the CloudMonkey profile containing the credentials')
+@click.option('--disable', is_flag=True, default=False, help='Disable host before emptying')
+@click.option('--target', metavar='<host>', help='Target host for migration')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('host')
-def main(profile, dry_run, host):
-    """Empty HOST by migrating VMs to another host in the same cluster."""
+def main(profile, disable, target, dry_run, host):
+    """Empty HOST by migrating VMs to other hosts in the same cluster."""
 
     click_log.basic_config()
 
@@ -41,7 +43,17 @@ def main(profile, dry_run, host):
     if not host:
         sys.exit(1)
 
-    (total, success, failed) = host.empty()
+    if target:
+        target_host = co.get_host_by_name(target)
+        if not target_host:
+            sys.exit(1)
+    else:
+        target_host = None
+
+    if disable and not host.disable():
+        sys.exit(1)
+
+    (total, success, failed) = host.empty(target=target_host)
     logging.info(f"Result: {success} successful, {failed} failed out of {total} total VMs")
 
 
