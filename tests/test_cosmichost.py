@@ -15,6 +15,8 @@
 from unittest import TestCase
 from unittest.mock import Mock, patch, call
 
+from invoke import UnexpectedExit, CommandTimedOut
+
 from cosmicops import CosmicOps, CosmicHost, CosmicVM
 from cosmicops.host import RebootAction
 
@@ -467,9 +469,11 @@ class TestCosmicHost(TestCase):
         self.socket_context.connect_ex.assert_called_with(('host1', 22))
         self.host.execute.assert_called_with('virsh list')
 
-    def test_wait_until_online_retry_on_connection_reset(self):
+    def test_wait_until_online_retry_on_failure(self):
         self.host.execute = Mock()
-        self.host.execute.side_effect = [Mock(return_code=1), ConnectionResetError, Mock(return_code=0)]
+        self.host.execute.side_effect = [Mock(return_code=1), ConnectionResetError,
+                                         UnexpectedExit('mock unexpected exit'),
+                                         CommandTimedOut('mock command timeout', 10), Mock(return_code=0)]
         self.socket_context.connect_ex.side_effect = [1, 0]
 
         self.host.wait_until_online()
