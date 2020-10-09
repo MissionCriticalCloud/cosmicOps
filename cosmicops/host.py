@@ -21,6 +21,7 @@ from operator import itemgetter
 import click_spinner
 import paramiko
 from fabric import Connection
+from invoke import UnexpectedExit, CommandTimedOut
 
 from .log import logging
 from .vm import CosmicVM
@@ -306,7 +307,7 @@ class CosmicHost(Mapping):
                     try:
                         if self.execute('virsh list').return_code == 0:
                             break
-                    except ConnectionResetError:
+                    except (ConnectionResetError, UnexpectedExit, CommandTimedOut):
                         pass
 
                     time.sleep(5)
