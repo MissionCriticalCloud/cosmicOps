@@ -232,7 +232,7 @@ class CosmicHost(Mapping):
         else:
             runner = self._connection.run
 
-        return runner(command)
+        return runner(command, hide=True)
 
     def reboot(self, action=RebootAction.REBOOT):
         if self.dry_run:

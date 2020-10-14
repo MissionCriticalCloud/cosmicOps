@@ -67,8 +67,16 @@ class CosmicOps(object):
     def get_host_json_by_id(self, host_id):
         return self.cs.listHosts(id=host_id).get('host')
 
-    def get_cluster_by_name(self, cluster_name):
-        response = self.cs.listClusters(name=cluster_name).get('cluster')
+    def get_zone_by_name(self, zone_name):
+        return self.cs.listZones(name=zone_name).get('zone')[0]
+
+    def get_cluster_by_name(self, cluster_name, zone=None):
+        if zone:
+            zone_id = self.get_zone_by_name(zone)['id']
+        else:
+            zone_id = None
+
+        response = self.cs.listClusters(name=cluster_name, zoneid=zone_id).get('cluster')
 
         if not response:
             logging.error(f"Cluster '{cluster_name}' not found")
@@ -78,6 +86,20 @@ class CosmicOps(object):
             return None
 
         return CosmicCluster(self, response[0])
+
+    def get_all_clusters(self, zone=None):
+        if zone:
+            zone_id = self.get_zone_by_name(zone)['id']
+        else:
+            zone_id = None
+
+        clusters = self.cs.listClusters(zoneid=zone_id).get('cluster')
+
+        if not clusters:
+            logging.error(f"No clusters found")
+            return None
+
+        return [CosmicCluster(self, cluster) for cluster in clusters]
 
     def get_systemvm_by_name(self, systemvm_name):
         response = self.cs.listSystemVms(name=systemvm_name).get('systemvm')

@@ -46,3 +46,13 @@ class TestCosmicCluster(TestCase):
         self.assertEqual(2, len(hosts))
         self.assertEqual({'id': 'h1', 'name': 'host1'}, hosts[0]._host)
         self.assertEqual({'id': 'h2', 'name': 'host2'}, hosts[1]._host)
+
+    def test_get_storage_pools(self):
+        self.cs_instance.listStoragePools.return_value = {
+            'storagepool': [{
+                'id': 'p1',
+                'name': 'pool1'
+            }]
+        }
+
+        self.assertDictEqual({'id': 'p1', 'name': 'pool1'}, self.cluster.get_storage_pools()[0]._storage_pool)

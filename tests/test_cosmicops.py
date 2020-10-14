@@ -119,12 +119,53 @@ class TestCosmicOps(TestCase):
         result = self.co.get_cluster_by_name('cluster1')
         self.assertEqual(('c1', 'cluster1'), (result['id'], result['name']))
 
+    def test_get_cluster_by_name_with_zone(self):
+        self.cs_instance.listZones.return_value = {
+            'zone': [{
+                'id': 'z1',
+                'name': 'zone1'
+            }]
+        }
+
+        self.co.get_cluster_by_name('cluster1', 'zone1')
+        self.cs_instance.listClusters.assert_called_with(name='cluster1', zoneid='z1')
+
     def test_get_cluster_by_name_failure(self):
         self.cs_instance.listClusters.return_value = {'cluster': []}
         self.assertIsNone(self.co.get_cluster_by_name('cluster1'))
 
         self.cs_instance.listClusters.return_value = {'cluster': [{}, {}]}
         self.assertIsNone(self.co.get_cluster_by_name('cluster1'))
+
+    def test_get_all_clusters(self):
+        self.cs_instance.listClusters.return_value = {
+            'cluster': [{
+                'id': 'c1',
+                'name': 'cluster1'
+            }, {
+                'id': 'c2',
+                'name': 'cluster2'
+            }]
+        }
+
+        result = self.co.get_all_clusters()
+        self.assertEqual(('c1', 'cluster1', 'c2', 'cluster2'),
+                         (result[0]['id'], result[0]['name'], result[1]['id'], result[1]['name']))
+
+    def test_all_clusters_with_zone(self):
+        self.cs_instance.listZones.return_value = {
+            'zone': [{
+                'id': 'z1',
+                'name': 'zone1'
+            }]
+        }
+
+        self.co.get_all_clusters('zone1')
+        self.cs_instance.listClusters.assert_called_with(zoneid='z1')
+
+    def test_get_all_clusters_failure(self):
+        self.cs_instance.listClusters.return_value = {'cluster': []}
+        self.assertIsNone(self.co.get_all_clusters())
 
     def test_get_systemvm_by_name(self):
         self.cs_instance.listSystemVms.return_value = {
