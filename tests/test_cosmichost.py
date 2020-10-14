@@ -401,10 +401,10 @@ class TestCosmicHost(TestCase):
 
     def test_execute(self):
         self.host.execute('cmd')
-        self.connection_instance.run.assert_called_with('cmd')
+        self.connection_instance.run.assert_called_with('cmd', hide=True)
 
         self.host.execute('cmd', True)
-        self.connection_instance.sudo.assert_called_with('cmd')
+        self.connection_instance.sudo.assert_called_with('cmd', hide=True)
 
     def test_execute_dry_run(self):
         self.host.dry_run = True

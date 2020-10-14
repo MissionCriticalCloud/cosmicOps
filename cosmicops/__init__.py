@@ -17,7 +17,8 @@ from .host import CosmicHost
 from .log import logging
 from .ops import CosmicOps
 from .sql import CosmicSQL
+from .storagepool import CosmicStoragePool
 from .systemvm import CosmicSystemVM
 from .vm import CosmicVM
 
-__all__ = [CosmicOps, CosmicSQL, CosmicHost, CosmicCluster, CosmicVM, CosmicSystemVM, logging]
+__all__ = [CosmicOps, CosmicSQL, CosmicHost, CosmicCluster, CosmicVM, CosmicStoragePool, CosmicSystemVM, logging]

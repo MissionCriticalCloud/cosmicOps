@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from collections.abc import Mapping
 
 from .host import CosmicHost
+from .storagepool import CosmicStoragePool
 
 
 class CosmicCluster(Mapping):
@@ -34,3 +34,8 @@ class CosmicCluster(Mapping):
     def get_all_hosts(self):
         return [CosmicHost(self._ops, host) for host in
                 self._ops.cs.listHosts(clusterid=self['id'], listall='true').get('host', [])]
+
+    def get_storage_pools(self):
+        storage_pools = self._ops.cs.listStoragePools(clusterid=self['id'], listall='true').get('storagepool', [])
+
+        return [CosmicStoragePool(self._ops, storage_pool) for storage_pool in storage_pools]
