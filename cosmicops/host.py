@@ -222,7 +222,7 @@ class CosmicHost(Mapping):
         if mode:
             self._connection.sudo(f'chmod {mode:o} {destination}')
 
-    def execute(self, command, sudo=False):
+    def execute(self, command, sudo=False, hide_stdout=True):
         if self.dry_run:
             logging.info(f"Would execute '{command}' on '{self['name']}")
             return
@@ -232,7 +232,7 @@ class CosmicHost(Mapping):
         else:
             runner = self._connection.run
 
-        return runner(command, hide=True)
+        return runner(command, hide=hide_stdout)
 
     def reboot(self, action=RebootAction.REBOOT):
         if self.dry_run:

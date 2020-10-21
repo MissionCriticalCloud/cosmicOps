@@ -101,7 +101,7 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
             host.copy_file(str(path), f'/tmp/{path.name}', mode=0o755)
 
         if pre_empty_script:
-            host.execute(f'/tmp/{Path(pre_empty_script).name}', sudo=True)
+            host.execute(f'/tmp/{Path(pre_empty_script).name}', sudo=True, hide_stdout=False)
 
         if host['resourcestate'] != 'Disabled':
             if not host.disable():
@@ -127,7 +127,7 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
         logging.info(f"Host {host['name']} is empty", log_to_slack)
 
         if post_empty_script:
-            host.execute(f'/tmp/{Path(post_empty_script).name}', sudo=True)
+            host.execute(f'/tmp/{Path(post_empty_script).name}', sudo=True, hide_stdout=False)
 
         if not host.reboot(reboot_action):
             sys.exit(1)
@@ -137,7 +137,7 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
             host.wait_until_online()
 
         if post_reboot_script:
-            host.execute(f'/tmp/{Path(post_reboot_script).name}', sudo=True)
+            host.execute(f'/tmp/{Path(post_reboot_script).name}', sudo=True, hide_stdout=False)
 
         if not host.enable():
             sys.exit(1)
