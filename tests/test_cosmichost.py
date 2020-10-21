@@ -15,6 +15,7 @@
 from unittest import TestCase
 from unittest.mock import Mock, patch, call
 
+from cs import CloudStackApiException
 from invoke import UnexpectedExit, CommandTimedOut
 
 from cosmicops import CosmicOps, CosmicHost, CosmicVM
@@ -364,6 +365,13 @@ class TestCosmicHost(TestCase):
 
         for vm in self.all_vms:
             vm.migrate.assert_not_called()
+
+    def test_empty_with_find_hosts_for_migration_failure(self):
+        self._mock_hosts_and_vms()
+        self.cs_instance.findHostsForMigration.side_effect = CloudStackApiException('HTTP 431 response from CloudStack',
+                                                                                    error='Mock error', response=Mock())
+
+        self.assertEqual((4, 0, 4), self.host.empty())
 
     def test_empty_with_migrate_virtual_machine_failure(self):
         self._mock_hosts_and_vms()
