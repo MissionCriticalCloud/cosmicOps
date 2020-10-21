@@ -20,6 +20,7 @@ from operator import itemgetter
 
 import click_spinner
 import paramiko
+from cs import CloudStackApiException
 from fabric import Connection
 from invoke import UnexpectedExit, CommandTimedOut
 
@@ -47,7 +48,7 @@ class CosmicHost(Mapping):
         self.dry_run = ops.dry_run
 
         # Patch Fabric connection to use different host policy (see https://github.com/fabric/fabric/issues/2071)
-        def unsafe_open(self):
+        def unsafe_open(self):  # pragma: no cover
             self.client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
             Connection.open_orig(self)
 
@@ -151,7 +152,13 @@ class CosmicHost(Mapping):
                     vm_on_dedicated_hv = True
                     dedicated_affinity_id = affinity_group['id']
 
-            available_hosts = self._ops.cs.findHostsForMigration(virtualmachineid=vm['id']).get('host', [])
+            try:
+                available_hosts = self._ops.cs.findHostsForMigration(virtualmachineid=vm['id']).get('host', [])
+            except CloudStackApiException as e:
+                logging.error(f"Encountered API exception while finding suitable host for migration: {e}")
+                failed += 1
+                continue
+
             available_hosts.sort(key=itemgetter('memoryallocated'))
             migration_host = None
 
