@@ -63,8 +63,8 @@ def main(profile, cluster, zone):
     if not clusters:
         sys.exit(1)
 
+    storage_pool_table = []
     for cluster in clusters:
-        storage_pool_table = []
         storage_pools = cluster.get_storage_pools()
         random_host = cluster.get_all_hosts().pop()
 

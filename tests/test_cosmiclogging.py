@@ -15,6 +15,7 @@
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch, Mock
+from urllib.error import URLError
 
 from testfixtures import tempdir
 
@@ -88,7 +89,7 @@ class TestCosmicLog(TestCase):
         self.assertEqual('cosmicOps', call_args[1]['username'])
 
     def test_send_slack_message_failure(self):
-        self.slack_instance.post.side_effect = RuntimeError
+        self.slack_instance.post.side_effect = URLError(Mock())
         self.logging._slack = self.slack_instance
 
         self.logging._send_slack_message('test_message_failure')

@@ -18,7 +18,7 @@ from unittest.mock import Mock, patch, call
 from cs import CloudStackApiException
 from invoke import UnexpectedExit, CommandTimedOut
 
-from cosmicops import CosmicOps, CosmicHost, CosmicVM
+from cosmicops import CosmicOps, CosmicHost, CosmicVM, CosmicProject
 from cosmicops.host import RebootAction
 
 
@@ -57,9 +57,22 @@ class TestCosmicHost(TestCase):
             'maintenancepolicy': 'LiveMigrate',
             'isoid': 'iso1'
         })
+        self.project_vm = CosmicVM(self.ops, {
+            'id': 'pv1',
+            'name': 'projectvm1',
+            'instancename': 'i-1-PROJECT-VM',
+            'hostname': 'host1',
+            'project': 'project1',
+            'projectid': 'p1'
+        })
         self.router_vm = CosmicVM(self.ops, {
             'id': 'r1',
             'name': 'r-1-VM',
+            'hostname': 'host1'
+        })
+        self.project_router_vm = CosmicVM(self.ops, {
+            'id': 'pr1',
+            'name': 'r-1-PROJECT-VM',
             'hostname': 'host1'
         })
         self.secondary_storage_vm = CosmicVM(self.ops, {
@@ -76,7 +89,8 @@ class TestCosmicHost(TestCase):
             'systemvmtype': 'consoleproxy'
         })
 
-        self.all_vms = [self.user_vm, self.router_vm, self.secondary_storage_vm, self.console_proxy]
+        self.all_vms = [self.user_vm, self.project_vm, self.router_vm, self.project_router_vm,
+                        self.secondary_storage_vm, self.console_proxy]
 
         self.host = CosmicHost(self.ops, {
             'id': 'h1',
@@ -85,47 +99,6 @@ class TestCosmicHost(TestCase):
             'resourcestate': 'Enabled'
         })
 
-    def _mock_cosmic_vm_calls(self):
-        self.cs_instance.listVirtualMachines.side_effect = [
-            {
-                'virtualmachine': [{
-                    'id': 'v1',
-                    'name': 'vm1',
-                    'instancename': 'i-1-VM',
-                    'hostname': 'host1',
-                    'maintenancepolicy': 'LiveMigrate',
-                    'isoid': 'iso1'
-                }]
-            },
-            {}
-        ]
-        self.cs_instance.listRouters.side_effect = [
-            {
-                'router': [{
-                    'id': 'r1',
-                    'name': 'r-1-VM',
-                    'hostname': 'host1'
-                }]
-            },
-            {}
-        ]
-        self.cs_instance.listSystemVms.side_effect = [
-            {
-                'systemvm': [{
-                    'id': 's1',
-                    'name': 's-1-VM',
-                    'hostname': 'host1',
-                    'systemvmtype': 'secondarystoragevm'
-                }, {
-                    'id': 's2',
-                    'name': 'v-2-VM',
-                    'hostname': 'host1',
-                    'systemvmtype': 'consoleproxy'
-                }]
-            },
-            {}
-        ]
-
     def _mock_hosts_and_vms(self):
         for vm in self.all_vms:
             vm.stop = Mock(return_value=True)
@@ -133,7 +106,11 @@ class TestCosmicHost(TestCase):
             vm.get_affinity_groups = Mock(return_value=[])
             vm.migrate = Mock(return_value=True)
 
-        self.host.get_all_vms = Mock(return_value=self.all_vms)
+        self.host.get_all_vms = Mock(return_value=[self.user_vm])
+        self.host.get_all_project_vms = Mock(return_value=[self.project_vm])
+        self.host.get_all_routers = Mock(return_value=[self.router_vm])
+        self.host.get_all_project_routers = Mock(return_value=[self.project_router_vm])
+        self.host.get_all_system_vms = Mock(return_value=[self.secondary_storage_vm, self.console_proxy])
 
         self.cs_instance.findHostsForMigration.return_value = {
             'host': [{
@@ -179,7 +156,7 @@ class TestCosmicHost(TestCase):
 
     def test_disable(self):
         def refresh_effect():
-            self.host._host['resourcestate'] = 'Enabled' if self.host.refresh.call_count == 1 else 'Disabled'
+            self.host._data['resourcestate'] = 'Enabled' if self.host.refresh.call_count == 1 else 'Disabled'
 
         self.host.refresh = Mock(side_effect=refresh_effect)
         self.assertTrue(self.host.disable())
@@ -197,7 +174,7 @@ class TestCosmicHost(TestCase):
 
     def test_enable(self):
         def refresh_effect():
-            self.host._host['resourcestate'] = 'Disabled' if self.host.refresh.call_count == 1 else 'Enabled'
+            self.host._data['resourcestate'] = 'Disabled' if self.host.refresh.call_count == 1 else 'Enabled'
 
         self.host.refresh = Mock(side_effect=refresh_effect)
         self.assertTrue(self.host.enable())
@@ -215,7 +192,7 @@ class TestCosmicHost(TestCase):
 
     def test_empty(self):
         self._mock_hosts_and_vms()
-        self.assertEqual((4, 4, 0), self.host.empty())
+        self.assertEqual((6, 6, 0), self.host.empty())
         self.user_vm.stop.assert_not_called()
 
         for vm in self.all_vms:
@@ -226,51 +203,53 @@ class TestCosmicHost(TestCase):
         self.host.dry_run = True
         self._mock_hosts_and_vms()
 
-        self.assertEqual((4, 4, 0), self.host.empty())
+        self.assertEqual((6, 6, 0), self.host.empty())
         self.cs_instance.stopVirtualMachine.assert_not_called()
         self.cs_instance.detachIso.assert_not_called()
         self.cs_instance.migrateVirtualMachine.assert_not_called()
         self.cs_instance.migrateSystemVm.assert_not_called()
 
     def test_empty_on_empty_host(self):
-        self.host.get_all_vms = Mock(return_value=None)
+        self.host.get_all_vms = Mock(return_value=[])
+        self.host.get_all_routers = Mock(return_value=[])
+        self.host.get_all_system_vms = Mock(return_value=[])
         self.assertEqual((0, 0, 0), self.host.empty())
 
     def test_empty_with_shutdown_and_start_policy(self):
-        self.user_vm._vm['maintenancepolicy'] = 'ShutdownAndStart'
+        self.user_vm._data['maintenancepolicy'] = 'ShutdownAndStart'
         self._mock_hosts_and_vms()
 
-        self.assertEqual((4, 4, 0), self.host.empty())
+        self.assertEqual((6, 6, 0), self.host.empty())
         self.user_vm.stop.assert_called_once()
         self.user_vm.start.assert_not_called()
         self.assertEqual('v1', self.host.vms_with_shutdown_policy[0]['id'])
 
     def test_empty_with_shutdown_and_start_policy_and_failed_shutdown(self):
-        self.user_vm._vm['maintenancepolicy'] = 'ShutdownAndStart'
+        self.user_vm._data['maintenancepolicy'] = 'ShutdownAndStart'
         self._mock_hosts_and_vms()
         self.user_vm.stop.return_value = False
 
-        self.assertEqual((4, 3, 1), self.host.empty())
+        self.assertEqual((6, 5, 1), self.host.empty())
         self.user_vm.stop.assert_called_once()
         self.user_vm.start.assert_not_called()
 
     def test_empty_with_shutdown_and_start_policy_on_disabled_host(self):
-        self.user_vm._vm['maintenancepolicy'] = 'ShutdownAndStart'
-        self.host._host['resourcestate'] = 'Disabled'
+        self.user_vm._data['maintenancepolicy'] = 'ShutdownAndStart'
+        self.host._data['resourcestate'] = 'Disabled'
         self._mock_hosts_and_vms()
 
-        self.assertEqual((4, 4, 0), self.host.empty())
+        self.assertEqual((6, 6, 0), self.host.empty())
         self.user_vm.stop.assert_called_once()
         self.user_vm.start.assert_called_once()
         self.assertEqual([], self.host.vms_with_shutdown_policy)
 
     def test_empty_with_shutdown_and_start_policy_on_disabled_host_with_failed_start(self):
-        self.user_vm._vm['maintenancepolicy'] = 'ShutdownAndStart'
-        self.host._host['resourcestate'] = 'Disabled'
+        self.user_vm._data['maintenancepolicy'] = 'ShutdownAndStart'
+        self.host._data['resourcestate'] = 'Disabled'
         self._mock_hosts_and_vms()
         self.user_vm.start.return_value = False
 
-        self.assertEqual((4, 4, 0), self.host.empty())
+        self.assertEqual((6, 6, 0), self.host.empty())
         self.user_vm.stop.assert_called_once()
         self.user_vm.start.assert_called_once()
         self.assertEqual('v1', self.host.vms_with_shutdown_policy[0]['id'])
@@ -284,7 +263,7 @@ class TestCosmicHost(TestCase):
             'virtualmachineIds': ['v1']
         }]
 
-        self.assertEqual((4, 4, 0), self.host.empty())
+        self.assertEqual((6, 6, 0), self.host.empty())
         self.assertEqual('host_explicit_group_1', self.user_vm.migrate.call_args[0][0]['id'])
 
     def test_empty_with_requires_storage_motion(self):
@@ -307,7 +286,7 @@ class TestCosmicHost(TestCase):
             }]
         }
 
-        self.assertEqual((4, 4, 0), self.host.empty())
+        self.assertEqual((6, 6, 0), self.host.empty())
         self.assertEqual('h3', self.user_vm.migrate.call_args[0][0]['id'])
 
     def test_empty_with_different_cluster(self):
@@ -330,7 +309,7 @@ class TestCosmicHost(TestCase):
             }]
         }
 
-        self.assertEqual((4, 4, 0), self.host.empty())
+        self.assertEqual((6, 6, 0), self.host.empty())
         self.assertEqual('h3', self.user_vm.migrate.call_args[0][0]['id'])
 
     def test_empty_with_unsuitable_host(self):
@@ -353,15 +332,15 @@ class TestCosmicHost(TestCase):
             }]
         }
 
-        self.assertEqual((4, 4, 0), self.host.empty())
+        self.assertEqual((6, 6, 0), self.host.empty())
         self.assertEqual('h3', self.user_vm.migrate.call_args[0][0]['id'])
 
     def test_empty_without_migration_host(self):
         self._mock_hosts_and_vms()
         self.cs_instance.findHostsForMigration.return_value = {}
 
-        self.assertEqual((4, 0, 4), self.host.empty())
-        self.assertEqual(4, self.cs_instance.findHostsForMigration.call_count)
+        self.assertEqual((6, 0, 6), self.host.empty())
+        self.assertEqual(6, self.cs_instance.findHostsForMigration.call_count)
 
         for vm in self.all_vms:
             vm.migrate.assert_not_called()
@@ -371,27 +350,55 @@ class TestCosmicHost(TestCase):
         self.cs_instance.findHostsForMigration.side_effect = CloudStackApiException('HTTP 431 response from CloudStack',
                                                                                     error='Mock error', response=Mock())
 
-        self.assertEqual((4, 0, 4), self.host.empty())
+        self.assertEqual((6, 0, 6), self.host.empty())
 
     def test_empty_with_migrate_virtual_machine_failure(self):
         self._mock_hosts_and_vms()
         self.user_vm.migrate.return_value = False
-        self.assertEqual((4, 3, 1), self.host.empty())
+        self.assertEqual((6, 5, 1), self.host.empty())
 
     def test_empty_with_migrate_system_vm_failure(self):
         self._mock_hosts_and_vms()
         self.secondary_storage_vm.migrate.return_value = False
         self.console_proxy.migrate.return_value = False
-        self.assertEqual((4, 2, 2), self.host.empty())
+        self.assertEqual((6, 4, 2), self.host.empty())
 
     def test_get_all_vms(self):
-        self._mock_cosmic_vm_calls()
         self.host.get_all_vms()
 
-        self.cs_instance.listVirtualMachines.assert_has_calls([call(hostid='h1', listall='true'),
-                                                               call(hostid='h1', listall='true', projectid='-1')], True)
-        self.cs_instance.listRouters.assert_has_calls([call(hostid='h1', listall='true'),
-                                                       call(hostid='h1', listall='true', projectid='-1')], True)
+        self.cs_instance.listVirtualMachines.assert_called_with(hostid='h1', domainid=None, keyword=None,
+                                                                listall='true')
+
+    def test_get_all_project_vms(self):
+        self.host.get_all_project_vms()
+
+        self.cs_instance.listVirtualMachines.assert_called_with(hostid='h1', listall='true', projectid='-1')
+
+    def test_get_all_project_vms_with_project(self):
+        project = CosmicProject(Mock(), {'id': 'p1', 'name': 'project1'})
+        self.host.get_all_project_vms(project)
+
+        self.cs_instance.listVirtualMachines.assert_called_with(hostid='h1', listall='true', projectid='p1')
+
+    def test_get_all_routers(self):
+        self.host.get_all_routers()
+
+        self.cs_instance.listRouters.assert_called_with(hostid='h1', domainid=None, listall='true')
+
+    def test_get_all_project_routers(self):
+        self.host.get_all_project_routers()
+
+        self.cs_instance.listRouters.assert_called_with(hostid='h1', listall='true', projectid='-1')
+
+    def test_get_all_project_routers_with_project(self):
+        project = CosmicProject(Mock(), {'id': 'p1', 'name': 'project1'})
+        self.host.get_all_project_routers(project)
+
+        self.cs_instance.listRouters.assert_called_with(hostid='h1', listall='true', projectid='p1')
+
+    def test_get_all_system_vms(self):
+        self.host.get_all_system_vms()
+
         self.cs_instance.listSystemVms.assert_called_with(hostid='h1')
 
     def test_copy_file(self):
@@ -498,7 +505,7 @@ class TestCosmicHost(TestCase):
 
     def test_wait_for_agent(self):
         def refresh_effect():
-            self.host._host['state'] = 'Disconnected' if self.host.refresh.call_count == 1 else 'Up'
+            self.host._data['state'] = 'Disconnected' if self.host.refresh.call_count == 1 else 'Up'
 
         self.host.refresh = Mock(side_effect=refresh_effect)
 

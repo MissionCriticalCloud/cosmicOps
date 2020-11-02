@@ -53,6 +53,11 @@ class TestCosmicVM(TestCase):
         self.assertTrue(self.vm.stop())
         self.ops.cs.stopVirtualMachine.assert_called_with(id=self.vm['id'])
 
+    def test_stop_with_shutdown_policy(self):
+        self._vm_json['maintenancepolicy'] = 'ShutdownAndStart'
+        self.assertTrue(self.vm.stop())
+        self.ops.cs.stopVirtualMachine.assert_called_with(id=self.vm['id'])
+
     def test_stop_dry_run(self):
         self.vm.dry_run = True
         self.assertTrue(self.vm.stop())
@@ -98,7 +103,7 @@ class TestCosmicVM(TestCase):
         self.cs_instance.migrateSystemVm.assert_not_called()
 
     def test_migrate_systemvm(self):
-        del (self.vm._vm['instancename'])
+        del (self.vm._data['instancename'])
         self.assertTrue(self.vm.migrate(self.target_host))
         self.cs_instance.detachIso.assert_not_called()
         self.cs_instance.migrateVirtualMachine.assert_not_called()
@@ -110,10 +115,14 @@ class TestCosmicVM(TestCase):
         self.assertFalse(self.vm.migrate(self.target_host))
 
     def test_migrate_with_migrate_system_vm_failure(self):
-        del (self.vm._vm['instancename'])
+        del (self.vm._data['instancename'])
         self.cs_instance.migrateSystemVm.return_value = None
         self.assertFalse(self.vm.migrate(self.target_host))
 
     def test_migrate_with_job_failure(self):
         self.vm._ops.wait_for_job = Mock(return_value=False)
         self.assertFalse(self.vm.migrate(self.target_host))
+
+    def test_get_volumes(self):
+        self.cs_instance.listVolumes.return_value = {'volume': [{'id': 'v1'}]}
+        self.assertEqual([{'id': 'v1'}], self.vm.get_volumes())

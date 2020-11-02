@@ -13,12 +13,35 @@
 # limitations under the License.
 
 from .cluster import CosmicCluster
+from .domain import CosmicDomain
 from .host import CosmicHost
 from .log import logging
+from .network import CosmicNetwork
 from .ops import CosmicOps
+from .pod import CosmicPod
+from .project import CosmicProject
+from .serviceoffering import CosmicServiceOffering
 from .sql import CosmicSQL
 from .storagepool import CosmicStoragePool
 from .systemvm import CosmicSystemVM
 from .vm import CosmicVM
+from .vpc import CosmicVPC
+from .zone import CosmicZone
 
-__all__ = [CosmicOps, CosmicSQL, CosmicHost, CosmicCluster, CosmicVM, CosmicStoragePool, CosmicSystemVM, logging]
+__all__ = [
+    CosmicCluster,
+    CosmicDomain,
+    CosmicHost,
+    logging,
+    CosmicNetwork,
+    CosmicOps,
+    CosmicPod,
+    CosmicProject,
+    CosmicServiceOffering,
+    CosmicSQL,
+    CosmicStoragePool,
+    CosmicSystemVM,
+    CosmicVM,
+    CosmicVPC,
+    CosmicZone
+]

@@ -11,18 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from .host import CosmicHost
-from .object import CosmicObject
-from .storagepool import CosmicStoragePool
+from collections.abc import Mapping
 
 
-class CosmicCluster(CosmicObject):
-    def get_all_hosts(self):
-        return [CosmicHost(self._ops, host) for host in
-                self._ops.cs.listHosts(clusterid=self['id'], listall='true').get('host', [])]
+class CosmicObject(Mapping):
+    def __init__(self, ops, data):
+        self._ops = ops
+        self._data = data
+        self.dry_run = ops.dry_run
 
-    def get_storage_pools(self):
-        storage_pools = self._ops.cs.listStoragePools(clusterid=self['id'], listall='true').get('storagepool', [])
+    def __getitem__(self, item):
+        return self._data[item]
 
-        return [CosmicStoragePool(self._ops, storage_pool) for storage_pool in storage_pools]
+    def __setitem__(self, item, value):
+        self._data[item] = value
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __len__(self):
+        return len(self._data)

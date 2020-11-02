@@ -20,7 +20,8 @@ from cs import CloudStackException
 from requests.exceptions import ConnectionError
 from testfixtures import tempdir
 
-from cosmicops import CosmicOps
+from cosmicops import CosmicOps, CosmicZone
+# noinspection PyProtectedMember
 from cosmicops.ops import _load_cloud_monkey_profile
 
 
@@ -108,6 +109,78 @@ class TestCosmicOps(TestCase):
         self.cs_instance.listHosts.return_value = {'host': [{}, {}]}
         self.assertIsNone(self.co.get_host_by_name('host1'))
 
+    def test_get_project_by_name(self):
+        self.cs_instance.listProjects.return_value = {
+            'project': [{
+                'id': 'p1',
+                'name': 'project1'
+            }]
+        }
+
+        result = self.co.get_project_by_name('project1')
+        self.assertEqual(('p1', 'project1'), (result['id'], result['name']))
+
+    def test_get_project_by_name_failure(self):
+        self.cs_instance.listProjects.return_value = {'project': []}
+        self.assertIsNone(self.co.get_project_by_name('project1'))
+
+        self.cs_instance.listProjects.return_value = {'project': [{}, {}]}
+        self.assertIsNone(self.co.get_project_by_name('project1'))
+
+    def test_get_zone_by_name(self):
+        self.cs_instance.listZones.return_value = {
+            'zone': [{
+                'id': 'z1',
+                'name': 'zone1'
+            }]
+        }
+
+        result = self.co.get_zone_by_name('zone1')
+        self.assertEqual(('z1', 'zone1'), (result['id'], result['name']))
+
+    def test_get_zone_by_name_failure(self):
+        self.cs_instance.listZones.return_value = {'zone': []}
+        self.assertIsNone(self.co.get_zone_by_name('zone1'))
+
+        self.cs_instance.listZones.return_value = {'zone': [{}, {}]}
+        self.assertIsNone(self.co.get_zone_by_name('zone1'))
+
+    def test_get_pod_by_name(self):
+        self.cs_instance.listPods.return_value = {
+            'pod': [{
+                'id': 'p1',
+                'name': 'pod1'
+            }]
+        }
+
+        result = self.co.get_pod_by_name('pod1')
+        self.assertEqual(('p1', 'pod1'), (result['id'], result['name']))
+
+    def test_get_pod_by_name_failure(self):
+        self.cs_instance.listPods.return_value = {'pod': []}
+        self.assertIsNone(self.co.get_pod_by_name('pod1'))
+
+        self.cs_instance.listPods.return_value = {'pod': [{}, {}]}
+        self.assertIsNone(self.co.get_pod_by_name('pod1'))
+
+    def test_get_domain_by_name(self):
+        self.cs_instance.listDomains.return_value = {
+            'domain': [{
+                'id': 'd1',
+                'name': 'domain1'
+            }]
+        }
+
+        result = self.co.get_domain_by_name('domain1')
+        self.assertEqual(('d1', 'domain1'), (result['id'], result['name']))
+
+    def test_get_domain_by_name_failure(self):
+        self.cs_instance.listDomains.return_value = {'domain': []}
+        self.assertIsNone(self.co.get_domain_by_name('domain1'))
+
+        self.cs_instance.listDomains.return_value = {'domain': [{}, {}]}
+        self.assertIsNone(self.co.get_domain_by_name('domain'))
+
     def test_get_cluster_by_name(self):
         self.cs_instance.listClusters.return_value = {
             'cluster': [{
@@ -137,6 +210,9 @@ class TestCosmicOps(TestCase):
         self.cs_instance.listClusters.return_value = {'cluster': [{}, {}]}
         self.assertIsNone(self.co.get_cluster_by_name('cluster1'))
 
+        self.cs_instance.listZones.return_value = {'zone': []}
+        self.assertIsNone(self.co.get_cluster_by_name('cluster1', 'zone1'))
+
     def test_get_all_clusters(self):
         self.cs_instance.listClusters.return_value = {
             'cluster': [{
@@ -153,15 +229,10 @@ class TestCosmicOps(TestCase):
                          (result[0]['id'], result[0]['name'], result[1]['id'], result[1]['name']))
 
     def test_all_clusters_with_zone(self):
-        self.cs_instance.listZones.return_value = {
-            'zone': [{
-                'id': 'z1',
-                'name': 'zone1'
-            }]
-        }
+        zone = CosmicZone(Mock(), {'id': 'z1', 'name': 'zone1'})
 
-        self.co.get_all_clusters('zone1')
-        self.cs_instance.listClusters.assert_called_with(zoneid='z1')
+        self.co.get_all_clusters(zone=zone)
+        self.cs_instance.listClusters.assert_called_with(zoneid='z1', podid=None)
 
     def test_get_all_clusters_failure(self):
         self.cs_instance.listClusters.return_value = {'cluster': []}
@@ -203,6 +274,60 @@ class TestCosmicOps(TestCase):
         self.cs_instance.listSystemVms.return_value = {'systemvm': [{}, {}]}
         self.assertIsNone(self.co.get_systemvm_by_id('svm1'))
 
+    def test_get_service_offering_by_id(self):
+        self.cs_instance.listServiceOfferings.return_value = {
+            'serviceoffering': [{
+                'id': 'so1',
+                'name': 'so1'
+            }]
+        }
+
+        result = self.co.get_service_offering_by_id('so1')
+        self.assertEqual(('so1', 'so1'), (result['id'], result['name']))
+
+    def test_get_service_offering_by_id_failure(self):
+        self.cs_instance.listServiceOfferings.return_value = {'serviceoffering': []}
+        self.assertIsNone(self.co.get_service_offering_by_id('so1'))
+
+        self.cs_instance.listServiceOfferings.return_value = {'serviceoffering': [{}, {}]}
+        self.assertIsNone(self.co.get_service_offering_by_id('so1'))
+
+    def test_get_network_by_id(self):
+        self.cs_instance.listNetworks.return_value = {
+            'network': [{
+                'id': 'net1',
+                'name': 'net1'
+            }]
+        }
+
+        result = self.co.get_network_by_id('net1')
+        self.assertEqual(('net1', 'net1'), (result['id'], result['name']))
+
+    def test_get_network_by_id_failure(self):
+        self.cs_instance.listNetworks.return_value = {'network': []}
+        self.assertIsNone(self.co.get_network_by_id('net1'))
+
+        self.cs_instance.listNetworks.return_value = {'network': [{}, {}]}
+        self.assertIsNone(self.co.get_network_by_id('net1'))
+
+    def test_get_vpc_by_id(self):
+        self.cs_instance.listVPCs.return_value = {
+            'vpc': [{
+                'id': 'vpc1',
+                'name': 'vpc1'
+            }]
+        }
+
+        result = self.co.get_vpc_by_id('vpc1')
+        self.assertEqual(('vpc1', 'vpc1'), (result['id'], result['name']))
+
+    def test_get_vpc_by_id_failure(self):
+        self.cs_instance.listVPCs.return_value = {'vpc': []}
+        self.assertIsNone(self.co.get_vpc_by_id('vpc1'))
+
+        self.cs_instance.listVPCs.return_value = {'vpc': [{}, {}]}
+        self.assertIsNone(self.co.get_vpc_by_id('vpc1'))
+
     def test_get_all_systemvms(self):
         self.cs_instance.listSystemVms.return_value = {
             'systemvm': [{
@@ -216,6 +341,36 @@ class TestCosmicOps(TestCase):
 
         result = self.co.get_all_systemvms()
         self.assertEqual(('svm1', 's-1-VM', 'svm2', 's-2-VM'),
+                         (result[0]['id'], result[0]['name'], result[1]['id'], result[1]['name']))
+
+    def test_get_all_vms(self):
+        self.cs_instance.listVirtualMachines.return_value = {
+            'virtualmachine': [{
+                'id': 'vm1',
+                'name': 'i-1-VM'
+            }, {
+                'id': 'vm2',
+                'name': 'i-2-VM'
+            }]
+        }
+
+        result = self.co.get_all_vms()
+        self.assertEqual(('vm1', 'i-1-VM', 'vm2', 'i-2-VM'),
+                         (result[0]['id'], result[0]['name'], result[1]['id'], result[1]['name']))
+
+    def test_get_all_project_vms(self):
+        self.cs_instance.listVirtualMachines.return_value = {
+            'virtualmachine': [{
+                'id': 'pvm1',
+                'name': 'pi-1-VM'
+            }, {
+                'id': 'pvm2',
+                'name': 'pi-2-VM'
+            }]
+        }
+
+        result = self.co.get_all_project_vms()
+        self.assertEqual(('pvm1', 'pi-1-VM', 'pvm2', 'pi-2-VM'),
                          (result[0]['id'], result[0]['name'], result[1]['id'], result[1]['name']))
 
     def test_wait_for_job(self):

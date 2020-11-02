@@ -12,17 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .host import CosmicHost
 from .object import CosmicObject
-from .storagepool import CosmicStoragePool
 
 
-class CosmicCluster(CosmicObject):
-    def get_all_hosts(self):
-        return [CosmicHost(self._ops, host) for host in
-                self._ops.cs.listHosts(clusterid=self['id'], listall='true').get('host', [])]
-
-    def get_storage_pools(self):
-        storage_pools = self._ops.cs.listStoragePools(clusterid=self['id'], listall='true').get('storagepool', [])
-
-        return [CosmicStoragePool(self._ops, storage_pool) for storage_pool in storage_pools]
+class CosmicServiceOffering(CosmicObject):
+    pass

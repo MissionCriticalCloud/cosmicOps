@@ -12,23 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections.abc import Mapping
+from cosmicops.object import CosmicObject
 
 
-class CosmicStoragePool(Mapping):
-    def __init__(self, ops, storage_pool):
-        self._ops = ops
-        self._storage_pool = storage_pool
-
-    def __getitem__(self, item):
-        return self._storage_pool[item]
-
-    def __iter__(self):
-        return iter(self._storage_pool)
-
-    def __len__(self):
-        return len(self._storage_pool)
-
+class CosmicStoragePool(CosmicObject):
     def get_orphaned_volumes(self):
         volumes = self._ops.cs.listVolumes(storageid=self['id']).get('volume', [])
 
