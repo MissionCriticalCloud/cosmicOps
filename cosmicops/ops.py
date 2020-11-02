@@ -21,9 +21,17 @@ from cs import CloudStack, CloudStackException
 from requests.exceptions import ConnectionError
 
 from .cluster import CosmicCluster
+from .domain import CosmicDomain
 from .host import CosmicHost
 from .log import logging
+from .network import CosmicNetwork
+from .pod import CosmicPod
+from .project import CosmicProject
+from .serviceoffering import CosmicServiceOffering
 from .systemvm import CosmicSystemVM
+from .vm import CosmicVM
+from .vpc import CosmicVPC
+from .zone import CosmicZone
 
 
 def _load_cloud_monkey_profile(profile):
@@ -67,12 +75,48 @@ class CosmicOps(object):
     def get_host_json_by_id(self, host_id):
         return self.cs.listHosts(id=host_id).get('host')
 
+    def get_project_by_name(self, project_name):
+        response = self.cs.listProjects(name=project_name).get('project')
+
+        if not response:
+            logging.error(f"Project '{project_name}' not found")
+            return None
+        elif len(response) != 1:
+            logging.error(f"Lookup for project '{project_name}' returned multiple results")
+            return None
+
+        return CosmicProject(self, response[0])
+
     def get_zone_by_name(self, zone_name):
-        return self.cs.listZones(name=zone_name).get('zone')[0]
+        response = self.cs.listZones(name=zone_name).get('zone')
+
+        if not response:
+            logging.error(f"Zone '{zone_name}' not found")
+            return None
+        elif len(response) != 1:
+            logging.error(f"Lookup for zone '{zone_name}' returned multiple results")
+            return None
+
+        return CosmicZone(self, response[0])
+
+    def get_pod_by_name(self, pod_name):
+        response = self.cs.listPods(name=pod_name).get('pod')
+
+        if not response:
+            logging.error(f"Pod '{pod_name}' not found")
+            return None
+        elif len(response) != 1:
+            logging.error(f"Lookup for pod '{pod_name}' returned multiple results")
+            return None
+
+        return CosmicPod(self, response[0])
 
     def get_cluster_by_name(self, cluster_name, zone=None):
         if zone:
-            zone_id = self.get_zone_by_name(zone)['id']
+            zone_object = self.get_zone_by_name(zone)
+            if not zone_object:
+                return None
+            zone_id = zone_object['id']
         else:
             zone_id = None
 
@@ -87,13 +131,11 @@ class CosmicOps(object):
 
         return CosmicCluster(self, response[0])
 
-    def get_all_clusters(self, zone=None):
-        if zone:
-            zone_id = self.get_zone_by_name(zone)['id']
-        else:
-            zone_id = None
+    def get_all_clusters(self, zone=None, pod=None):
+        zone_id = zone['id'] if zone else None
+        pod_id = pod['id'] if pod else None
 
-        clusters = self.cs.listClusters(zoneid=zone_id).get('cluster')
+        clusters = self.cs.listClusters(zoneid=zone_id, podid=pod_id).get('cluster')
 
         if not clusters:
             logging.error(f"No clusters found")
@@ -113,6 +155,18 @@ class CosmicOps(object):
 
         return CosmicSystemVM(self, response[0])
 
+    def get_domain_by_name(self, domain_name):
+        response = self.cs.listDomains(name=domain_name).get('domain')
+
+        if not response:
+            logging.error(f"Domain '{domain_name}' not found")
+            return None
+        elif len(response) != 1:
+            logging.error(f"Lookup for domain '{domain_name}' returned multiple results")
+            return None
+
+        return CosmicDomain(self, response[0])
+
     def get_systemvm_by_id(self, systemvm_id):
         response = self.cs.listSystemVms(id=systemvm_id).get('systemvm')
 
@@ -129,6 +183,52 @@ class CosmicOps(object):
         systemvms = self.cs.listSystemVms().get('systemvm', [])
 
         return [CosmicSystemVM(self, systemvm) for systemvm in systemvms]
+
+    def get_all_vms(self, list_all=True):
+        vms = self.cs.listVirtualMachines(listall=list_all).get('virtualmachine', [])
+
+        return [CosmicVM(self, vm) for vm in vms]
+
+    def get_all_project_vms(self, list_all=True):
+        vms = self.cs.listVirtualMachines(listall=list_all, projectid='-1').get('virtualmachine', [])
+
+        return [CosmicVM(self, vm) for vm in vms]
+
+    def get_service_offering_by_id(self, service_offering_id, system=False):
+        response = self.cs.listServiceOfferings(id=service_offering_id, issystem=system).get('serviceoffering')
+
+        if not response:
+            logging.error(f"Service offering with ID '{service_offering_id}' not found")
+            return None
+        elif len(response) != 1:
+            logging.error(f"Lookup for service offering with ID '{service_offering_id}' returned multiple results")
+            return None
+
+        return CosmicServiceOffering(self, response[0])
+
+    def get_network_by_id(self, network_id):
+        response = self.cs.listNetworks(id=network_id).get('network')
+
+        if not response:
+            logging.error(f"Network with ID '{network_id}' not found")
+            return None
+        elif len(response) != 1:
+            logging.error(f"Lookup for network with ID '{network_id}' returned multiple results")
+            return None
+
+        return CosmicNetwork(self, response[0])
+
+    def get_vpc_by_id(self, vpc_id):
+        response = self.cs.listVPCs(id=vpc_id).get('vpc')
+
+        if not response:
+            logging.error(f"VPC with ID '{vpc_id}' not found")
+            return None
+        elif len(response) != 1:
+            logging.error(f"Lookup for VPC with ID '{vpc_id}' returned multiple results")
+            return None
+
+        return CosmicVPC(self, response[0])
 
     def wait_for_job(self, job_id, retries=10):
         job_status = 0

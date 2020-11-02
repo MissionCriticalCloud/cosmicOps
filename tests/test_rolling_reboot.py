@@ -106,9 +106,9 @@ class TestRollingReboot(TestCase):
 
     def test_skip_os_version(self):
         self._mock_cluster_with_hosts()
-        self.hosts[0]._host['hypervisorversion'] = 'CentOS 7.5.1804'
-        self.hosts[1]._host['hypervisorversion'] = 'CentOS 7.7.1908'
-        self.hosts[2]._host['hypervisorversion'] = 'CentOS 8.0.1905'
+        self.hosts[0]._data['hypervisorversion'] = 'CentOS 7.5.1804'
+        self.hosts[1]._data['hypervisorversion'] = 'CentOS 7.7.1908'
+        self.hosts[2]._data['hypervisorversion'] = 'CentOS 8.0.1905'
 
         result = self.runner.invoke(rolling_reboot.main, ['--exec', '--skip-os-version', 'CentOS 7', 'cluster1'])
         self.assertEqual(0, result.exit_code)
@@ -152,7 +152,7 @@ class TestRollingReboot(TestCase):
 
         # Host disconnected
         self._mock_cluster_with_hosts()
-        self.hosts[0]._host['state'] = 'Disconnected'
+        self.hosts[0]._data['state'] = 'Disconnected'
         result = self.runner.invoke(rolling_reboot.main, ['--exec', 'cluster1'])
         self.assertEqual(1, result.exit_code)
 

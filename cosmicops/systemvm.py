@@ -12,26 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections.abc import Mapping
-
 from .log import logging
+from .object import CosmicObject
 
 
-class CosmicSystemVM(Mapping):
-    def __init__(self, ops, vm):
-        self._ops = ops
-        self._vm = vm
-        self.dry_run = ops.dry_run
-
-    def __getitem__(self, item):
-        return self._vm[item]
-
-    def __iter__(self):
-        return iter(self._vm)
-
-    def __len__(self):
-        return len(self._vm)
-
+class CosmicSystemVM(CosmicObject):
     def stop(self):
         if self.dry_run:
             logging.info(

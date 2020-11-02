@@ -17,6 +17,7 @@ from configparser import ConfigParser
 from datetime import datetime
 from logging import DEBUG, WARNING, ERROR, INFO
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 
 from slack_webhook import Slack
 
@@ -102,9 +103,10 @@ class CosmicLog(object):
         try:
             attachments.append(attachment)
             self._slack.post(attachments=attachments, icon_emoji=':robot_face:', username='cosmicOps')
-        except:
+        except (HTTPError, URLError):
             print('warning: Slack post failed.')
 
+    # noinspection PyPep8Naming
     @staticmethod
     def getLogger():
         return logging_module.getLogger()

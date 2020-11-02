@@ -80,7 +80,7 @@ class CosmicSQL(object):
                 else:
                     self.conn.commit()
         except pymysql.Error as e:
-            logging.error(f'Error while executing query "{query % (instance_id,)}": {e}')
+            logging.error(f'Error while executing query: {e}')
             return False
         finally:
             cursor.close()

@@ -12,28 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections.abc import Mapping
-
 from cs import CloudStackException
 
 from .log import logging
+from .object import CosmicObject
 
 
-class CosmicVM(Mapping):
-    def __init__(self, ops, vm):
-        self._ops = ops
-        self._vm = vm
+class CosmicVM(CosmicObject):
+    def __init__(self, ops, data):
+        super().__init__(ops, data)
         self.log_to_slack = ops.log_to_slack
-        self.dry_run = ops.dry_run
-
-    def __getitem__(self, item):
-        return self._vm[item]
-
-    def __iter__(self):
-        return iter(self._vm)
-
-    def __len__(self):
-        return len(self._vm)
 
     def stop(self):
         if self.dry_run:
@@ -74,6 +62,9 @@ class CosmicVM(Mapping):
             pass
 
         return affinity_groups
+
+    def get_volumes(self):
+        return self._ops.cs.listVolumes(virtualmachineid=self['id'], listall='true').get('volume', [])
 
     def migrate(self, target_host):
         if self.dry_run:

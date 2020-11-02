@@ -14,7 +14,6 @@
 
 import socket
 import time
-from collections.abc import Mapping
 from enum import Enum, auto
 from operator import itemgetter
 
@@ -25,6 +24,7 @@ from fabric import Connection
 from invoke import UnexpectedExit, CommandTimedOut
 
 from .log import logging
+from .object import CosmicObject
 from .vm import CosmicVM
 
 FABRIC_PATCHED = False
@@ -39,18 +39,17 @@ class RebootAction(Enum):
     SKIP = auto()
 
 
-class CosmicHost(Mapping):
-    def __init__(self, ops, host):
-        global FABRIC_PATCHED
-        self._ops = ops
-        self._host = host
-        self.log_to_slack = ops.log_to_slack
-        self.dry_run = ops.dry_run
+# Patch Fabric connection to use different host policy (see https://github.com/fabric/fabric/issues/2071)
+def unsafe_open(self):  # pragma: no cover
+    self.client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
+    Connection.open_orig(self)
 
-        # Patch Fabric connection to use different host policy (see https://github.com/fabric/fabric/issues/2071)
-        def unsafe_open(self):  # pragma: no cover
-            self.client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
-            Connection.open_orig(self)
+
+class CosmicHost(CosmicObject):
+    def __init__(self, ops, data):
+        super().__init__(ops, data)
+        global FABRIC_PATCHED
+        self.log_to_slack = ops.log_to_slack
 
         if not FABRIC_PATCHED:
             Connection.open_orig = Connection.open
@@ -58,21 +57,12 @@ class CosmicHost(Mapping):
             FABRIC_PATCHED = True
 
         # Setup our connection
-        self._connection = Connection(self._host['name'])
+        self._connection = Connection(self._data['name'])
 
         self.vms_with_shutdown_policy = []
 
-    def __getitem__(self, item):
-        return self._host[item]
-
-    def __iter__(self):
-        return iter(self._host)
-
-    def __len__(self):
-        return len(self._host)
-
     def refresh(self):
-        self._host = self._ops.get_host_json_by_id(self['id'])[0]
+        self._data = self._ops.get_host_json_by_id(self['id'])[0]
 
     def disable(self):
         if self.dry_run:
@@ -117,7 +107,7 @@ class CosmicHost(Mapping):
     def empty(self):
         total = success = failed = 0
 
-        all_vms = self.get_all_vms()
+        all_vms = self.get_all_vms() + self.get_all_project_vms() + self.get_all_routers() + self.get_all_project_routers() + self.get_all_system_vms()
         if not all_vms:
             logging.warning(f"No VMs found on host '{self['name']}'")
             return total, success, failed
@@ -209,16 +199,47 @@ class CosmicHost(Mapping):
 
         return total, success, failed
 
-    def get_all_vms(self):
-        vms = self._ops.cs.listVirtualMachines(hostid=self['id'], listall='true').get('virtualmachine', [])
-        project_vms = self._ops.cs.listVirtualMachines(hostid=self['id'], listall='true', projectid='-1').get(
+    def get_all_vms(self, domain=None, keyword_filter=None):
+        domain_id = domain['id'] if domain else None
+
+        vms = self._ops.cs.listVirtualMachines(hostid=self['id'], domainid=domain_id, keyword=keyword_filter,
+                                               listall='true').get('virtualmachine', [])
+
+        return [CosmicVM(self._ops, vm) for vm in vms]
+
+    def get_all_project_vms(self, project=None):
+        if project:
+            project_id = project['id']
+        else:
+            project_id = '-1'
+
+        project_vms = self._ops.cs.listVirtualMachines(hostid=self['id'], listall='true', projectid=project_id).get(
             'virtualmachine', [])
-        routers = self._ops.cs.listRouters(hostid=self['id'], listall='true').get('router', [])
-        project_routers = self._ops.cs.listRouters(hostid=self['id'], listall='true', projectid='-1').get('router', [])
+
+        return [CosmicVM(self._ops, vm) for vm in project_vms]
+
+    def get_all_routers(self, domain=None):
+        domain_id = domain['id'] if domain else None
+
+        routers = self._ops.cs.listRouters(hostid=self['id'], domainid=domain_id, listall='true').get('router', [])
+
+        return [CosmicVM(self._ops, vm) for vm in routers]
+
+    def get_all_project_routers(self, project=None):
+        if project:
+            project_id = project['id']
+        else:
+            project_id = '-1'
+
+        project_routers = self._ops.cs.listRouters(hostid=self['id'], listall='true', projectid=project_id).get(
+            'router', [])
+
+        return [CosmicVM(self._ops, vm) for vm in project_routers]
+
+    def get_all_system_vms(self):
         system_vms = self._ops.cs.listSystemVms(hostid=self['id']).get('systemvm', [])
 
-        all_vms = vms + project_vms + routers + project_routers + system_vms
-        return [CosmicVM(self._ops, vm) for vm in all_vms]
+        return [CosmicVM(self._ops, vm) for vm in system_vms]
 
     def copy_file(self, source, destination, mode=None):
         if self.dry_run:
