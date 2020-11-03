@@ -104,7 +104,7 @@ class CosmicHost(CosmicObject):
 
         return True
 
-    def empty(self):
+    def empty(self, target=None):
         total = success = failed = 0
 
         all_vms = self.get_all_vms() + self.get_all_project_vms() + self.get_all_routers() + self.get_all_project_routers() + self.get_all_system_vms()
@@ -114,10 +114,11 @@ class CosmicHost(CosmicObject):
 
         total = len(all_vms)
 
+        target_message = f" to target '{target['name']}'" if target else ''
         if self.dry_run:
-            logging.info(f"Dry run of VM migration away from host '{self['name']}'")
+            logging.info(f"Dry run of VM migration away from host '{self['name']}'" + target_message)
         else:
-            logging.info(f"Migrating VMs away from host '{self['name']}'")
+            logging.info(f"Migrating VMs away from host '{self['name']}'" + target_message)
 
         for vm in all_vms:
             if vm.get('maintenancepolicy') == 'ShutdownAndStart':
@@ -142,31 +143,35 @@ class CosmicHost(CosmicObject):
                     vm_on_dedicated_hv = True
                     dedicated_affinity_id = affinity_group['id']
 
-            try:
-                available_hosts = self._ops.cs.findHostsForMigration(virtualmachineid=vm['id']).get('host', [])
-            except CloudStackApiException as e:
-                logging.error(f"Encountered API exception while finding suitable host for migration: {e}")
-                failed += 1
-                continue
+            if target:
+                available_hosts = [target]
+            else:
+                try:
+                    available_hosts = self._ops.cs.findHostsForMigration(virtualmachineid=vm['id']).get('host', [])
+                except CloudStackApiException as e:
+                    logging.error(f"Encountered API exception while finding suitable host for migration: {e}")
+                    failed += 1
+                    continue
+                available_hosts.sort(key=itemgetter('memoryallocated'))
 
-            available_hosts.sort(key=itemgetter('memoryallocated'))
             migration_host = None
 
             for available_host in available_hosts:
-                # Skip hosts that require storage migration
-                if available_host['requiresStorageMotion']:
-                    logging.debug(
-                        f"Skipping '{available_host['name']}' because migrating VM '{vm['name']}' requires a storage migration")
-                    continue
+                if not target:
+                    # Skip hosts that require storage migration
+                    if available_host['requiresStorageMotion']:
+                        logging.debug(
+                            f"Skipping '{available_host['name']}' because migrating VM '{vm['name']}' requires a storage migration")
+                        continue
+
+                    # Ensure host is suitable for migration
+                    if not available_host['suitableformigration']:
+                        logging.debug(f"Skipping '{available_host['name']}' because it's not suitable for migration")
+                        continue
 
                 # Only hosts in the same cluster
                 if available_host['clusterid'] != self['clusterid']:
                     logging.debug(f"Skipping '{available_host['name']}' because it's part of a different cluster")
-                    continue
-
-                # Ensure host is suitable for migration
-                if not available_host['suitableformigration']:
-                    logging.debug(f"Skipping '{available_host['name']}' because it's not suitable for migration")
                     continue
 
                 if vm_on_dedicated_hv:

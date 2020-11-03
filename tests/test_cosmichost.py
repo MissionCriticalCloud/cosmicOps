@@ -92,6 +92,8 @@ class TestCosmicHost(TestCase):
         self.all_vms = [self.user_vm, self.project_vm, self.router_vm, self.project_router_vm,
                         self.secondary_storage_vm, self.console_proxy]
 
+        self.vm_count = len(self.all_vms)
+
         self.host = CosmicHost(self.ops, {
             'id': 'h1',
             'name': 'host1',
@@ -192,7 +194,7 @@ class TestCosmicHost(TestCase):
 
     def test_empty(self):
         self._mock_hosts_and_vms()
-        self.assertEqual((6, 6, 0), self.host.empty())
+        self.assertEqual((self.vm_count, self.vm_count, 0), self.host.empty())
         self.user_vm.stop.assert_not_called()
 
         for vm in self.all_vms:
@@ -203,7 +205,7 @@ class TestCosmicHost(TestCase):
         self.host.dry_run = True
         self._mock_hosts_and_vms()
 
-        self.assertEqual((6, 6, 0), self.host.empty())
+        self.assertEqual((self.vm_count, self.vm_count, 0), self.host.empty())
         self.cs_instance.stopVirtualMachine.assert_not_called()
         self.cs_instance.detachIso.assert_not_called()
         self.cs_instance.migrateVirtualMachine.assert_not_called()
@@ -219,7 +221,7 @@ class TestCosmicHost(TestCase):
         self.user_vm._data['maintenancepolicy'] = 'ShutdownAndStart'
         self._mock_hosts_and_vms()
 
-        self.assertEqual((6, 6, 0), self.host.empty())
+        self.assertEqual((self.vm_count, self.vm_count, 0), self.host.empty())
         self.user_vm.stop.assert_called_once()
         self.user_vm.start.assert_not_called()
         self.assertEqual('v1', self.host.vms_with_shutdown_policy[0]['id'])
@@ -229,7 +231,7 @@ class TestCosmicHost(TestCase):
         self._mock_hosts_and_vms()
         self.user_vm.stop.return_value = False
 
-        self.assertEqual((6, 5, 1), self.host.empty())
+        self.assertEqual((self.vm_count, self.vm_count - 1, 1), self.host.empty())
         self.user_vm.stop.assert_called_once()
         self.user_vm.start.assert_not_called()
 
@@ -238,7 +240,7 @@ class TestCosmicHost(TestCase):
         self.host._data['resourcestate'] = 'Disabled'
         self._mock_hosts_and_vms()
 
-        self.assertEqual((6, 6, 0), self.host.empty())
+        self.assertEqual((self.vm_count, self.vm_count, 0), self.host.empty())
         self.user_vm.stop.assert_called_once()
         self.user_vm.start.assert_called_once()
         self.assertEqual([], self.host.vms_with_shutdown_policy)
@@ -249,7 +251,7 @@ class TestCosmicHost(TestCase):
         self._mock_hosts_and_vms()
         self.user_vm.start.return_value = False
 
-        self.assertEqual((6, 6, 0), self.host.empty())
+        self.assertEqual((self.vm_count, self.vm_count, 0), self.host.empty())
         self.user_vm.stop.assert_called_once()
         self.user_vm.start.assert_called_once()
         self.assertEqual('v1', self.host.vms_with_shutdown_policy[0]['id'])
@@ -263,7 +265,7 @@ class TestCosmicHost(TestCase):
             'virtualmachineIds': ['v1']
         }]
 
-        self.assertEqual((6, 6, 0), self.host.empty())
+        self.assertEqual((self.vm_count, self.vm_count, 0), self.host.empty())
         self.assertEqual('host_explicit_group_1', self.user_vm.migrate.call_args[0][0]['id'])
 
     def test_empty_with_requires_storage_motion(self):
@@ -286,7 +288,7 @@ class TestCosmicHost(TestCase):
             }]
         }
 
-        self.assertEqual((6, 6, 0), self.host.empty())
+        self.assertEqual((self.vm_count, self.vm_count, 0), self.host.empty())
         self.assertEqual('h3', self.user_vm.migrate.call_args[0][0]['id'])
 
     def test_empty_with_different_cluster(self):
@@ -309,7 +311,7 @@ class TestCosmicHost(TestCase):
             }]
         }
 
-        self.assertEqual((6, 6, 0), self.host.empty())
+        self.assertEqual((self.vm_count, self.vm_count, 0), self.host.empty())
         self.assertEqual('h3', self.user_vm.migrate.call_args[0][0]['id'])
 
     def test_empty_with_unsuitable_host(self):
@@ -332,15 +334,15 @@ class TestCosmicHost(TestCase):
             }]
         }
 
-        self.assertEqual((6, 6, 0), self.host.empty())
+        self.assertEqual((self.vm_count, self.vm_count, 0), self.host.empty())
         self.assertEqual('h3', self.user_vm.migrate.call_args[0][0]['id'])
 
     def test_empty_without_migration_host(self):
         self._mock_hosts_and_vms()
         self.cs_instance.findHostsForMigration.return_value = {}
 
-        self.assertEqual((6, 0, 6), self.host.empty())
-        self.assertEqual(6, self.cs_instance.findHostsForMigration.call_count)
+        self.assertEqual((self.vm_count, 0, self.vm_count), self.host.empty())
+        self.assertEqual(self.vm_count, self.cs_instance.findHostsForMigration.call_count)
 
         for vm in self.all_vms:
             vm.migrate.assert_not_called()
@@ -350,18 +352,36 @@ class TestCosmicHost(TestCase):
         self.cs_instance.findHostsForMigration.side_effect = CloudStackApiException('HTTP 431 response from CloudStack',
                                                                                     error='Mock error', response=Mock())
 
-        self.assertEqual((6, 0, 6), self.host.empty())
+        self.assertEqual((self.vm_count, 0, self.vm_count), self.host.empty())
 
     def test_empty_with_migrate_virtual_machine_failure(self):
         self._mock_hosts_and_vms()
         self.user_vm.migrate.return_value = False
-        self.assertEqual((6, 5, 1), self.host.empty())
+        self.assertEqual((self.vm_count, self.vm_count - 1, 1), self.host.empty())
 
     def test_empty_with_migrate_system_vm_failure(self):
         self._mock_hosts_and_vms()
         self.secondary_storage_vm.migrate.return_value = False
         self.console_proxy.migrate.return_value = False
-        self.assertEqual((6, 4, 2), self.host.empty())
+        self.assertEqual((self.vm_count, self.vm_count - 2, 2), self.host.empty())
+
+    def test_empty_with_target_host(self):
+        self._mock_hosts_and_vms()
+        target_host = CosmicHost(Mock(), {
+            'id': 'th1',
+            'name': 'target_host',
+            'memoryallocated': 0,
+            'clusterid': '1',
+            'requiresStorageMotion': False,
+            'suitableformigration': True,
+            'resourcestate': 'Enabled'
+        })
+
+        self.assertEqual((self.vm_count, self.vm_count, 0), self.host.empty(target=target_host))
+        self.cs_instance.findHostsForMigration.assert_not_called()
+
+        for vm in self.all_vms:
+            vm.migrate.assert_called_with(target_host)
 
     def test_get_all_vms(self):
         self.host.get_all_vms()
