@@ -33,6 +33,14 @@ class CosmicSQL(object):
 
         self._connect()
 
+    @staticmethod
+    def get_all_dbs_from_config():
+        config_file = Path.cwd() / 'config'
+        config = ConfigParser()
+        config.read(str(config_file))
+
+        return [section for section in config if 'host' in config[section]]
+
     def _connect(self):
         if not self.password:
             config_file = Path.cwd() / 'config'
@@ -63,27 +71,41 @@ class CosmicSQL(object):
 
         self.conn.autocommit = False
 
+    @staticmethod
+    def _execute_query(cursor, query):
+        try:
+            logging.debug(query)
+            cursor.execute(query)
+
+            result = cursor.fetchall()
+            return result
+        except pymysql.Error as e:
+            logging.error(f'Error while executing query "{query}": {e}')
+            raise
+        finally:
+            cursor.close()
+
     def kill_jobs_of_instance(self, instance_id):
         cursor = self.conn.cursor()
 
-        try:
-            queries = [
-                'DELETE FROM `async_job` WHERE `instance_id` = %s',
-                'DELETE FROM `vm_work_job` WHERE `vm_instance_id` = %s',
-                'DELETE FROM `sync_queue` WHERE `sync_objid` = %s'
-            ]
+        queries = [
+            'DELETE FROM `async_job` WHERE `instance_id` = %s',
+            'DELETE FROM `vm_work_job` WHERE `vm_instance_id` = %s',
+            'DELETE FROM `sync_queue` WHERE `sync_objid` = %s'
+        ]
 
-            for query in queries:
+        for query in queries:
+            try:
                 cursor.execute(query, (instance_id,))
                 if self.dry_run:
                     logging.info(f'Would have executed: {query % (instance_id,)}')
                 else:
                     self.conn.commit()
-        except pymysql.Error as e:
-            logging.error(f'Error while executing query: {e}')
-            return False
-        finally:
-            cursor.close()
+            except pymysql.Error as e:
+                logging.error(f'Error while executing query "{query % (instance_id,)}": {e}')
+                return False
+            finally:
+                cursor.close()
 
         return True
 
@@ -116,14 +138,76 @@ class CosmicSQL(object):
         ORDER BY domain, ha.created DESC
         """
 
-        try:
-            logging.debug(query)
-            cursor.execute(query)
+        return self._execute_query(cursor, query)
 
-            result = cursor.fetchall()
-            return result
-        except pymysql.Error as e:
-            logging.error(f'Error while executing query "{query}": {e}')
-            raise
-        finally:
-            cursor.close()
+    def get_ip_address_data(self, ip_address):
+        cursor = self.conn.cursor()
+
+        query = f"""
+        SELECT vpc.name,
+               'n/a' AS 'mac_address',
+               user_ip_address.public_ip_address,
+               'n/a' AS 'netmask',
+               'n/a' AS 'broadcast_uri',
+               networks.mode,
+               user_ip_address.state,
+               user_ip_address.allocated AS 'created',
+               'n/a' AS 'vm_instance'
+        FROM cloud.user_ip_address
+        LEFT JOIN vpc ON user_ip_address.vpc_id = vpc.id
+        LEFT JOIN networks ON user_ip_address.source_network_id = networks.id
+        WHERE public_ip_address LIKE '%{ip_address}%'
+        UNION
+        SELECT networks.name,
+               nics.mac_address,
+               nics.ip4_address,
+               nics.netmask,
+               nics.broadcast_uri,
+               nics.mode,
+               nics.state,
+               nics.created,
+               vm_instance.name
+        FROM cloud.nics,
+             cloud.vm_instance,
+             cloud.networks
+        WHERE nics.instance_id = vm_instance.id
+          AND nics.network_id = networks.id
+          AND ip4_address LIKE '%{ip_address}%'
+          AND nics.removed IS NULL
+        """
+
+        return self._execute_query(cursor, query)
+
+    def get_ip_address_data_bridge(self, ip_address):
+        cursor = self.conn.cursor()
+
+        query = f"""
+        SELECT DISTINCT vm_instance.name,
+                        public_ip_address,
+                        update_time,
+                        networks.name,
+                        user_ip_address.state
+        FROM vm_instance
+        JOIN vm_network_map ON vm_network_map.vm_id = vm_instance.id
+        JOIN networks ON networks.id = vm_network_map.network_id
+        JOIN user_ip_address ON networks.id = user_ip_address.network_id
+        WHERE user_ip_address.public_ip_address LIKE '%{ip_address}%'
+        """
+
+        return self._execute_query(cursor, query)
+
+    def get_ip_address_data_infra(self, ip_address):
+        cursor = self.conn.cursor()
+
+        query = f"""
+        SELECT DISTINCT name,
+                        nics.vm_type,
+                        nics.state,
+                        ip4_address,
+                        instance_id
+        FROM nics
+        JOIN vm_instance ON vm_instance.id = nics.instance_id
+        WHERE nics.ip4_address LIKE '%{ip_address}%'
+        """
+
+        return self._execute_query(cursor, query)

@@ -94,7 +94,6 @@ class TestCosmicSQL(TestCase):
             call('DELETE FROM `sync_queue` WHERE `sync_objid` = %s', ('1',))
         ])
         self.assertEqual(3, self.mock_connect.return_value.commit.call_count)
-        self.mock_cursor.close.assert_called_once()
 
     def test_kill_jobs_of_instance_dry_run(self):
         self.cs = CosmicSQL(server='localhost', password='password', dry_run=True)
@@ -107,13 +106,11 @@ class TestCosmicSQL(TestCase):
             call('DELETE FROM `sync_queue` WHERE `sync_objid` = %s', ('1',))
         ])
         self.mock_connect.return_value.commit.assert_not_called()
-        self.mock_cursor.close.assert_called_once()
 
     def test_kill_jobs_of_instance_query_failure(self):
         self.mock_cursor.execute.side_effect = pymysql.Error('Mock query error')
 
         self.assertFalse(self.cs.kill_jobs_of_instance('i-1-VM'))
-        self.mock_cursor.close.assert_called_once()
 
     def test_list_ha_workers(self):
         self.assertIsNotNone(self.cs.list_ha_workers())
