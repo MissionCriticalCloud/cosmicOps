@@ -91,6 +91,7 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
 
     hosts.sort(key=itemgetter('name'))
 
+    target_host = None
     for host in hosts:
         logging.slack_value = host['name']
         logging.zone_name = host['zonename']
@@ -117,11 +118,16 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
             log_to_slack)
 
         while True:
-            (_, _, failed) = host.empty()
+            (_, _, failed) = host.empty(target=target_host)
             if failed == 0 or dry_run:
                 break
 
-            logging.warning(f"Failed to empty host {host['name']}, retrying...", log_to_slack)
+            if target_host:
+                logging.warning(f"Failed to empty host '{host['name']}' with target '{target_host['name']}', resetting target host and retrying...", log_to_slack)
+                target_host = None
+            else:
+                logging.warning(f"Failed to empty host '{host['name']}', retrying...", log_to_slack)
+
             time.sleep(5)
 
         logging.info(f"Host {host['name']} is empty", log_to_slack)
@@ -145,6 +151,8 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
         host.wait_for_agent()
 
         host.restart_vms_with_shutdown_policy()
+
+        target_host = host
 
 
 if __name__ == '__main__':

@@ -191,3 +191,24 @@ class TestRollingReboot(TestCase):
         result = self.runner.invoke(rolling_reboot.main, ['cluster1'])
         self.assertEqual(0, result.exit_code)
         self.co.assert_called_with(profile='config', dry_run=True, log_to_slack=False)
+
+    def test_use_empty_host_as_target(self):
+        self._mock_cluster_with_hosts()
+
+        result = self.runner.invoke(rolling_reboot.main, ['--exec', 'cluster1'])
+        self.assertEqual(0, result.exit_code)
+
+        self.hosts[0].empty.assert_called_once_with(target=None)
+        self.hosts[1].empty.assert_called_once_with(target=self.hosts[0])
+        self.hosts[2].empty.assert_called_once_with(target=self.hosts[1])
+
+    def test_use_empty_host_as_target_with_migration_failure(self):
+        self._mock_cluster_with_hosts()
+        self.hosts[1].empty.side_effect = [(4, 3, 1), (1, 1, 0)]
+
+        result = self.runner.invoke(rolling_reboot.main, ['--exec', 'cluster1'])
+        self.assertEqual(0, result.exit_code)
+
+        self.hosts[0].empty.assert_called_once_with(target=None)
+        self.hosts[1].empty.assert_has_calls([call(target=self.hosts[0]), call(target=None)])
+        self.hosts[2].empty.assert_called_once_with(target=self.hosts[1])
