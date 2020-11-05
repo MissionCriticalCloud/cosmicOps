@@ -123,7 +123,9 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
                 break
 
             if target_host:
-                logging.warning(f"Failed to empty host '{host['name']}' with target '{target_host['name']}', resetting target host and retrying...", log_to_slack)
+                logging.warning(
+                    f"Failed to empty host '{host['name']}' with target '{target_host['name']}', resetting target host and retrying...",
+                    log_to_slack)
                 target_host = None
             else:
                 logging.warning(f"Failed to empty host '{host['name']}', retrying...", log_to_slack)

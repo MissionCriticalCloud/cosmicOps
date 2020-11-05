@@ -32,9 +32,9 @@ from cosmicops import CosmicSQL, logging
               help='Username of database account')
 @click.option('--database-password', '-p', metavar='<password>', help='Password of the database user')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
-@click.argument('ip_address')
-def main(database_server, all_databases, database_name, database_port, database_user, database_password, ip_address):
-    """Shows who uses IP_ADDRESS"""
+@click.argument('mac_address')
+def main(database_server, all_databases, database_name, database_port, database_user, database_password, mac_address):
+    """Shows who uses MAC_ADDRESS"""
 
     click_log.basic_config()
 
@@ -75,19 +75,10 @@ def main(database_server, all_databases, database_name, database_port, database_
 
         for (
                 network_name, mac_address, ipv4_address, netmask, _, mode, state, created,
-                vm_name) in cs.get_ip_address_data(
-            ip_address):
+                vm_name) in cs.get_mac_address_data(
+            mac_address):
             count += 1
             table_data.append([vm_name, network_name, mac_address, ipv4_address, netmask, mode, state, created])
-
-        if count == 0:
-            for (vm_name, ipv4_address, created, network_name, state) in cs.get_ip_address_data_bridge(ip_address):
-                count += 1
-                table_data.append([vm_name, network_name, '-', ipv4_address, '-', '-', state, created])
-
-        if count == 0:
-            for (vm_name, _, state, ipv4_address, instance_id) in cs.get_ip_address_data_infra(ip_address):
-                table_data.append([f'{vm_name} ({instance_id})', '-', '-', ipv4_address, '-', '-', state, '-'])
 
     logging.info(tabulate(table_data, headers=table_headers, tablefmt='pretty'))
 
