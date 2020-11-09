@@ -211,3 +211,27 @@ class CosmicSQL(object):
         """
 
         return self._execute_query(cursor, query)
+
+    def get_mac_address_data(self, mac_address):
+        cursor = self.conn.cursor()
+
+        query = f"""
+        SELECT networks.name,
+               nics.mac_address,
+               nics.ip4_address,
+               nics.netmask,
+               nics.broadcast_uri,
+               nics.mode,
+               nics.state,
+               nics.created,
+               vm_instance.name
+        FROM cloud.nics,
+             cloud.vm_instance,
+             cloud.networks
+        WHERE nics.instance_id = vm_instance.id
+          AND nics.network_id = networks.id
+          AND mac_address LIKE '%{mac_address}%'
+          AND nics.removed IS NULL
+        """
+
+        return self._execute_query(cursor, query)

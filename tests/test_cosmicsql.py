@@ -81,6 +81,23 @@ class TestCosmicSQL(TestCase):
             path_cwd_mock.return_value = Path(tmp.path)
             self.assertRaises(configparser.NoOptionError, CosmicSQL, server='testmariadb')
 
+    @tempdir()
+    def test_get_all_dbs_from_config(self, tmp):
+        config = (b"[db1]\n"
+                  b"host = db1\n"
+                  b"[db2]\n"
+                  b"host = db2\n"
+                  b"[db3]\n"
+                  b"host = db3\n"
+                  )
+
+        tmp.write('config', config)
+        with patch('pathlib.Path.cwd') as path_cwd_mock:
+            path_cwd_mock.return_value = Path(tmp.path)
+            all_dbs = CosmicSQL.get_all_dbs_from_config()
+
+        self.assertListEqual(['db1', 'db2', 'db3'], all_dbs)
+
     def test_connect_failure(self):
         self.mock_connect.side_effect = pymysql.Error('Mock connection error')
         self.assertRaises(pymysql.Error, CosmicSQL, server='localhost', password='password')
@@ -128,3 +145,20 @@ class TestCosmicSQL(TestCase):
 
         self.assertRaises(pymysql.Error, self.cs.list_ha_workers)
         self.mock_cursor.close.assert_called_once()
+
+    def test_get_ip_address_data(self):
+        self.cs.get_ip_address_data('192.168.1.1')
+        self.assertIn("public_ip_address LIKE '%192.168.1.1%'", self.mock_cursor.execute.call_args[0][0])
+        self.assertIn("ip4_address LIKE '%192.168.1.1%'", self.mock_cursor.execute.call_args[0][0])
+
+    def test_get_ip_address_data_bridge(self):
+        self.cs.get_ip_address_data_bridge('192.168.1.1')
+        self.assertIn("public_ip_address LIKE '%192.168.1.1%'", self.mock_cursor.execute.call_args[0][0])
+
+    def test_get_ip_address_data_infra(self):
+        self.cs.get_ip_address_data_infra('192.168.1.1')
+        self.assertIn("ip4_address LIKE '%192.168.1.1%'", self.mock_cursor.execute.call_args[0][0])
+
+    def test_get_mac_address_data(self):
+        self.cs.get_mac_address_data('aa:bb:cc:dd:ee:ff')
+        self.assertIn("mac_address LIKE '%aa:bb:cc:dd:ee:ff%'", self.mock_cursor.execute.call_args[0][0])
