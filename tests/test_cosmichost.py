@@ -561,3 +561,88 @@ class TestCosmicHost(TestCase):
 
         self.host.restart_vms_with_shutdown_policy()
         self.cs_instance.startVirtualMachine.assert_not_called()
+
+    def test_get_disks(self):
+        vm = CosmicVM(Mock(), {
+            'id': 'vm1',
+            'name': 'vm'
+        })
+
+        xml_desc = """
+        <domain type='kvm' id='1'>
+          <devices>
+            <disk type='file' device='disk'>
+              <driver name='qemu' type='qcow2' cache='none' discard='unmap'/>
+              <source file='/mnt/812ea6a3-7ad0-30f4-9cab-01e3f2985b98/ef2744c1-1e53-4b16-b6ae-31b5960c8395'/>
+              <backingStore type='file' index='1'>
+                <format type='raw'/>
+                <source file='/mnt/812ea6a3-7ad0-30f4-9cab-01e3f2985b98/f327eecc-be53-4d80-9d43-adaf45467abd'/>
+                <backingStore/>
+              </backingStore>
+              <target dev='sda' bus='scsi'/>
+              <serial>0-ef2744c11e534b16b6ae</serial>
+              <alias name='scsi0-0-0-0'/>
+              <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+            </disk>
+            <disk type='file' device='cdrom'>
+              <driver name='qemu' type='raw' cache='none'/>
+              <source file='/opt/cosmic/agent/vms/systemvm.iso'/>
+              <backingStore/>
+              <target dev='hdc' bus='ide'/>
+              <readonly/>
+              <alias name='ide0-1-0'/>
+              <address type='drive' controller='0' bus='1' target='0' unit='0'/>
+            </disk>
+          </devices>
+        </domain>
+        """
+
+        disk_data = {
+            'ef2744c1-1e53-4b16-b6ae-31b5960c8395': {
+                'dev': 'sda',
+                'pool': '812ea6a3-7ad0-30f4-9cab-01e3f2985b98',
+                'path': 'ef2744c1-1e53-4b16-b6ae-31b5960c8395',
+                'size': 10737418240
+            }
+        }
+
+        with patch('libvirt.openReadOnly') as mock_libvirt:
+            domain = mock_libvirt.return_value.lookupByName.return_value
+            domain.XMLDesc.return_value = xml_desc
+            domain.blockInfo.return_value = (10737418240, 567148544, 567148544)
+
+            self.assertDictEqual(disk_data, self.host.get_disks(vm))
+
+            mock_libvirt.assert_called_with('qemu+tcp://host1/system')
+            mock_libvirt.return_value.lookupByName.assert_called_with(vm['name'])
+            mock_libvirt.return_value.close.assert_called()
+
+    def test_set_iops_limit(self):
+        self.host.execute = Mock(return_value=Mock(return_code=0))
+        vm = CosmicVM(Mock(), {
+            'id': 'v1',
+            'name': 'vm1'
+        })
+
+        self.assertTrue(self.host.set_iops_limit(vm, 100))
+        command = self.host.execute.call_args[0][0]
+        self.assertIn("--details 'vm1'", command)
+        self.assertIn('--total-iops-sec 100', command)
+
+        self.host.execute.return_value.return_code = 1
+        self.assertFalse(self.host.set_iops_limit(vm, 100))
+
+    def test_merge_backing_files(self):
+        self.host.execute = Mock(return_value=Mock(return_code=0))
+        vm = CosmicVM(Mock(), {
+            'id': 'v1',
+            'name': 'vm1'
+        })
+
+        self.assertTrue(self.host.merge_backing_files(vm))
+        command = self.host.execute.call_args[0][0]
+        self.assertIn("--details 'vm1'", command)
+        self.assertIn("blockpull 'vm1'", command)
+
+        self.host.execute.return_value.return_code = 1
+        self.assertFalse(self.host.merge_backing_files(vm))

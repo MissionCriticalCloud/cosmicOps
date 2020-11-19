@@ -103,24 +103,24 @@ class TestListVirtualMachines(TestCase):
         self.co_instance.get_all_clusters.return_value = [self.cluster]
         self.co_instance.get_all_vms = Mock(return_value=[self.vm])
         self.co_instance.get_all_project_vms = Mock(return_value=[])
-        self.co_instance.get_cluster_by_name = Mock(return_value=self.cluster)
-        self.co_instance.get_domain_by_name = Mock(return_value=self.domain)
-        self.co_instance.get_project_by_name = Mock(return_value=self.project)
-        self.co_instance.get_pod_by_name = Mock(return_value=self.pod)
-        self.co_instance.get_zone_by_name = Mock(return_value=self.zone)
+        self.co_instance.get_cluster = Mock(return_value=self.cluster)
+        self.co_instance.get_domain = Mock(return_value=self.domain)
+        self.co_instance.get_project = Mock(return_value=self.project)
+        self.co_instance.get_pod = Mock(return_value=self.pod)
+        self.co_instance.get_zone = Mock(return_value=self.zone)
         self.co_instance.get_all_routers = Mock(return_value=[])
         self.co_instance.get_all_project_routers = Mock(return_value=[])
-        self.co_instance.get_service_offering_by_id = Mock(return_value=self.service_offering)
-        self.co_instance.get_vpc_by_id = Mock(return_value=self.vpc)
-        self.co_instance.get_network_by_id = Mock(return_value=self.network)
+        self.co_instance.get_service_offering = Mock(return_value=self.service_offering)
+        self.co_instance.get_vpc = Mock(return_value=self.vpc)
+        self.co_instance.get_network = Mock(return_value=self.network)
 
     def test_main(self):
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main).exit_code)
 
-        self.co_instance.get_domain_by_name.assert_not_called()
-        self.co_instance.get_project_by_name.assert_not_called()
-        self.co_instance.get_pod_by_name.assert_not_called()
-        self.co_instance.get_zone_by_name.assert_not_called()
+        self.co_instance.get_domain.assert_not_called()
+        self.co_instance.get_project.assert_not_called()
+        self.co_instance.get_pod.assert_not_called()
+        self.co_instance.get_zone.assert_not_called()
         self.co_instance.get_all_clusters.assert_called_once()
         self.cluster.get_all_hosts.assert_called_once()
         self.host.get_all_vms.assert_called_once_with(domain=None, keyword_filter=None)
@@ -154,8 +154,8 @@ class TestListVirtualMachines(TestCase):
             vm.get_volumes.assert_called_once()
             vm.get_volumes.reset_mock()
 
-        self.assertEqual(3, self.co_instance.get_service_offering_by_id.call_count)
-        self.co_instance.get_service_offering_by_id.reset_mock()
+        self.assertEqual(3, self.co_instance.get_service_offering.call_count)
+        self.co_instance.get_service_offering.reset_mock()
 
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main,
                                                ['--ignore-domains', 'ignore1,ignore2']).exit_code)
@@ -164,8 +164,8 @@ class TestListVirtualMachines(TestCase):
         for vm in [ignore_vm1, ignore_vm2]:
             vm.get_volumes.assert_not_called()
 
-        self.assertEqual(1, self.co_instance.get_service_offering_by_id.call_count)
-        self.co_instance.get_service_offering_by_id.reset_mock()
+        self.assertEqual(1, self.co_instance.get_service_offering.call_count)
+        self.co_instance.get_service_offering.reset_mock()
 
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main, ['--calling-credentials']).exit_code)
         for vm in [self.vm, ignore_vm1, ignore_vm2]:
@@ -190,34 +190,34 @@ class TestListVirtualMachines(TestCase):
 
     def test_cluster_name(self):
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main, ['--cluster', 'cluster1']).exit_code)
-        self.co_instance.get_cluster_by_name.assert_called_once_with('cluster1')
+        self.co_instance.get_cluster.assert_called_once_with(name='cluster1')
 
     def test_domain(self):
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main, ['--domain', 'domain1']).exit_code)
-        self.co_instance.get_domain_by_name.assert_called_once_with('domain1')
+        self.co_instance.get_domain.assert_called_once_with(name='domain1')
         self.host.get_all_vms.assert_called_once_with(domain=self.domain, keyword_filter=None)
 
     def test_project(self):
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main, ['--project', 'project1']).exit_code)
-        self.co_instance.get_project_by_name.assert_called_once_with('project1')
+        self.co_instance.get_project.assert_called_once_with(name='project1')
         self.host.get_all_project_vms.assert_called_once_with(project=self.project)
         self.host.get_all_vms.assert_not_called()
 
     def test_pod(self):
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main, ['--pod', 'pod1']).exit_code)
-        self.co_instance.get_pod_by_name.assert_called_once_with('pod1')
+        self.co_instance.get_pod.assert_called_once_with(name='pod1')
         self.co_instance.get_all_clusters.assert_called_once_with(pod=self.pod)
 
     def test_zone(self):
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main, ['--zone', 'zone1']).exit_code)
-        self.co_instance.get_zone_by_name.assert_called_once_with('zone1')
+        self.co_instance.get_zone.assert_called_once_with(name='zone1')
         self.co_instance.get_all_clusters.assert_called_once_with(zone=self.zone)
 
     def test_lookup_failures(self):
-        for func in [self.co_instance.get_domain_by_name,
-                     self.co_instance.get_project_by_name,
-                     self.co_instance.get_pod_by_name,
-                     self.co_instance.get_zone_by_name]:
+        for func in [self.co_instance.get_domain,
+                     self.co_instance.get_project,
+                     self.co_instance.get_pod,
+                     self.co_instance.get_zone]:
             func.return_value = []
 
         for args in [['--domain', 'no_domain'],
@@ -239,75 +239,75 @@ class TestListVirtualMachines(TestCase):
     def test_router_min_version(self):
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main,
                                                ['--router-min-version', '19.0.0']).exit_code)
-        self.assertEqual(1, self.co_instance.get_service_offering_by_id.call_count)
-        self.co_instance.get_service_offering_by_id.reset_mock()
+        self.assertEqual(1, self.co_instance.get_service_offering.call_count)
+        self.co_instance.get_service_offering.reset_mock()
 
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main,
                                                ['--router-min-version', '21.0.0']).exit_code)
-        self.assertEqual(0, self.co_instance.get_service_offering_by_id.call_count)
+        self.assertEqual(0, self.co_instance.get_service_offering.call_count)
 
     def test_router_max_version(self):
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main,
                                                ['--router-max-version', '21.0.0']).exit_code)
-        self.assertEqual(1, self.co_instance.get_service_offering_by_id.call_count)
-        self.co_instance.get_service_offering_by_id.reset_mock()
+        self.assertEqual(1, self.co_instance.get_service_offering.call_count)
+        self.co_instance.get_service_offering.reset_mock()
 
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main,
                                                ['--router-max-version', '19.0.0']).exit_code)
-        self.assertEqual(0, self.co_instance.get_service_offering_by_id.call_count)
+        self.assertEqual(0, self.co_instance.get_service_offering.call_count)
 
     def test_router_nic_count(self):
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main, ['--router-nic-count', '4']).exit_code)
-        self.assertEqual(1, self.co_instance.get_service_offering_by_id.call_count)
-        self.co_instance.get_service_offering_by_id.reset_mock()
+        self.assertEqual(1, self.co_instance.get_service_offering.call_count)
+        self.co_instance.get_service_offering.reset_mock()
 
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main, ['--router-nic-count', '3']).exit_code)
-        self.assertEqual(0, self.co_instance.get_service_offering_by_id.call_count)
-        self.co_instance.get_service_offering_by_id.reset_mock()
+        self.assertEqual(0, self.co_instance.get_service_offering.call_count)
+        self.co_instance.get_service_offering.reset_mock()
 
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main,
                                                ['--nic-count-is-maximum', '--router-nic-count', '3']).exit_code)
-        self.assertEqual(0, self.co_instance.get_service_offering_by_id.call_count)
-        self.co_instance.get_service_offering_by_id.reset_mock()
+        self.assertEqual(0, self.co_instance.get_service_offering.call_count)
+        self.co_instance.get_service_offering.reset_mock()
 
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main,
                                                ['--nic-count-is-maximum', '--router-nic-count', '5']).exit_code)
-        self.assertEqual(1, self.co_instance.get_service_offering_by_id.call_count)
-        self.co_instance.get_service_offering_by_id.reset_mock()
+        self.assertEqual(1, self.co_instance.get_service_offering.call_count)
+        self.co_instance.get_service_offering.reset_mock()
 
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main,
                                                ['--nic-count-is-minimum', '--router-nic-count', '3']).exit_code)
-        self.assertEqual(1, self.co_instance.get_service_offering_by_id.call_count)
-        self.co_instance.get_service_offering_by_id.reset_mock()
+        self.assertEqual(1, self.co_instance.get_service_offering.call_count)
+        self.co_instance.get_service_offering.reset_mock()
 
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main,
                                                ['--nic-count-is-minimum', '--router-nic-count', '5']).exit_code)
-        self.assertEqual(0, self.co_instance.get_service_offering_by_id.call_count)
+        self.assertEqual(0, self.co_instance.get_service_offering.call_count)
 
     def test_no_routers(self):
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main, ['--no-routers']).exit_code)
-        self.assertEqual(0, self.co_instance.get_service_offering_by_id.call_count)
+        self.assertEqual(0, self.co_instance.get_service_offering.call_count)
 
     def test_routers_to_be_upgraded(self):
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main, ['--only-routers-to-be-upgraded']).exit_code)
-        self.assertEqual(0, self.co_instance.get_service_offering_by_id.call_count)
-        self.co_instance.get_service_offering_by_id.reset_mock()
+        self.assertEqual(0, self.co_instance.get_service_offering.call_count)
+        self.co_instance.get_service_offering.reset_mock()
 
         self.router['requiresupgrade'] = True
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main, ['--only-routers-to-be-upgraded']).exit_code)
-        self.assertEqual(1, self.co_instance.get_service_offering_by_id.call_count)
+        self.assertEqual(1, self.co_instance.get_service_offering.call_count)
 
     def test_empty_service_offering(self):
-        self.co_instance.get_service_offering_by_id.return_value = None
+        self.co_instance.get_service_offering.return_value = None
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main).exit_code)
 
     def test_router_redundancy_states(self):
         self.router['isredundantrouter'] = True
 
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main).exit_code)
-        self.co_instance.get_vpc_by_id.assert_called_with('vpc1')
-        self.co_instance.get_network_by_id.assert_not_called()
-        for func in [self.co_instance.get_vpc_by_id, self.co_instance.get_network_by_id]:
+        self.co_instance.get_vpc.assert_called_with(id='vpc1')
+        self.co_instance.get_network.assert_not_called()
+        for func in [self.co_instance.get_vpc, self.co_instance.get_network]:
             func.reset_mock()
 
         self.router['isredundantrouter'] = False
@@ -315,10 +315,10 @@ class TestListVirtualMachines(TestCase):
         self.router['guestnetworkid'] = 'net1'
 
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main).exit_code)
-        self.co_instance.get_vpc_by_id.assert_not_called()
-        self.co_instance.get_network_by_id.assert_called_with('net1')
-        for func in [self.co_instance.get_vpc_by_id, self.co_instance.get_network_by_id]:
+        self.co_instance.get_vpc.assert_not_called()
+        self.co_instance.get_network.assert_called_with(id='net1')
+        for func in [self.co_instance.get_vpc, self.co_instance.get_network]:
             func.reset_mock()
 
-        self.co_instance.get_network_by_id.return_value = None
+        self.co_instance.get_network.return_value = None
         self.assertEqual(0, self.runner.invoke(list_virtual_machines.main).exit_code)

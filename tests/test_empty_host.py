@@ -36,25 +36,25 @@ class TestEmptyHost(TestCase):
     def test_main(self):
         host_mock = Mock()
         host_mock.empty.return_value = (1, 1, 0)
-        self.co_instance.get_host_by_name.return_value = host_mock
+        self.co_instance.get_host.return_value = host_mock
 
         result = self.runner.invoke(empty_host.main, ['--exec', 'host1'])
         self.co.assert_called_with(profile='config', dry_run=False)
-        self.co_instance.get_host_by_name.assert_called_with('host1')
+        self.co_instance.get_host.assert_called_with(name='host1')
         host_mock.empty.assert_called()
         self.assertEqual(0, result.exit_code)
 
     def test_fail_on_empty_host_response(self):
-        self.co_instance.get_host_by_name.return_value = []
+        self.co_instance.get_host.return_value = []
 
         result = self.runner.invoke(empty_host.main, ['--exec', 'host1'])
-        self.co_instance.get_host_by_name.assert_called_with('host1')
+        self.co_instance.get_host.assert_called_with(name='host1')
         self.assertEqual(1, result.exit_code)
 
     def test_dry_run(self):
         host_mock = Mock()
         host_mock.empty.return_value = (1, 1, 0)
-        self.co_instance.get_host_by_name.return_value = host_mock
+        self.co_instance.get_host.return_value = host_mock
 
         result = self.runner.invoke(empty_host.main, ['host1'])
         self.co.assert_called_with(profile='config', dry_run=True)

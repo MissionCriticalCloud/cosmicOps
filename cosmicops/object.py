@@ -19,6 +19,7 @@ class CosmicObject(Mapping):
         self._ops = ops
         self._data = data
         self.dry_run = ops.dry_run
+        self.log_to_slack = ops.log_to_slack
 
     def __getitem__(self, item):
         return self._data[item]

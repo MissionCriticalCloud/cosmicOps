@@ -14,7 +14,7 @@
 import configparser
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import patch, call, ANY
+from unittest.mock import patch, call, ANY, Mock
 
 import pymysql
 from testfixtures import tempdir
@@ -83,7 +83,9 @@ class TestCosmicSQL(TestCase):
 
     @tempdir()
     def test_get_all_dbs_from_config(self, tmp):
-        config = (b"[db1]\n"
+        config = (b"[dummy]\n"
+                  b"foo = bar\n"
+                  b"[db1]\n"
                   b"host = db1\n"
                   b"[db2]\n"
                   b"host = db2\n"
@@ -94,9 +96,7 @@ class TestCosmicSQL(TestCase):
         tmp.write('config', config)
         with patch('pathlib.Path.cwd') as path_cwd_mock:
             path_cwd_mock.return_value = Path(tmp.path)
-            all_dbs = CosmicSQL.get_all_dbs_from_config()
-
-        self.assertListEqual(['db1', 'db2', 'db3'], all_dbs)
+            self.assertListEqual(['db1', 'db2', 'db3'], CosmicSQL.get_all_dbs_from_config())
 
     def test_connect_failure(self):
         self.mock_connect.side_effect = pymysql.Error('Mock connection error')
@@ -147,18 +147,83 @@ class TestCosmicSQL(TestCase):
         self.mock_cursor.close.assert_called_once()
 
     def test_get_ip_address_data(self):
-        self.cs.get_ip_address_data('192.168.1.1')
+        self.assertIsNotNone(self.cs.get_ip_address_data('192.168.1.1'))
+
         self.assertIn("public_ip_address LIKE '%192.168.1.1%'", self.mock_cursor.execute.call_args[0][0])
         self.assertIn("ip4_address LIKE '%192.168.1.1%'", self.mock_cursor.execute.call_args[0][0])
 
     def test_get_ip_address_data_bridge(self):
-        self.cs.get_ip_address_data_bridge('192.168.1.1')
-        self.assertIn("public_ip_address LIKE '%192.168.1.1%'", self.mock_cursor.execute.call_args[0][0])
+        self.assertIsNotNone(self.cs.get_ip_address_data_bridge('192.168.1.1'))
+
+        self.assertIn("user_ip_address.public_ip_address LIKE '%192.168.1.1%'",
+                      self.mock_cursor.execute.call_args[0][0])
 
     def test_get_ip_address_data_infra(self):
-        self.cs.get_ip_address_data_infra('192.168.1.1')
-        self.assertIn("ip4_address LIKE '%192.168.1.1%'", self.mock_cursor.execute.call_args[0][0])
+        self.assertIsNotNone(self.cs.get_ip_address_data_infra('192.168.1.1'))
+
+        self.assertIn("nics.ip4_address LIKE '%192.168.1.1%'", self.mock_cursor.execute.call_args[0][0])
 
     def test_get_mac_address_data(self):
-        self.cs.get_mac_address_data('aa:bb:cc:dd:ee:ff')
+        self.assertIsNotNone(self.cs.get_mac_address_data('aa:bb:cc:dd:ee:ff'))
+
         self.assertIn("mac_address LIKE '%aa:bb:cc:dd:ee:ff%'", self.mock_cursor.execute.call_args[0][0])
+
+    def test_get_instance_id_from_name(self):
+        self.assertIsNotNone(self.cs.get_instance_id_from_name('instance'))
+
+        self.assertIn("instance_name = 'instance'", self.mock_cursor.execute.call_args[0][0])
+
+    def test_get_disk_offering_id_from_name(self):
+        self.assertIsNotNone(self.cs.get_disk_offering_id_from_name('disk_offering'))
+
+        self.assertIn("name = 'disk_offering'", self.mock_cursor.execute.call_args[0][0])
+
+    def test_get_service_offering_id_from_name(self):
+        self.assertIsNotNone(self.cs.get_service_offering_id_from_name('service_offering'))
+
+        self.assertIn("name = 'service_offering'", self.mock_cursor.execute.call_args[0][0])
+
+    def test_get_affinity_group_id_from_name(self):
+        self.assertIsNotNone(self.cs.get_affinity_group_id_from_name('affinity_group'))
+
+        self.assertIn("name = 'affinity_group'", self.mock_cursor.execute.call_args[0][0])
+
+    def test_update_zwps_to_cwps(self):
+        self.cs.get_instance_id_from_name = Mock(return_value='instance_id')
+        self.cs.get_disk_offering_id_from_name = Mock(return_value='disk_offering_id')
+
+        self.assertTrue(self.cs.update_zwps_to_cwps('instance_name', 'disk_offering_name'))
+        self.assertIn("disk_offering_id=", self.mock_cursor.execute.call_args[0][0])
+        self.assertIn("instance_id=", self.mock_cursor.execute.call_args[0][0])
+        self.assertEqual(('disk_offering_id', 'instance_id'), self.mock_cursor.execute.call_args[0][1])
+
+    def test_update_service_offering_of_vm(self):
+        self.cs.get_instance_id_from_name = Mock(return_value='instance_id')
+        self.cs.get_service_offering_id_from_name = Mock(return_value='service_offering_id')
+
+        self.assertTrue(self.cs.update_service_offering_of_vm('instance_name', 'service_offering_name'))
+        self.assertIn("service_offering_id=", self.mock_cursor.execute.call_args[0][0])
+        self.assertIn("id=", self.mock_cursor.execute.call_args[0][0])
+        self.assertEqual(('service_offering_id', 'instance_id'), self.mock_cursor.execute.call_args[0][1])
+
+    def test_get_volume_size(self):
+        self.assertIsNotNone(self.cs.get_volume_size('path1'))
+
+        self.assertIn("path = 'path1'", self.mock_cursor.execute.call_args[0][0])
+
+    def test_update_volume_size(self):
+        self.cs.get_instance_id_from_name = Mock(return_value='instance_id')
+
+        self.assertTrue(self.cs.update_volume_size('instance_name', 'path', 4321))
+        self.assertIn("size=", self.mock_cursor.execute.call_args[0][0])
+        self.assertIn("instance_id=", self.mock_cursor.execute.call_args[0][0])
+        self.assertIn("path=", self.mock_cursor.execute.call_args[0][0])
+        self.assertEqual((4321, 'path', 'instance_id'), self.mock_cursor.execute.call_args[0][1])
+
+    def test_add_vm_to_affinity_group(self):
+        self.cs.get_instance_id_from_name = Mock(return_value='instance_id')
+        self.cs.get_affinity_group_id_from_name = Mock(return_value='affinity_group_id')
+
+        self.assertTrue(self.cs.add_vm_to_affinity_group('instance_name', 'affinity_group_name'))
+        self.assertIn("(instance_id, affinity_group_id)", self.mock_cursor.execute.call_args[0][0])
+        self.assertEqual(('instance_id', 'affinity_group_id'), self.mock_cursor.execute.call_args[0][1])

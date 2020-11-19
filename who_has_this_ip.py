@@ -73,10 +73,8 @@ def main(database_server, all_databases, database_name, database_port, database_
 
         count = 0
 
-        for (
-                network_name, mac_address, ipv4_address, netmask, _, mode, state, created,
-                vm_name) in cs.get_ip_address_data(
-            ip_address):
+        for (network_name, mac_address, ipv4_address, netmask, _, mode, state, created, vm_name) \
+                in cs.get_ip_address_data(ip_address):
             count += 1
             table_data.append([vm_name, network_name, mac_address, ipv4_address, netmask, mode, state, created])
 

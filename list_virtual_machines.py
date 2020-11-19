@@ -136,35 +136,35 @@ def main(profile, domain_name, cluster_name, pod_name, zone_name, keyword_filter
         sys.exit(0)
 
     if domain_name:
-        domain = co.get_domain_by_name(domain_name)
+        domain = co.get_domain(name=domain_name)
         if not domain:
             sys.exit(1)
     else:
         domain = None
 
     if project_name:
-        project = co.get_project_by_name(project_name)
+        project = co.get_project(name=project_name)
         if not project:
             sys.exit(1)
     else:
         project = None
 
     if pod_name:
-        pod = co.get_pod_by_name(pod_name)
+        pod = co.get_pod(name=pod_name)
         if not pod:
             sys.exit(1)
     else:
         pod = None
 
     if zone_name:
-        zone = co.get_zone_by_name(zone_name)
+        zone = co.get_zone(name=zone_name)
         if not zone:
             sys.exit(1)
     else:
         zone = None
 
     if cluster_name:
-        clusters = [co.get_cluster_by_name(cluster_name)]
+        clusters = [co.get_cluster(name=cluster_name)]
     elif pod:
         clusters = co.get_all_clusters(pod=pod)
     elif zone:
@@ -282,7 +282,7 @@ def main(profile, domain_name, cluster_name, pod_name, zone_name, keyword_filter
 
                 cluster_vm_counter += 1
 
-                service_offering = co.get_service_offering_by_id(router['serviceofferingid'], system=True)
+                service_offering = co.get_service_offering(id=router['serviceofferingid'], system=True)
                 if service_offering:
                     router['memory'] = service_offering['memory']
                     router['cpunumber'] = service_offering['cpunumber']
@@ -301,9 +301,9 @@ def main(profile, domain_name, cluster_name, pod_name, zone_name, keyword_filter
                     redundant_state = 'SINGLE'
 
                 if router['vpcid']:
-                    network = co.get_vpc_by_id(router['vpcid'])
+                    network = co.get_vpc(id=router['vpcid'])
                 else:
-                    network = co.get_network_by_id(router['guestnetworkid'])
+                    network = co.get_network(id=router['guestnetworkid'])
 
                 if network:
                     display_name = network['name']

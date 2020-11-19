@@ -110,6 +110,12 @@ class TestCosmicVM(TestCase):
         self.cs_instance.migrateSystemVm.assert_called_with(virtualmachineid=self.vm['id'],
                                                             hostid=self.target_host['id'])
 
+    def test_migrate_with_volume(self):
+        self.assertTrue(self.vm.migrate(self.target_host, with_volume=True))
+        self.cs_instance.migrateVirtualMachine.assert_not_called()
+        self.cs_instance.migrateVirtualMachineWithVolume.assert_called_with(virtualmachineid=self.vm['id'],
+                                                                            hostid=self.target_host['id'])
+
     def test_migrate_with_migrate_virtual_machine_failure(self):
         self.cs_instance.migrateVirtualMachine.return_value = None
         self.assertFalse(self.vm.migrate(self.target_host))
@@ -126,3 +132,7 @@ class TestCosmicVM(TestCase):
     def test_get_volumes(self):
         self.cs_instance.listVolumes.return_value = {'volume': [{'id': 'v1'}]}
         self.assertEqual([{'id': 'v1'}], self.vm.get_volumes())
+
+    def test_refresh(self):
+        self.vm.refresh()
+        self.cs_instance.listVirtualMachines.assert_called_with(id='v1')

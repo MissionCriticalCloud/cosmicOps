@@ -25,6 +25,7 @@ from .sql import CosmicSQL
 from .storagepool import CosmicStoragePool
 from .systemvm import CosmicSystemVM
 from .vm import CosmicVM
+from .volume import CosmicVolume
 from .vpc import CosmicVPC
 from .zone import CosmicZone
 
@@ -42,6 +43,7 @@ __all__ = [
     CosmicStoragePool,
     CosmicSystemVM,
     CosmicVM,
+    CosmicVolume,
     CosmicVPC,
     CosmicZone
 ]

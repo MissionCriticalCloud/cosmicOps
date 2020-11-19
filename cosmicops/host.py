@@ -16,8 +16,10 @@ import socket
 import time
 from enum import Enum, auto
 from operator import itemgetter
+from xml.etree import ElementTree
 
 import click_spinner
+import libvirt
 import paramiko
 from cs import CloudStackApiException
 from fabric import Connection
@@ -49,7 +51,6 @@ class CosmicHost(CosmicObject):
     def __init__(self, ops, data):
         super().__init__(ops, data)
         global FABRIC_PATCHED
-        self.log_to_slack = ops.log_to_slack
 
         if not FABRIC_PATCHED:
             Connection.open_orig = Connection.open
@@ -62,7 +63,7 @@ class CosmicHost(CosmicObject):
         self.vms_with_shutdown_policy = []
 
     def refresh(self):
-        self._data = self._ops.get_host_json_by_id(self['id'])[0]
+        self._data = self._ops.get_host(id=self['id'], json=True)
 
     def disable(self):
         if self.dry_run:
@@ -368,6 +369,63 @@ class CosmicHost(CosmicObject):
                     break
 
                 time.sleep(5)
+
+    def get_disks(self, vm):
+        lv = libvirt.openReadOnly(f"qemu+tcp://{self['name']}/system")
+
+        domain = lv.lookupByName(vm['name'])
+
+        tree = ElementTree.fromstring(domain.XMLDesc())
+        block_devs = tree.findall('devices/disk')
+
+        disk_data = {}
+
+        for disk in block_devs:
+            if disk.get('device') != 'disk':
+                continue
+
+            dev = disk.find('target').get('dev')
+            full_path = disk.find('source').get('file')
+            _, _, pool, path = full_path.split('/')
+
+            size, _, _ = domain.blockInfo(dev)
+
+            disk_data[path] = {
+                'dev': dev,
+                'pool': pool,
+                'path': path,
+                'size': size
+            }
+
+        lv.close()
+
+        return disk_data
+
+    def set_iops_limit(self, vm, max_iops):
+        command = f"""
+        for i in $(/usr/bin/virsh domblklist --details '{vm['name']}' | grep disk | grep file | /usr/bin/awk '{{print $3}}'); do
+            /usr/bin/virsh blkdeviotune '{vm['name']}' $i --total-iops-sec {max_iops} --live
+        done
+        """
+
+        if not self.execute(command, sudo=True).return_code == 0:
+            logging.error(f"Failed to set IOPS limit for '{vm['name']}'")
+            return False
+        else:
+            return True
+
+    def merge_backing_files(self, vm):
+        command = f"""
+        for i in $(/usr/bin/virsh domblklist --details '{vm['name']}' | grep disk | grep file | /usr/bin/awk '{{print $3}}'); do
+            echo /usr/bin/virsh blockpull '{vm['name']}' $i --wait --verbose
+        done
+        """
+
+        if not self.execute(command, sudo=True).return_code == 0:
+            logging.error(f"Failed to merge backing volumes for '{vm['name']}'")
+            return False
+        else:
+            return True
 
     def __del__(self):
         if self._connection:

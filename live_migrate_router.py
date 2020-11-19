@@ -22,27 +22,43 @@ from cosmicops import CosmicOps, logging
 
 
 @click.command()
-@click.option('--profile', '-p', metavar='<name>', default='config',
-              help='Name of the CloudMonkey profile containing the credentials')
+@click.option('--profile', '-p', default='config', help='Name of the CloudMonkey profile containing the credentials')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
-@click.argument('host')
-def main(profile, dry_run, host):
-    """Empty HOST by migrating VMs to another host in the same cluster."""
+@click.argument('router')
+def main(profile, dry_run, router):
+    """Live migrate ROUTER"""
 
     click_log.basic_config()
 
+    log_to_slack = True
+    logging.task = 'Live Migrate HV to new POD'
+    logging.slack_title = 'Domain'
+
     if dry_run:
-        logging.info('Running in dry-run mode, will only show changes')
+        log_to_slack = False
+        logging.warning('Running in dry-run mode, will only show changes')
 
-    co = CosmicOps(profile=profile, dry_run=dry_run)
+    co = CosmicOps(profile=profile, dry_run=dry_run, log_to_slack=log_to_slack)
 
-    host = co.get_host(name=host)
-    if not host:
+    router = co.get_system_vm(name=router)
+    if not router:
         sys.exit(1)
 
-    (total, success, failed) = host.empty()
-    logging.info(f"Result: {success} successful, {failed} failed out of {total} total VMs")
+    source_host = co.get_host(id=router['hostid'])
+    if not source_host:
+        sys.exit(1)
+
+    cluster = co.get_cluster(id=source_host['clusterid'])
+    if not cluster:
+        sys.exit(1)
+
+    destination_host = cluster.find_migration_host(router)
+    if not destination_host:
+        sys.exit(1)
+
+    if not router.migrate(destination_host):
+        sys.exit(1)
 
 
 if __name__ == '__main__':

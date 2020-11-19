@@ -16,12 +16,12 @@ from cs import CloudStackException
 
 from .log import logging
 from .object import CosmicObject
+from .volume import CosmicVolume
 
 
 class CosmicVM(CosmicObject):
-    def __init__(self, ops, data):
-        super().__init__(ops, data)
-        self.log_to_slack = ops.log_to_slack
+    def refresh(self):
+        self._data = self._ops.get_vm(id=self['id'], json=True)
 
     def stop(self):
         if self.dry_run:
@@ -64,22 +64,31 @@ class CosmicVM(CosmicObject):
         return affinity_groups
 
     def get_volumes(self):
-        return self._ops.cs.listVolumes(virtualmachineid=self['id'], listall='true').get('volume', [])
+        volumes = self._ops.cs.listVolumes(virtualmachineid=self['id'], listall='true').get('volume', [])
 
-    def migrate(self, target_host):
+        return [CosmicVolume(self._ops, volume) for volume in volumes]
+
+    def detach_iso(self):
+        if 'isoid' in self:
+            self._ops.cs.detachIso(virtualmachineid=self['id'])
+
+    def migrate(self, target_host, with_volume=False):
         if self.dry_run:
             logging.info(f"Would live migrate VM '{self['name']}' to '{target_host['name']}'")
             return True
+
+        if with_volume:
+            migrate_func = self._ops.cs.migrateVirtualMachineWithVolume
+        else:
+            migrate_func = self._ops.cs.migrateVirtualMachine
 
         try:
             logging.info(f"Live migrating VM '{self['name']}' to '{target_host['name']}'", self.log_to_slack)
 
             if 'instancename' in self:
-                if 'isoid' in self:
-                    self._ops.cs.detachIso(virtualmachineid=self['id'])
+                self.detach_iso()
 
-                vm_result = self._ops.cs.migrateVirtualMachine(virtualmachineid=self['id'],
-                                                               hostid=target_host['id'])
+                vm_result = migrate_func(virtualmachineid=self['id'], hostid=target_host['id'])
                 if not vm_result:
                     raise RuntimeError
             else:

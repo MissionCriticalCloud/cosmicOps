@@ -56,7 +56,7 @@ def main(profile, cluster, zone):
     co = CosmicOps(profile=profile, dry_run=False)
 
     if cluster:
-        clusters = [co.get_cluster_by_name(cluster, zone)]
+        clusters = [co.get_cluster(name=cluster, zone=zone)]
     else:
         clusters = co.get_all_clusters(zone)
 

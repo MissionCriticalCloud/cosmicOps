@@ -40,7 +40,7 @@ class TestRollingReboot(TestCase):
 
     def _mock_cluster_with_hosts(self):
         self.cluster = Mock()
-        self.co_instance.get_cluster_by_name.return_value = self.cluster
+        self.co_instance.get_cluster.return_value = self.cluster
 
         self.hosts = []
         for i in range(3):
@@ -73,7 +73,7 @@ class TestRollingReboot(TestCase):
         self.assertEqual(0, result.exit_code)
 
         self.co.assert_called_with(profile='config', dry_run=False, log_to_slack=True)
-        self.co_instance.get_cluster_by_name.assert_called_with('cluster1')
+        self.co_instance.get_cluster.assert_called_with(name='cluster1')
 
         self.cluster.get_all_hosts.assert_called()
 
@@ -137,7 +137,7 @@ class TestRollingReboot(TestCase):
 
     def test_failures(self):
         # Cluster lookup failure
-        self.co_instance.get_cluster_by_name.return_value = None
+        self.co_instance.get_cluster.return_value = None
 
         result = self.runner.invoke(rolling_reboot.main, ['--exec', 'cluster1'])
         self.assertEqual(1, result.exit_code)
