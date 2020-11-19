@@ -47,7 +47,7 @@ class TestListOrphanedDisks(TestCase):
         cluster.get_storage_pools = Mock(return_value=[self.storage_pool])
         cluster.get_all_hosts = Mock(return_value=[self.host])
         self.co_instance.get_all_clusters.return_value = [cluster]
-        self.co_instance.get_cluster_by_name.return_value = cluster
+        self.co_instance.get_cluster.return_value = cluster
 
     def test_main(self):
         self._setup_mocks()
@@ -62,7 +62,7 @@ class TestListOrphanedDisks(TestCase):
     def test_main_with_cluster(self):
         self._setup_mocks()
         result = self.runner.invoke(list_orphaned_disks.main, ['--cluster', 'cluster1', 'zone1'])
-        self.co_instance.get_cluster_by_name.assert_called_with('cluster1', 'zone1')
+        self.co_instance.get_cluster.assert_called_with(name='cluster1', zone='zone1')
         self.assertEqual(0, result.exit_code)
 
     def test_main_with_cluster_lookup_failure(self):

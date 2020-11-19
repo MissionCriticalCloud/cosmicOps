@@ -68,7 +68,7 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
 
     co = CosmicOps(profile=profile, dry_run=dry_run, log_to_slack=log_to_slack)
 
-    cluster = co.get_cluster_by_name(cluster)
+    cluster = co.get_cluster(name=cluster)
     if not cluster:
         sys.exit(1)
 
@@ -119,7 +119,7 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
 
         while True:
             (_, _, failed) = host.empty(target=target_host)
-            if failed == 0 or dry_run:
+            if failed == 0:
                 break
 
             if target_host:

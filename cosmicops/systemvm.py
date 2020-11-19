@@ -11,12 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from .log import logging
-from .object import CosmicObject
+from .vm import CosmicVM
 
 
-class CosmicSystemVM(CosmicObject):
+class CosmicSystemVM(CosmicVM):
     def stop(self):
         if self.dry_run:
             logging.info(

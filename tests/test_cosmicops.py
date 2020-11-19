@@ -20,7 +20,8 @@ from cs import CloudStackException
 from requests.exceptions import ConnectionError
 from testfixtures import tempdir
 
-from cosmicops import CosmicOps, CosmicZone
+from cosmicops import CosmicOps, CosmicZone, CosmicPod
+from cosmicops.object import CosmicObject
 # noinspection PyProtectedMember
 from cosmicops.ops import _load_cloud_monkey_profile
 
@@ -90,288 +91,108 @@ class TestCosmicOps(TestCase):
         self.assertEqual('test_api_key_2', key)
         self.assertEqual('test_secret_key_2', secret)
 
-    def test_get_host_by_name(self):
-        self.cs_instance.listHosts.return_value = {
-            'host': [{
-                'id': 'h1',
-                'name': 'host1',
-                'clusterid': '1'
+    def test_cs_get_single_result(self):
+        self.cs_instance.listFunction.return_value = {
+            'type': [{
+                'id': 'id_field',
+                'name': 'name_field'
             }]
         }
 
-        result = self.co.get_host_by_name('host1')
-        self.assertEqual(('h1', 'host1', '1'), (result['id'], result['name'], result['clusterid']))
+        result = self.co._cs_get_single_result('listFunction', {'name': 'name_field'}, CosmicObject, 'type')
+        self.cs_instance.listFunction.assert_called_with(name='name_field')
+        self.assertIsInstance(result, CosmicObject)
+        self.assertDictEqual({'id': 'id_field', 'name': 'name_field'}, result._data)
 
-    def test_get_host_by_name_failure(self):
-        self.cs_instance.listHosts.return_value = {'host': []}
-        self.assertIsNone(self.co.get_host_by_name('host1'))
+    def test_get_get_single_result_failure(self):
+        self.cs_instance.listFunction.return_value = {'type': []}
+        self.assertIsNone(self.co._cs_get_single_result('listFunction', {}, CosmicObject, 'type'))
 
-        self.cs_instance.listHosts.return_value = {'host': [{}, {}]}
-        self.assertIsNone(self.co.get_host_by_name('host1'))
+        self.cs_instance.listFunction.return_value = {'type': [{}, {}]}
+        self.assertIsNone(self.co._cs_get_single_result('listFunction', {}, CosmicObject, 'type'))
 
-    def test_get_project_by_name(self):
-        self.cs_instance.listProjects.return_value = {
-            'project': [{
-                'id': 'p1',
-                'name': 'project1'
+    def test_cs_get_all_results(self):
+        self.cs_instance.listFunction.return_value = {
+            'type': [{
+                'id': 'id1',
+                'name': 'name1'
+            }, {
+                'id': 'id2',
+                'name': 'name2'
             }]
         }
 
-        result = self.co.get_project_by_name('project1')
-        self.assertEqual(('p1', 'project1'), (result['id'], result['name']))
+        result = self.co._cs_get_all_results('listFunction', {}, CosmicObject, 'type')
+        self.cs_instance.listFunction.assert_called_with()
+        for i, item in enumerate(result):
+            self.assertIsInstance(item, CosmicObject)
+            self.assertDictEqual({'id': f'id{i + 1}', 'name': f'name{i + 1}'}, item._data)
 
-    def test_get_project_by_name_failure(self):
-        self.cs_instance.listProjects.return_value = {'project': []}
-        self.assertIsNone(self.co.get_project_by_name('project1'))
+    def test_get_vm(self):
+        self.co._cs_get_single_result = Mock()
 
-        self.cs_instance.listProjects.return_value = {'project': [{}, {}]}
-        self.assertIsNone(self.co.get_project_by_name('project1'))
+        self.co.get_vm(name='vm1')
+        self.assertDictEqual({'name': 'vm1', 'listall': True}, self.co._cs_get_single_result.call_args[0][1])
 
-    def test_get_zone_by_name(self):
-        self.cs_instance.listZones.return_value = {
-            'zone': [{
-                'id': 'z1',
-                'name': 'zone1'
-            }]
-        }
+        self.co.get_vm(name='i-VM-1')
+        self.assertDictEqual({'keyword': 'i-VM-1', 'listall': True}, self.co._cs_get_single_result.call_args[0][1])
 
-        result = self.co.get_zone_by_name('zone1')
-        self.assertEqual(('z1', 'zone1'), (result['id'], result['name']))
+        self.co.get_vm(name='project_vm1', is_project_vm=True)
+        self.assertDictEqual({'name': 'project_vm1', 'projectid': '-1', 'listall': True},
+                             self.co._cs_get_single_result.call_args[0][1])
 
-    def test_get_zone_by_name_failure(self):
-        self.cs_instance.listZones.return_value = {'zone': []}
-        self.assertIsNone(self.co.get_zone_by_name('zone1'))
+    def test_get_project_vm(self):
+        self.co._cs_get_single_result = Mock()
 
-        self.cs_instance.listZones.return_value = {'zone': [{}, {}]}
-        self.assertIsNone(self.co.get_zone_by_name('zone1'))
+        self.co.get_project_vm(name='project_vm1')
+        self.assertDictEqual({'name': 'project_vm1', 'projectid': '-1', 'listall': True},
+                             self.co._cs_get_single_result.call_args[0][1])
 
-    def test_get_pod_by_name(self):
-        self.cs_instance.listPods.return_value = {
-            'pod': [{
-                'id': 'p1',
-                'name': 'pod1'
-            }]
-        }
+    def test_get_cluster(self):
+        self.co._cs_get_single_result = Mock()
+        self.co.get_zone = Mock(return_value=CosmicZone(Mock(), {'id': 'z1', 'name': 'zone1'}))
 
-        result = self.co.get_pod_by_name('pod1')
-        self.assertEqual(('p1', 'pod1'), (result['id'], result['name']))
+        self.co.get_cluster(name='cluster1')
+        self.assertDictEqual({'name': 'cluster1'}, self.co._cs_get_single_result.call_args[0][1])
 
-    def test_get_pod_by_name_failure(self):
-        self.cs_instance.listPods.return_value = {'pod': []}
-        self.assertIsNone(self.co.get_pod_by_name('pod1'))
+        self.co.get_cluster(name='cluster1', zone='zone1')
+        self.assertDictEqual({'name': 'cluster1', 'zoneid': 'z1'}, self.co._cs_get_single_result.call_args[0][1])
 
-        self.cs_instance.listPods.return_value = {'pod': [{}, {}]}
-        self.assertIsNone(self.co.get_pod_by_name('pod1'))
-
-    def test_get_domain_by_name(self):
-        self.cs_instance.listDomains.return_value = {
-            'domain': [{
-                'id': 'd1',
-                'name': 'domain1'
-            }]
-        }
-
-        result = self.co.get_domain_by_name('domain1')
-        self.assertEqual(('d1', 'domain1'), (result['id'], result['name']))
-
-    def test_get_domain_by_name_failure(self):
-        self.cs_instance.listDomains.return_value = {'domain': []}
-        self.assertIsNone(self.co.get_domain_by_name('domain1'))
-
-        self.cs_instance.listDomains.return_value = {'domain': [{}, {}]}
-        self.assertIsNone(self.co.get_domain_by_name('domain'))
-
-    def test_get_cluster_by_name(self):
-        self.cs_instance.listClusters.return_value = {
-            'cluster': [{
-                'id': 'c1',
-                'name': 'cluster1'
-            }]
-        }
-
-        result = self.co.get_cluster_by_name('cluster1')
-        self.assertEqual(('c1', 'cluster1'), (result['id'], result['name']))
-
-    def test_get_cluster_by_name_with_zone(self):
-        self.cs_instance.listZones.return_value = {
-            'zone': [{
-                'id': 'z1',
-                'name': 'zone1'
-            }]
-        }
-
-        self.co.get_cluster_by_name('cluster1', 'zone1')
-        self.cs_instance.listClusters.assert_called_with(name='cluster1', zoneid='z1')
-
-    def test_get_cluster_by_name_failure(self):
-        self.cs_instance.listClusters.return_value = {'cluster': []}
-        self.assertIsNone(self.co.get_cluster_by_name('cluster1'))
-
-        self.cs_instance.listClusters.return_value = {'cluster': [{}, {}]}
-        self.assertIsNone(self.co.get_cluster_by_name('cluster1'))
-
-        self.cs_instance.listZones.return_value = {'zone': []}
-        self.assertIsNone(self.co.get_cluster_by_name('cluster1', 'zone1'))
+        self.co.get_zone.return_value = None
+        self.assertIsNone(self.co.get_cluster(name='cluster1', zone='zone1'))
 
     def test_get_all_clusters(self):
-        self.cs_instance.listClusters.return_value = {
-            'cluster': [{
-                'id': 'c1',
-                'name': 'cluster1'
-            }, {
-                'id': 'c2',
-                'name': 'cluster2'
-            }]
-        }
+        self.co._cs_get_all_results = Mock()
 
-        result = self.co.get_all_clusters()
-        self.assertEqual(('c1', 'cluster1', 'c2', 'cluster2'),
-                         (result[0]['id'], result[0]['name'], result[1]['id'], result[1]['name']))
+        self.co.get_all_clusters()
+        self.assertDictEqual({}, self.co._cs_get_all_results.call_args[0][1])
 
-    def test_all_clusters_with_zone(self):
-        zone = CosmicZone(Mock(), {'id': 'z1', 'name': 'zone1'})
+        self.co.get_all_clusters(zone=CosmicZone(Mock(), {'id': 'z1'}))
+        self.assertDictEqual({'zoneid': 'z1'}, self.co._cs_get_all_results.call_args[0][1])
 
-        self.co.get_all_clusters(zone=zone)
-        self.cs_instance.listClusters.assert_called_with(zoneid='z1', podid=None)
+        self.co.get_all_clusters(pod=CosmicPod(Mock(), {'id': 'p1'}))
+        self.assertDictEqual({'podid': 'p1'}, self.co._cs_get_all_results.call_args[0][1])
 
-    def test_get_all_clusters_failure(self):
-        self.cs_instance.listClusters.return_value = {'cluster': []}
-        self.assertIsNone(self.co.get_all_clusters())
+    def test_get_service_offering(self):
+        self.co._cs_get_single_result = Mock()
 
-    def test_get_systemvm_by_name(self):
-        self.cs_instance.listSystemVms.return_value = {
-            'systemvm': [{
-                'id': 'svm1',
-                'name': 's-1-VM'
-            }]
-        }
+        self.co.get_service_offering(name='so1')
+        self.assertDictEqual({'name': 'so1'}, self.co._cs_get_single_result.call_args[0][1])
 
-        result = self.co.get_systemvm_by_name('s-1-VM')
-        self.assertEqual(('svm1', 's-1-VM'), (result['id'], result['name']))
-
-    def test_get_systemvm_by_name_failure(self):
-        self.cs_instance.listSystemVms.return_value = {'systemvm': []}
-        self.assertIsNone(self.co.get_systemvm_by_name('s-1-VM'))
-
-        self.cs_instance.listSystemVms.return_value = {'systemvm': [{}, {}]}
-        self.assertIsNone(self.co.get_systemvm_by_name('s-1-VM'))
-
-    def test_get_systemvm_by_id(self):
-        self.cs_instance.listSystemVms.return_value = {
-            'systemvm': [{
-                'id': 'svm1',
-                'name': 's-1-VM'
-            }]
-        }
-
-        result = self.co.get_systemvm_by_id('svm1')
-        self.assertEqual(('svm1', 's-1-VM'), (result['id'], result['name']))
-
-    def test_get_systemvm_by_id_failure(self):
-        self.cs_instance.listSystemVms.return_value = {'systemvm': []}
-        self.assertIsNone(self.co.get_systemvm_by_id('svm1'))
-
-        self.cs_instance.listSystemVms.return_value = {'systemvm': [{}, {}]}
-        self.assertIsNone(self.co.get_systemvm_by_id('svm1'))
-
-    def test_get_service_offering_by_id(self):
-        self.cs_instance.listServiceOfferings.return_value = {
-            'serviceoffering': [{
-                'id': 'so1',
-                'name': 'so1'
-            }]
-        }
-
-        result = self.co.get_service_offering_by_id('so1')
-        self.assertEqual(('so1', 'so1'), (result['id'], result['name']))
-
-    def test_get_service_offering_by_id_failure(self):
-        self.cs_instance.listServiceOfferings.return_value = {'serviceoffering': []}
-        self.assertIsNone(self.co.get_service_offering_by_id('so1'))
-
-        self.cs_instance.listServiceOfferings.return_value = {'serviceoffering': [{}, {}]}
-        self.assertIsNone(self.co.get_service_offering_by_id('so1'))
-
-    def test_get_network_by_id(self):
-        self.cs_instance.listNetworks.return_value = {
-            'network': [{
-                'id': 'net1',
-                'name': 'net1'
-            }]
-        }
-
-        result = self.co.get_network_by_id('net1')
-        self.assertEqual(('net1', 'net1'), (result['id'], result['name']))
-
-    def test_get_network_by_id_failure(self):
-        self.cs_instance.listNetworks.return_value = {'network': []}
-        self.assertIsNone(self.co.get_network_by_id('net1'))
-
-        self.cs_instance.listNetworks.return_value = {'network': [{}, {}]}
-        self.assertIsNone(self.co.get_network_by_id('net1'))
-
-    def test_get_vpc_by_id(self):
-        self.cs_instance.listVPCs.return_value = {
-            'vpc': [{
-                'id': 'vpc1',
-                'name': 'vpc1'
-            }]
-        }
-
-        result = self.co.get_vpc_by_id('vpc1')
-        self.assertEqual(('vpc1', 'vpc1'), (result['id'], result['name']))
-
-    def test_get_vpc_by_id_failure(self):
-        self.cs_instance.listVPCs.return_value = {'vpc': []}
-        self.assertIsNone(self.co.get_vpc_by_id('vpc1'))
-
-        self.cs_instance.listVPCs.return_value = {'vpc': [{}, {}]}
-        self.assertIsNone(self.co.get_vpc_by_id('vpc1'))
-
-    def test_get_all_systemvms(self):
-        self.cs_instance.listSystemVms.return_value = {
-            'systemvm': [{
-                'id': 'svm1',
-                'name': 's-1-VM'
-            }, {
-                'id': 'svm2',
-                'name': 's-2-VM'
-            }]
-        }
-
-        result = self.co.get_all_systemvms()
-        self.assertEqual(('svm1', 's-1-VM', 'svm2', 's-2-VM'),
-                         (result[0]['id'], result[0]['name'], result[1]['id'], result[1]['name']))
+        self.co.get_service_offering(name='so1', system=True)
+        self.assertDictEqual({'name': 'so1', 'issystem': True}, self.co._cs_get_single_result.call_args[0][1])
 
     def test_get_all_vms(self):
-        self.cs_instance.listVirtualMachines.return_value = {
-            'virtualmachine': [{
-                'id': 'vm1',
-                'name': 'i-1-VM'
-            }, {
-                'id': 'vm2',
-                'name': 'i-2-VM'
-            }]
-        }
+        self.co._cs_get_all_results = Mock()
 
-        result = self.co.get_all_vms()
-        self.assertEqual(('vm1', 'i-1-VM', 'vm2', 'i-2-VM'),
-                         (result[0]['id'], result[0]['name'], result[1]['id'], result[1]['name']))
+        self.co.get_all_vms()
+        self.assertDictEqual({'listall': True}, self.co._cs_get_all_results.call_args[0][1])
 
     def test_get_all_project_vms(self):
-        self.cs_instance.listVirtualMachines.return_value = {
-            'virtualmachine': [{
-                'id': 'pvm1',
-                'name': 'pi-1-VM'
-            }, {
-                'id': 'pvm2',
-                'name': 'pi-2-VM'
-            }]
-        }
+        self.co._cs_get_all_results = Mock()
 
-        result = self.co.get_all_project_vms()
-        self.assertEqual(('pvm1', 'pi-1-VM', 'pvm2', 'pi-2-VM'),
-                         (result[0]['id'], result[0]['name'], result[1]['id'], result[1]['name']))
+        self.co.get_all_project_vms()
+        self.assertDictEqual({'projectid': '-1', 'listall': True}, self.co._cs_get_all_results.call_args[0][1])
 
     def test_wait_for_job(self):
         self.cs_instance.queryAsyncJobResult.return_value = {'jobstatus': '1'}

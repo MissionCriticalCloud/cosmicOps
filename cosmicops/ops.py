@@ -28,8 +28,10 @@ from .network import CosmicNetwork
 from .pod import CosmicPod
 from .project import CosmicProject
 from .serviceoffering import CosmicServiceOffering
+from .storagepool import CosmicStoragePool
 from .systemvm import CosmicSystemVM
 from .vm import CosmicVM
+from .volume import CosmicVolume
 from .vpc import CosmicVPC
 from .zone import CosmicZone
 
@@ -60,175 +62,123 @@ class CosmicOps(object):
         self.log_to_slack = log_to_slack
         self.cs = CloudStack(self.endpoint, self.key, self.secret, self.timeout)
 
-    def get_host_by_name(self, host_name):
-        response = self.cs.listHosts(name=host_name).get('host')
+    def _cs_get_single_result(self, list_function, kwargs, cosmic_object, cs_type, pretty_name=None, json=False):
+        func = getattr(self.cs, list_function, None)
+        if not func:  # pragma: no cover
+            logging.error(f"Unknown list function '{list_function}'")
+            return None
+
+        if not pretty_name:
+            pretty_name = cs_type
+
+        if 'json' in kwargs:
+            json = True
+            del kwargs['json']
+
+        response = func(**kwargs).get(cs_type)
 
         if not response:
-            logging.error(f"Host '{host_name}' not found")
+            logging.error(f"{pretty_name.capitalize()} with attributes {kwargs} not found")
             return None
         elif len(response) != 1:
-            logging.error(f"Lookup for host '{host_name}' returned multiple results")
+            logging.error(f"Lookup for {pretty_name} with attributes {kwargs} returned multiple results")
             return None
 
-        return CosmicHost(self, response[0])
+        return response[0] if json else cosmic_object(self, response[0])
 
-    def get_host_json_by_id(self, host_id):
-        return self.cs.listHosts(id=host_id).get('host')
-
-    def get_project_by_name(self, project_name):
-        response = self.cs.listProjects(name=project_name).get('project')
-
-        if not response:
-            logging.error(f"Project '{project_name}' not found")
-            return None
-        elif len(response) != 1:
-            logging.error(f"Lookup for project '{project_name}' returned multiple results")
+    def _cs_get_all_results(self, list_function, kwargs, cosmic_object, cs_type):
+        func = getattr(self.cs, list_function, None)
+        if not func:  # pragma: no cover
+            logging.error(f"Unknown list function '{list_function}'")
             return None
 
-        return CosmicProject(self, response[0])
+        response = func(**kwargs).get(cs_type)
 
-    def get_zone_by_name(self, zone_name):
-        response = self.cs.listZones(name=zone_name).get('zone')
+        return [cosmic_object(self, item) for item in response]
 
-        if not response:
-            logging.error(f"Zone '{zone_name}' not found")
-            return None
-        elif len(response) != 1:
-            logging.error(f"Lookup for zone '{zone_name}' returned multiple results")
-            return None
+    def get_host(self, **kwargs):  # pragma: no cover
+        return self._cs_get_single_result('listHosts', kwargs, CosmicHost, 'host')
 
-        return CosmicZone(self, response[0])
+    def get_volume(self, **kwargs):  # pragma: no cover
+        return self._cs_get_single_result('listVolumes', kwargs, CosmicVolume, 'volume')
 
-    def get_pod_by_name(self, pod_name):
-        response = self.cs.listPods(name=pod_name).get('pod')
+    def get_project(self, **kwargs):  # pragma: no cover
+        return self._cs_get_single_result('listProjects', kwargs, CosmicProject, 'project')
 
-        if not response:
-            logging.error(f"Pod '{pod_name}' not found")
-            return None
-        elif len(response) != 1:
-            logging.error(f"Lookup for pod '{pod_name}' returned multiple results")
-            return None
+    def get_zone(self, **kwargs):  # pragma: no cover
+        return self._cs_get_single_result('listZones', kwargs, CosmicZone, 'zone')
 
-        return CosmicPod(self, response[0])
+    def get_pod(self, **kwargs):  # pragma: no cover
+        return self._cs_get_single_result('listPods', kwargs, CosmicPod, 'pod')
 
-    def get_cluster_by_name(self, cluster_name, zone=None):
+    def get_system_vm(self, **kwargs):  # pragma: no cover
+        return self._cs_get_single_result('listSystemVms', kwargs, CosmicSystemVM, 'systemvm', 'system VM')
+
+    def get_domain(self, **kwargs):  # pragma: no cover
+        return self._cs_get_single_result('listDomains', kwargs, CosmicDomain, 'domain')
+
+    def get_network(self, **kwargs):  # pragma: no cover
+        return self._cs_get_single_result('listNetworks', kwargs, CosmicNetwork, 'network')
+
+    def get_vpc(self, **kwargs):  # pragma: no cover
+        return self._cs_get_single_result('listVPCs', kwargs, CosmicVPC, 'vpc', 'VPC')
+
+    def get_storage_pool(self, **kwargs):  # pragma: no cover
+        return self._cs_get_single_result('listStoragePools', kwargs, CosmicStoragePool, 'storagepool', 'storage pool')
+
+    def get_vm(self, is_project_vm=False, **kwargs):
+        if 'name' in kwargs:
+            kwargs['listall'] = True
+
+            if kwargs['name'].startswith('i-'):
+                kwargs['keyword'] = kwargs['name']
+                del kwargs['name']
+
+        if is_project_vm:
+            kwargs['projectid'] = '-1'
+
+        return self._cs_get_single_result('listVirtualMachines', kwargs, CosmicVM, 'virtualmachine', 'VM')
+
+    def get_project_vm(self, **kwargs):
+        return self.get_vm(is_project_vm=True, **kwargs)
+
+    def get_cluster(self, zone=None, **kwargs):
         if zone:
-            zone_object = self.get_zone_by_name(zone)
-            if not zone_object:
+            zone = self.get_zone(name=zone)
+            if not zone:
                 return None
-            zone_id = zone_object['id']
-        else:
-            zone_id = None
 
-        response = self.cs.listClusters(name=cluster_name, zoneid=zone_id).get('cluster')
+            kwargs['zoneid'] = zone['id']
 
-        if not response:
-            logging.error(f"Cluster '{cluster_name}' not found")
-            return None
-        elif len(response) != 1:
-            logging.error(f"Lookup for cluster '{cluster_name}' returned multiple results")
-            return None
+        return self._cs_get_single_result('listClusters', kwargs, CosmicCluster, 'cluster')
 
-        return CosmicCluster(self, response[0])
+    def get_service_offering(self, system=False, **kwargs):
+        if 'issystem' not in kwargs and system:
+            kwargs['issystem'] = system
 
-    def get_all_clusters(self, zone=None, pod=None):
-        zone_id = zone['id'] if zone else None
-        pod_id = pod['id'] if pod else None
+        return self._cs_get_single_result('listServiceOfferings', kwargs, CosmicServiceOffering, 'serviceoffering',
+                                          'service offering')
 
-        clusters = self.cs.listClusters(zoneid=zone_id, podid=pod_id).get('cluster')
+    def get_all_systemvms(self, **kwargs):  # pragma: no cover
+        return self._cs_get_all_results('listSystemVms', kwargs, CosmicSystemVM, 'systemvm')
 
-        if not clusters:
-            logging.error(f"No clusters found")
-            return None
+    def get_all_clusters(self, zone=None, pod=None, **kwargs):
+        if 'zoneid' not in kwargs and zone:
+            kwargs['zoneid'] = zone['id']
+        if 'podid' not in kwargs and pod:
+            kwargs['podid'] = pod['id']
 
-        return [CosmicCluster(self, cluster) for cluster in clusters]
+        return self._cs_get_all_results('listClusters', kwargs, CosmicCluster, 'cluster')
 
-    def get_systemvm_by_name(self, systemvm_name):
-        response = self.cs.listSystemVms(name=systemvm_name).get('systemvm')
+    def get_all_vms(self, list_all=True, **kwargs):
+        if 'listall' not in kwargs:
+            kwargs['listall'] = list_all
 
-        if not response:
-            logging.error(f"System VM '{systemvm_name}' not found")
-            return None
-        elif len(response) != 1:
-            logging.error(f"Lookup for system VM '{systemvm_name}' returned multiple results")
-            return None
+        return self._cs_get_all_results('listVirtualMachines', kwargs, CosmicVM, 'virtualmachine')
 
-        return CosmicSystemVM(self, response[0])
-
-    def get_domain_by_name(self, domain_name):
-        response = self.cs.listDomains(name=domain_name).get('domain')
-
-        if not response:
-            logging.error(f"Domain '{domain_name}' not found")
-            return None
-        elif len(response) != 1:
-            logging.error(f"Lookup for domain '{domain_name}' returned multiple results")
-            return None
-
-        return CosmicDomain(self, response[0])
-
-    def get_systemvm_by_id(self, systemvm_id):
-        response = self.cs.listSystemVms(id=systemvm_id).get('systemvm')
-
-        if not response:
-            logging.error(f"System VM with ID '{systemvm_id}' not found")
-            return None
-        elif len(response) != 1:
-            logging.error(f"Lookup for system VM with ID '{systemvm_id}' returned multiple results")
-            return None
-
-        return CosmicSystemVM(self, response[0])
-
-    def get_all_systemvms(self):
-        systemvms = self.cs.listSystemVms().get('systemvm', [])
-
-        return [CosmicSystemVM(self, systemvm) for systemvm in systemvms]
-
-    def get_all_vms(self, list_all=True):
-        vms = self.cs.listVirtualMachines(listall=list_all).get('virtualmachine', [])
-
-        return [CosmicVM(self, vm) for vm in vms]
-
-    def get_all_project_vms(self, list_all=True):
-        vms = self.cs.listVirtualMachines(listall=list_all, projectid='-1').get('virtualmachine', [])
-
-        return [CosmicVM(self, vm) for vm in vms]
-
-    def get_service_offering_by_id(self, service_offering_id, system=False):
-        response = self.cs.listServiceOfferings(id=service_offering_id, issystem=system).get('serviceoffering')
-
-        if not response:
-            logging.error(f"Service offering with ID '{service_offering_id}' not found")
-            return None
-        elif len(response) != 1:
-            logging.error(f"Lookup for service offering with ID '{service_offering_id}' returned multiple results")
-            return None
-
-        return CosmicServiceOffering(self, response[0])
-
-    def get_network_by_id(self, network_id):
-        response = self.cs.listNetworks(id=network_id).get('network')
-
-        if not response:
-            logging.error(f"Network with ID '{network_id}' not found")
-            return None
-        elif len(response) != 1:
-            logging.error(f"Lookup for network with ID '{network_id}' returned multiple results")
-            return None
-
-        return CosmicNetwork(self, response[0])
-
-    def get_vpc_by_id(self, vpc_id):
-        response = self.cs.listVPCs(id=vpc_id).get('vpc')
-
-        if not response:
-            logging.error(f"VPC with ID '{vpc_id}' not found")
-            return None
-        elif len(response) != 1:
-            logging.error(f"Lookup for VPC with ID '{vpc_id}' returned multiple results")
-            return None
-
-        return CosmicVPC(self, response[0])
+    def get_all_project_vms(self, list_all=True, **kwargs):
+        kwargs['projectid'] = '-1'
+        return self.get_all_vms(list_all=list_all, **kwargs)
 
     def wait_for_job(self, job_id, retries=10):
         job_status = 0

@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
-from cosmicops import CosmicOps, CosmicCluster
+from cosmicops import CosmicOps, CosmicCluster, CosmicVM, CosmicSystemVM, CosmicServiceOffering
 
 
 class TestCosmicCluster(TestCase):
@@ -56,3 +56,75 @@ class TestCosmicCluster(TestCase):
         }
 
         self.assertDictEqual({'id': 'p1', 'name': 'pool1'}, self.cluster.get_storage_pools()[0]._data)
+
+    def test_find_migration_host(self):
+        self.cs_instance.listHosts.return_value = {
+            'host': [{
+                'id': 'h1',
+                'name': 'same_host',
+                'resourcestate': 'Enabled',
+                'state': 'Up',
+                'memorytotal': 1073741824,
+                'memoryallocated': 0
+            }, {
+                'id': 'h2',
+                'name': 'disabled_host',
+                'resourcestate': 'Disabled',
+                'state': 'Up',
+                'memorytotal': 1073741824,
+                'memoryallocated': 0
+            }, {
+                'id': 'h3',
+                'name': 'disconnected_host',
+                'resourcestate': 'Enabled',
+                'state': 'Disconnected',
+                'memorytotal': 1073741824,
+                'memoryallocated': 0
+            }, {
+                'id': 'h4',
+                'name': 'migration_host',
+                'resourcestate': 'Enabled',
+                'state': 'Up',
+                'memorytotal': 1073741824,
+                'memoryallocated': 0
+            }]
+        }
+
+        vm = CosmicVM(Mock(), {
+            'id': 'vm1',
+            'memory': 512,
+            'hostname': 'same_host',
+            'instancename': 'i-VM-1'
+        })
+
+        self.assertEqual(self.cluster.find_migration_host(vm)['name'], 'migration_host')
+
+        # System VM without 'memory' attribute
+        system_vm = CosmicSystemVM(Mock(), {
+            'id': 'svm1',
+            'hostname': 'same_host',
+            'serviceofferingid': 'so1'
+        })
+
+        self.ops.get_service_offering = Mock(return_value=CosmicServiceOffering(Mock(), {'memory': 512}))
+        self.assertEqual(self.cluster.find_migration_host(system_vm)['name'], 'migration_host')
+        self.assertEqual(512, system_vm['memory'])
+
+        # System VM without service offering details
+        self.ops.get_service_offering.return_value = None
+        self.assertEqual(self.cluster.find_migration_host(system_vm)['name'], 'migration_host')
+        self.assertEqual(1024, system_vm['memory'])
+
+        # No hosts with enough memory available
+        self.cs_instance.listHosts.return_value = {
+            'host': [{
+                'id': 'h1',
+                'name': 'low_mem_host',
+                'resourcestate': 'Enabled',
+                'state': 'Up',
+                'memorytotal': 1073741824,
+                'memoryallocated': 805306368
+            }]
+        }
+
+        self.assertIsNone(self.cluster.find_migration_host(vm))

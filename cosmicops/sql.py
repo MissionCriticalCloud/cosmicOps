@@ -71,8 +71,9 @@ class CosmicSQL(object):
 
         self.conn.autocommit = False
 
-    @staticmethod
-    def _execute_query(cursor, query):
+    def _execute_select_query(self, query):
+        cursor = self.conn.cursor()
+
         try:
             logging.debug(query)
             cursor.execute(query)
@@ -85,9 +86,24 @@ class CosmicSQL(object):
         finally:
             cursor.close()
 
-    def kill_jobs_of_instance(self, instance_id):
+    def _execute_update_query(self, query, args=()):
         cursor = self.conn.cursor()
 
+        try:
+            cursor.execute(query, args)
+            if self.dry_run:
+                logging.info(f'Would have executed: {query % args}')
+            else:
+                self.conn.commit()
+        except pymysql.Error as e:
+            logging.error(f'Error while executing query "{query % args}": {e}')
+            return False
+        finally:
+            cursor.close()
+
+        return True
+
+    def kill_jobs_of_instance(self, instance_id):
         queries = [
             'DELETE FROM `async_job` WHERE `instance_id` = %s',
             'DELETE FROM `vm_work_job` WHERE `vm_instance_id` = %s',
@@ -95,23 +111,12 @@ class CosmicSQL(object):
         ]
 
         for query in queries:
-            try:
-                cursor.execute(query, (instance_id,))
-                if self.dry_run:
-                    logging.info(f'Would have executed: {query % (instance_id,)}')
-                else:
-                    self.conn.commit()
-            except pymysql.Error as e:
-                logging.error(f'Error while executing query "{query % (instance_id,)}": {e}')
+            if not self._execute_update_query(query, (instance_id,)):
                 return False
-            finally:
-                cursor.close()
 
         return True
 
     def list_ha_workers(self, hostname=''):
-        cursor = self.conn.cursor()
-
         if hostname:
             host_query = "AND host.name LIKE '%s%%'" % hostname
         else:
@@ -138,11 +143,9 @@ class CosmicSQL(object):
         ORDER BY domain, ha.created DESC
         """
 
-        return self._execute_query(cursor, query)
+        return self._execute_select_query(query)
 
     def get_ip_address_data(self, ip_address):
-        cursor = self.conn.cursor()
-
         query = f"""
         SELECT vpc.name,
                'n/a' AS 'mac_address',
@@ -176,11 +179,9 @@ class CosmicSQL(object):
           AND nics.removed IS NULL
         """
 
-        return self._execute_query(cursor, query)
+        return self._execute_select_query(query)
 
     def get_ip_address_data_bridge(self, ip_address):
-        cursor = self.conn.cursor()
-
         query = f"""
         SELECT DISTINCT vm_instance.name,
                         public_ip_address,
@@ -194,11 +195,9 @@ class CosmicSQL(object):
         WHERE user_ip_address.public_ip_address LIKE '%{ip_address}%'
         """
 
-        return self._execute_query(cursor, query)
+        return self._execute_select_query(query)
 
     def get_ip_address_data_infra(self, ip_address):
-        cursor = self.conn.cursor()
-
         query = f"""
         SELECT DISTINCT name,
                         nics.vm_type,
@@ -210,11 +209,9 @@ class CosmicSQL(object):
         WHERE nics.ip4_address LIKE '%{ip_address}%'
         """
 
-        return self._execute_query(cursor, query)
+        return self._execute_select_query(query)
 
     def get_mac_address_data(self, mac_address):
-        cursor = self.conn.cursor()
-
         query = f"""
         SELECT networks.name,
                nics.mac_address,
@@ -234,4 +231,101 @@ class CosmicSQL(object):
           AND nics.removed IS NULL
         """
 
-        return self._execute_query(cursor, query)
+        return self._execute_select_query(query)
+
+    def get_instance_id_from_name(self, instance_name):
+        query = f"""
+        SELECT id
+        FROM vm_instance
+        WHERE instance_name = '{instance_name}'
+          AND removed IS NULL
+        LIMIT 1
+        """
+
+        return self._execute_select_query(query)[0][0]
+
+    def get_disk_offering_id_from_name(self, disk_offering_name):
+        query = f"""
+        SELECT id
+        FROM disk_offering_view
+        WHERE removed IS NULL
+          AND domain_name='Cust'
+          AND name = '{disk_offering_name}'
+        """
+
+        return self._execute_select_query(query)[0][0]
+
+    def get_service_offering_id_from_name(self, service_offering_name):
+        query = f"""
+        SELECT id
+        FROM service_offering_view
+        WHERE name = '{service_offering_name}'
+          AND removed IS NULL
+          AND domain_path = '/Cust/'
+        """
+
+        return self._execute_select_query(query)[0][0]
+
+    def get_affinity_group_id_from_name(self, affinity_group_name):
+        query = f"""
+        SELECT id
+        FROM affinity_group
+        WHERE name = '{affinity_group_name}'
+        """
+
+        return int(self._execute_select_query(query)[0][0])
+
+    def update_zwps_to_cwps(self, instance_name, disk_offering_name):
+        instance_id = self.get_instance_id_from_name(instance_name)
+        disk_offering_id = self.get_disk_offering_id_from_name(disk_offering_name)
+
+        query = "UPDATE volumes SET disk_offering_id=%s WHERE volume_type='DATADISK' AND instance_id=%s"
+
+        return self._execute_update_query(query, (disk_offering_id, instance_id))
+
+    def update_service_offering_of_vm(self, instance_name, service_offering_name):
+        instance_id = self.get_instance_id_from_name(instance_name)
+        service_offering_id = self.get_service_offering_id_from_name(service_offering_name)
+
+        query = "UPDATE vm_instance SET service_offering_id=%s WHERE id=%s"
+
+        return self._execute_update_query(query, (service_offering_id, instance_id))
+
+    def get_volume_size(self, path):
+        query = f"""
+        SELECT name,
+               path,
+               uuid,
+               volume_type AS voltype,
+               size
+        FROM volumes
+        WHERE removed IS NULL
+          AND state = 'Ready'
+          AND path = '{path}'
+        """
+
+        return self._execute_select_query(query)[0]
+
+    def update_volume_size(self, instance_name, path, size):
+        instance_id = self.get_instance_id_from_name(instance_name)
+
+        query = """
+        UPDATE volumes
+        SET size=%s
+        WHERE path='%s'
+          AND instance_id=%s
+        """
+
+        return self._execute_update_query(query, (size, path, instance_id))
+
+    def add_vm_to_affinity_group(self, instance_name, affinity_group_name):
+        instance_id = self.get_instance_id_from_name(instance_name)
+        affinity_group_id = self.get_affinity_group_id_from_name(affinity_group_name)
+
+        query = """
+        INSERT IGNORE
+        INTO affinity_group_vm_map (instance_id, affinity_group_id)
+        VALUES (%s, %s)
+        """
+
+        return self._execute_update_query(query, (instance_id, affinity_group_id))
