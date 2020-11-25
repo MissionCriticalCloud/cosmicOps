@@ -57,14 +57,16 @@ class CosmicVM(CosmicObject):
     def get_affinity_groups(self):
         affinity_groups = []
         try:
-            affinity_groups = self._ops.cs.listAffinityGroups(virtualmachineid=self['id']).get('affinitygroup', [])
+            affinity_groups = self._ops.cs.listAffinityGroups(fetch_list=True, virtualmachineid=self['id']).get(
+                'affinitygroup', [])
         except CloudStackException:
             pass
 
         return affinity_groups
 
     def get_volumes(self):
-        volumes = self._ops.cs.listVolumes(virtualmachineid=self['id'], listall='true').get('volume', [])
+        volumes = self._ops.cs.listVolumes(fetch_list=True, virtualmachineid=self['id'], listall='true').get('volume',
+                                                                                                             [])
 
         return [CosmicVolume(self._ops, volume) for volume in volumes]
 

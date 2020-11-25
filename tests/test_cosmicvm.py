@@ -135,4 +135,4 @@ class TestCosmicVM(TestCase):
 
     def test_refresh(self):
         self.vm.refresh()
-        self.cs_instance.listVirtualMachines.assert_called_with(id='v1')
+        self.cs_instance.listVirtualMachines.assert_called_with(fetch_list=True, id='v1')
