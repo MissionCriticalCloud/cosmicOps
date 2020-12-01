@@ -11,13 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from cosmicops.volume import CosmicVolume
 from cosmicops.object import CosmicObject
 
 
 class CosmicStoragePool(CosmicObject):
+    def get_volumes(self, only_project=False):
+        project_id = '-1' if only_project else None
+
+        volumes = self._ops.cs.listVolumes(fetch_list=True, storageid=self['id'], projectid=project_id,
+                                           listall=True).get('volume', [])
+
+        return [CosmicVolume(self._ops, volume) for volume in volumes]
+
     def get_orphaned_volumes(self):
-        volumes = self._ops.cs.listVolumes(storageid=self['id']).get('volume', [])
+        volumes = self.get_volumes()
 
         return [volume for volume in volumes if not volume.get('vmname')]
 

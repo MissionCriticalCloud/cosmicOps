@@ -154,7 +154,7 @@ class TestCosmicHost(TestCase):
 
     def test_refresh(self):
         self.host.refresh()
-        self.cs_instance.listHosts.assert_called_with(id='h1')
+        self.cs_instance.listHosts.assert_called_with(fetch_list=True, id='h1')
 
     def test_disable(self):
         def refresh_effect():
@@ -386,40 +386,39 @@ class TestCosmicHost(TestCase):
     def test_get_all_vms(self):
         self.host.get_all_vms()
 
-        self.cs_instance.listVirtualMachines.assert_called_with(hostid='h1', domainid=None, keyword=None,
-                                                                listall='true')
+        self.cs_instance.listVirtualMachines.assert_called_with(fetch_list=True, hostid='h1', domainid=None, keyword=None, listall='true')
 
     def test_get_all_project_vms(self):
         self.host.get_all_project_vms()
 
-        self.cs_instance.listVirtualMachines.assert_called_with(hostid='h1', listall='true', projectid='-1')
+        self.cs_instance.listVirtualMachines.assert_called_with(fetch_list=True, hostid='h1', listall='true', projectid='-1')
 
     def test_get_all_project_vms_with_project(self):
         project = CosmicProject(Mock(), {'id': 'p1', 'name': 'project1'})
         self.host.get_all_project_vms(project)
 
-        self.cs_instance.listVirtualMachines.assert_called_with(hostid='h1', listall='true', projectid='p1')
+        self.cs_instance.listVirtualMachines.assert_called_with(fetch_list=True, hostid='h1', listall='true', projectid='p1')
 
     def test_get_all_routers(self):
         self.host.get_all_routers()
 
-        self.cs_instance.listRouters.assert_called_with(hostid='h1', domainid=None, listall='true')
+        self.cs_instance.listRouters.assert_called_with(fetch_list=True, hostid='h1', domainid=None, listall='true')
 
     def test_get_all_project_routers(self):
         self.host.get_all_project_routers()
 
-        self.cs_instance.listRouters.assert_called_with(hostid='h1', listall='true', projectid='-1')
+        self.cs_instance.listRouters.assert_called_with(fetch_list=True, hostid='h1', listall='true', projectid='-1')
 
     def test_get_all_project_routers_with_project(self):
         project = CosmicProject(Mock(), {'id': 'p1', 'name': 'project1'})
         self.host.get_all_project_routers(project)
 
-        self.cs_instance.listRouters.assert_called_with(hostid='h1', listall='true', projectid='p1')
+        self.cs_instance.listRouters.assert_called_with(fetch_list=True, hostid='h1', listall='true', projectid='p1')
 
     def test_get_all_system_vms(self):
         self.host.get_all_system_vms()
 
-        self.cs_instance.listSystemVms.assert_called_with(hostid='h1')
+        self.cs_instance.listSystemVms.assert_called_with(fetch_list=True, hostid='h1')
 
     def test_copy_file(self):
         self.host.copy_file('src', 'dst')

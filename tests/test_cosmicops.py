@@ -100,7 +100,7 @@ class TestCosmicOps(TestCase):
         }
 
         result = self.co._cs_get_single_result('listFunction', {'name': 'name_field'}, CosmicObject, 'type')
-        self.cs_instance.listFunction.assert_called_with(name='name_field')
+        self.cs_instance.listFunction.assert_called_with(fetch_list=True, name='name_field')
         self.assertIsInstance(result, CosmicObject)
         self.assertDictEqual({'id': 'id_field', 'name': 'name_field'}, result._data)
 
@@ -123,7 +123,7 @@ class TestCosmicOps(TestCase):
         }
 
         result = self.co._cs_get_all_results('listFunction', {}, CosmicObject, 'type')
-        self.cs_instance.listFunction.assert_called_with()
+        self.cs_instance.listFunction.assert_called_with(fetch_list=True)
         for i, item in enumerate(result):
             self.assertIsInstance(item, CosmicObject)
             self.assertDictEqual({'id': f'id{i + 1}', 'name': f'name{i + 1}'}, item._data)

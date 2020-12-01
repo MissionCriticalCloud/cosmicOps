@@ -208,8 +208,8 @@ class CosmicHost(CosmicObject):
     def get_all_vms(self, domain=None, keyword_filter=None):
         domain_id = domain['id'] if domain else None
 
-        vms = self._ops.cs.listVirtualMachines(hostid=self['id'], domainid=domain_id, keyword=keyword_filter,
-                                               listall='true').get('virtualmachine', [])
+        vms = self._ops.cs.listVirtualMachines(fetch_list=True, hostid=self['id'], domainid=domain_id,
+                                               keyword=keyword_filter, listall='true').get('virtualmachine', [])
 
         return [CosmicVM(self._ops, vm) for vm in vms]
 
@@ -219,15 +219,16 @@ class CosmicHost(CosmicObject):
         else:
             project_id = '-1'
 
-        project_vms = self._ops.cs.listVirtualMachines(hostid=self['id'], listall='true', projectid=project_id).get(
-            'virtualmachine', [])
+        project_vms = self._ops.cs.listVirtualMachines(fetch_list=True, hostid=self['id'], listall='true',
+                                                       projectid=project_id).get('virtualmachine', [])
 
         return [CosmicVM(self._ops, vm) for vm in project_vms]
 
     def get_all_routers(self, domain=None):
         domain_id = domain['id'] if domain else None
 
-        routers = self._ops.cs.listRouters(hostid=self['id'], domainid=domain_id, listall='true').get('router', [])
+        routers = self._ops.cs.listRouters(fetch_list=True, hostid=self['id'], domainid=domain_id, listall='true').get(
+            'router', [])
 
         return [CosmicVM(self._ops, vm) for vm in routers]
 
@@ -237,13 +238,14 @@ class CosmicHost(CosmicObject):
         else:
             project_id = '-1'
 
-        project_routers = self._ops.cs.listRouters(hostid=self['id'], listall='true', projectid=project_id).get(
+        project_routers = self._ops.cs.listRouters(fetch_list=True, hostid=self['id'], listall='true',
+                                                   projectid=project_id).get(
             'router', [])
 
         return [CosmicVM(self._ops, vm) for vm in project_routers]
 
     def get_all_system_vms(self):
-        system_vms = self._ops.cs.listSystemVms(hostid=self['id']).get('systemvm', [])
+        system_vms = self._ops.cs.listSystemVms(fetch_list=True, hostid=self['id']).get('systemvm', [])
 
         return [CosmicVM(self._ops, vm) for vm in system_vms]
 

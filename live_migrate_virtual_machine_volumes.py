@@ -145,7 +145,7 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
                     break
 
                 logging.warning(
-                    f"Volume '{volume['name']} is in '{volume['state']}' state instead of 'Ready', sleeping...")
+                    f"Volume '{volume['name']}' is in '{volume['state']}' state instead of 'Ready', sleeping...")
                 time.sleep(60)
 
     host.set_iops_limit(vm, 0)
