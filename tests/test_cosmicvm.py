@@ -69,7 +69,12 @@ class TestCosmicVM(TestCase):
 
     def test_start(self):
         self.assertTrue(self.vm.start())
-        self.ops.cs.startVirtualMachine.assert_called_with(id=self.vm['id'])
+        self.ops.cs.startVirtualMachine.assert_called_with(id=self.vm['id'], hostid=None)
+
+    def test_start_with_host(self):
+        host = CosmicHost(Mock(), {'id': 'h1', 'name': 'host1'})
+        self.assertTrue(self.vm.start(host))
+        self.ops.cs.startVirtualMachine.assert_called_with(id=self.vm['id'], hostid=host['id'])
 
     def test_start_dry_run(self):
         self.vm.dry_run = True

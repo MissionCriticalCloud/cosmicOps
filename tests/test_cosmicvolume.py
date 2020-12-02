@@ -45,7 +45,8 @@ class TestCosmicVolume(TestCase):
 
     def test_migrate(self):
         self.assertTrue(self.volume.migrate(self.storage_pool))
-        self.cs_instance.migrateVolume.assert_called_with(volumeid=self.volume['id'], storageid=self.storage_pool['id'], livemigrate=False)
+        self.cs_instance.migrateVolume.assert_called_with(volumeid=self.volume['id'], storageid=self.storage_pool['id'],
+                                                          livemigrate=False)
 
         self.ops.wait_for_job.return_value = False
         self.assertFalse(self.volume.migrate(self.storage_pool))

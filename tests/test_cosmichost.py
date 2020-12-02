@@ -386,18 +386,21 @@ class TestCosmicHost(TestCase):
     def test_get_all_vms(self):
         self.host.get_all_vms()
 
-        self.cs_instance.listVirtualMachines.assert_called_with(fetch_list=True, hostid='h1', domainid=None, keyword=None, listall='true')
+        self.cs_instance.listVirtualMachines.assert_called_with(fetch_list=True, hostid='h1', domainid=None,
+                                                                keyword=None, listall='true')
 
     def test_get_all_project_vms(self):
         self.host.get_all_project_vms()
 
-        self.cs_instance.listVirtualMachines.assert_called_with(fetch_list=True, hostid='h1', listall='true', projectid='-1')
+        self.cs_instance.listVirtualMachines.assert_called_with(fetch_list=True, hostid='h1', listall='true',
+                                                                projectid='-1')
 
     def test_get_all_project_vms_with_project(self):
         project = CosmicProject(Mock(), {'id': 'p1', 'name': 'project1'})
         self.host.get_all_project_vms(project)
 
-        self.cs_instance.listVirtualMachines.assert_called_with(fetch_list=True, hostid='h1', listall='true', projectid='p1')
+        self.cs_instance.listVirtualMachines.assert_called_with(fetch_list=True, hostid='h1', listall='true',
+                                                                projectid='p1')
 
     def test_get_all_routers(self):
         self.host.get_all_routers()
@@ -551,7 +554,8 @@ class TestCosmicHost(TestCase):
         self._mock_vms_with_shutdown_policy()
 
         self.host.restart_vms_with_shutdown_policy()
-        self.cs_instance.startVirtualMachine.assert_has_calls([call(id='vm1'), call(id='vm2')], True)
+        self.cs_instance.startVirtualMachine.assert_has_calls(
+            [call(id='vm1', hostid=None), call(id='vm2', hostid=None)], True)
 
     def test_restart_vms_with_shutdown_policy_dry_run(self):
         self.host._ops.dry_run = True
