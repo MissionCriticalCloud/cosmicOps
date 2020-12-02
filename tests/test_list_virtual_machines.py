@@ -21,6 +21,7 @@ from click.testing import CliRunner
 import list_virtual_machines
 from cosmicops import CosmicCluster, CosmicHost, CosmicVM, CosmicDomain, CosmicPod, CosmicZone, CosmicProject, \
     CosmicVPC, CosmicServiceOffering, CosmicNetwork
+from cosmicops.router import CosmicRouter
 
 
 class TestListVirtualMachines(TestCase):
@@ -60,7 +61,7 @@ class TestListVirtualMachines(TestCase):
             'name': 'ROOT-1',
             'size': 52428800
         }
-        self.router = CosmicVM(Mock(), {
+        self.router = CosmicRouter(Mock(), {
             'id': 'r1',
             'name': 'router1',
             'account': 'admin',

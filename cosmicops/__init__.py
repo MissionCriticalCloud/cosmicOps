@@ -20,6 +20,7 @@ from .network import CosmicNetwork
 from .ops import CosmicOps
 from .pod import CosmicPod
 from .project import CosmicProject
+from .router import CosmicRouter
 from .serviceoffering import CosmicServiceOffering
 from .sql import CosmicSQL
 from .storagepool import CosmicStoragePool
@@ -38,6 +39,7 @@ __all__ = [
     CosmicOps,
     CosmicPod,
     CosmicProject,
+    CosmicRouter,
     CosmicServiceOffering,
     CosmicSQL,
     CosmicStoragePool,

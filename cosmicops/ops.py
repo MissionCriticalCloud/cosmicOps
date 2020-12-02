@@ -27,6 +27,7 @@ from .log import logging
 from .network import CosmicNetwork
 from .pod import CosmicPod
 from .project import CosmicProject
+from .router import CosmicRouter
 from .serviceoffering import CosmicServiceOffering
 from .storagepool import CosmicStoragePool
 from .systemvm import CosmicSystemVM
@@ -141,6 +142,15 @@ class CosmicOps(object):
 
     def get_project_vm(self, **kwargs):
         return self.get_vm(is_project_vm=True, **kwargs)
+
+    def get_router(self, is_project_router=False, **kwargs):
+        if 'name' in kwargs:
+            kwargs['listall'] = True
+
+        if is_project_router:
+            kwargs['projectid'] = '-1'
+
+        return self._cs_get_single_result('listRouters', kwargs, CosmicRouter, 'router')
 
     def get_cluster(self, zone=None, **kwargs):
         if zone:
