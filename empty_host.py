@@ -19,15 +19,17 @@ import click
 import click_log
 
 from cosmicops import CosmicOps, logging
+from cosmicops.host import RebootAction
 
 
 @click.command()
 @click.option('--profile', '-p', metavar='<name>', default='config',
               help='Name of the CloudMonkey profile containing the credentials')
+@click.option('--shutdown', is_flag=True, help='Shutdown host when all VMs have been migrated')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('host')
-def main(profile, dry_run, host):
+def main(profile, shutdown, dry_run, host):
     """Empty HOST by migrating VMs to another host in the same cluster."""
 
     click_log.basic_config()
@@ -43,6 +45,13 @@ def main(profile, dry_run, host):
 
     (total, success, failed) = host.empty()
     logging.info(f"Result: {success} successful, {failed} failed out of {total} total VMs")
+
+    if not failed and shutdown:
+        if not host.reboot(RebootAction.HALT):
+            sys.exit(1)
+        host.set_uid_led(True)
+    elif failed and shutdown:
+        logging.warning(f"Not shutting down host '{host['name']}' because migration completed with failed VMs")
 
 
 if __name__ == '__main__':

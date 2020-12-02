@@ -210,7 +210,7 @@ class CosmicHost(CosmicObject):
         domain_id = domain['id'] if domain else None
 
         vms = self._ops.cs.listVirtualMachines(fetch_list=True, hostid=self['id'], domainid=domain_id,
-                                               keyword=keyword_filter, listall='true').get('virtualmachine', [])
+                                               keyword=keyword_filter, listall='true')
 
         return [CosmicVM(self._ops, vm) for vm in vms]
 
@@ -221,15 +221,14 @@ class CosmicHost(CosmicObject):
             project_id = '-1'
 
         project_vms = self._ops.cs.listVirtualMachines(fetch_list=True, hostid=self['id'], listall='true',
-                                                       projectid=project_id).get('virtualmachine', [])
+                                                       projectid=project_id)
 
         return [CosmicVM(self._ops, vm) for vm in project_vms]
 
     def get_all_routers(self, domain=None):
         domain_id = domain['id'] if domain else None
 
-        routers = self._ops.cs.listRouters(fetch_list=True, hostid=self['id'], domainid=domain_id, listall='true').get(
-            'router', [])
+        routers = self._ops.cs.listRouters(fetch_list=True, hostid=self['id'], domainid=domain_id, listall='true')
 
         return [CosmicRouter(self._ops, router) for router in routers]
 
@@ -240,13 +239,12 @@ class CosmicHost(CosmicObject):
             project_id = '-1'
 
         project_routers = self._ops.cs.listRouters(fetch_list=True, hostid=self['id'], listall='true',
-                                                   projectid=project_id).get(
-            'router', [])
+                                                   projectid=project_id)
 
         return [CosmicRouter(self._ops, router) for router in project_routers]
 
     def get_all_system_vms(self):
-        system_vms = self._ops.cs.listSystemVms(fetch_list=True, hostid=self['id']).get('systemvm', [])
+        system_vms = self._ops.cs.listSystemVms(fetch_list=True, hostid=self['id'])
 
         return [CosmicVM(self._ops, vm) for vm in system_vms]
 
@@ -272,12 +270,14 @@ class CosmicHost(CosmicObject):
         return runner(command, hide=hide_stdout)
 
     def reboot(self, action=RebootAction.REBOOT):
+        reboot_or_halt = 'halt' if action == RebootAction.HALT else 'reboot'
+
         if self.dry_run:
-            logging.info(f"Would reboot host '{self['name']}' with action '{action}'")
+            logging.info(f"Would {reboot_or_halt} host '{self['name']}' with action '{action}'")
             return True
 
         if self.execute('virsh list | grep running | wc -l').stdout.strip() != '0':
-            logging.error(f"Host '{self['name']}' has running VMs, will not reboot", self.log_to_slack)
+            logging.error(f"Host '{self['name']}' has running VMs, will not {reboot_or_halt}", self.log_to_slack)
             return False
 
         try:
@@ -302,9 +302,17 @@ class CosmicHost(CosmicObject):
             elif action == RebootAction.SKIP:
                 logging.info(f"Skipping reboot for '{self['name']}'", self.log_to_slack)
         except Exception as e:
-            logging.warning(f"Ignoring exception as it's likely related to the reboot: {e}", self.log_to_slack)
+            logging.warning(f"Ignoring exception as it's likely related to the {reboot_or_halt}: {e}",
+                            self.log_to_slack)
 
         return True
+
+    def set_uid_led(self, state):
+        new_state = 'on' if state else 'off'
+        if self.dry_run:
+            logging.info(f"Would set UID led {new_state}")
+        else:
+            self.execute(f'hpasmcli -s "set uid {new_state}"', sudo=True)
 
     def wait_until_offline(self):
         if self.dry_run:

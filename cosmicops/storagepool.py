@@ -21,7 +21,7 @@ class CosmicStoragePool(CosmicObject):
         project_id = '-1' if only_project else None
 
         volumes = self._ops.cs.listVolumes(fetch_list=True, storageid=self['id'], projectid=project_id,
-                                           listall=True).get('volume', [])
+                                           listall=True)
 
         return [CosmicVolume(self._ops, volume) for volume in volumes]
 
