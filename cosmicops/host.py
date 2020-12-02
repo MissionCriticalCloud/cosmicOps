@@ -27,6 +27,7 @@ from invoke import UnexpectedExit, CommandTimedOut
 
 from .log import logging
 from .object import CosmicObject
+from .router import CosmicRouter
 from .vm import CosmicVM
 
 FABRIC_PATCHED = False
@@ -230,7 +231,7 @@ class CosmicHost(CosmicObject):
         routers = self._ops.cs.listRouters(fetch_list=True, hostid=self['id'], domainid=domain_id, listall='true').get(
             'router', [])
 
-        return [CosmicVM(self._ops, vm) for vm in routers]
+        return [CosmicRouter(self._ops, router) for router in routers]
 
     def get_all_project_routers(self, project=None):
         if project:
@@ -242,7 +243,7 @@ class CosmicHost(CosmicObject):
                                                    projectid=project_id).get(
             'router', [])
 
-        return [CosmicVM(self._ops, vm) for vm in project_routers]
+        return [CosmicRouter(self._ops, router) for router in project_routers]
 
     def get_all_system_vms(self):
         system_vms = self._ops.cs.listSystemVms(fetch_list=True, hostid=self['id']).get('systemvm', [])

@@ -148,6 +148,16 @@ class TestCosmicOps(TestCase):
         self.assertDictEqual({'name': 'project_vm1', 'projectid': '-1', 'listall': True},
                              self.co._cs_get_single_result.call_args[0][1])
 
+    def test_get_router(self):
+        self.co._cs_get_single_result = Mock()
+
+        self.co.get_router(name='router1')
+        self.assertDictEqual({'name': 'router1', 'listall': True}, self.co._cs_get_single_result.call_args[0][1])
+
+        self.co.get_router(name='project_router1', is_project_router=True)
+        self.assertDictEqual({'name': 'project_router1', 'projectid': '-1', 'listall': True},
+                             self.co._cs_get_single_result.call_args[0][1])
+
     def test_get_cluster(self):
         self.co._cs_get_single_result = Mock()
         self.co.get_zone = Mock(return_value=CosmicZone(Mock(), {'id': 'z1', 'name': 'zone1'}))

@@ -11,8 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .object import CosmicObject
+from .log import logging
+from .vm import CosmicVM
 
 
-class CosmicNetwork(CosmicObject):
-    pass
+class CosmicRouter(CosmicVM):
+    def reboot(self):
+        if self.dry_run:
+            logging.info(f"Would reboot router '{self['name']}")
+            return True
+
+        logging.info(f"Rebooting router '{self['name']}'", self.log_to_slack)
+
+        response = self._ops.cs.rebootRouter(id=self['id'])
+        if not self._ops.wait_for_job(response['jobid']):
+            logging.error(f"Failed to reboot router '{self['name']}'")
+            return False
+
+        return True

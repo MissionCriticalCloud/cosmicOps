@@ -20,6 +20,7 @@ from invoke import UnexpectedExit, CommandTimedOut
 
 from cosmicops import CosmicOps, CosmicHost, CosmicVM, CosmicProject
 from cosmicops.host import RebootAction
+from cosmicops.router import CosmicRouter
 
 
 class TestCosmicHost(TestCase):
@@ -65,12 +66,12 @@ class TestCosmicHost(TestCase):
             'project': 'project1',
             'projectid': 'p1'
         })
-        self.router_vm = CosmicVM(self.ops, {
+        self.router_vm = CosmicRouter(self.ops, {
             'id': 'r1',
             'name': 'r-1-VM',
             'hostname': 'host1'
         })
-        self.project_router_vm = CosmicVM(self.ops, {
+        self.project_router_vm = CosmicRouter(self.ops, {
             'id': 'pr1',
             'name': 'r-1-PROJECT-VM',
             'hostname': 'host1'
