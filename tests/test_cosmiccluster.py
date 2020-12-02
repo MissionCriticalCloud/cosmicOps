@@ -32,15 +32,15 @@ class TestCosmicCluster(TestCase):
         })
 
     def test_get_all_hosts(self):
-        self.cs_instance.listHosts.return_value = {
-            'host': [{
+        self.cs_instance.listHosts.return_value = [
+            {
                 'id': 'h1',
                 'name': 'host1'
             }, {
                 'id': 'h2',
                 'name': 'host2'
-            }]
-        }
+            }
+        ]
 
         hosts = self.cluster.get_all_hosts()
         self.assertEqual(2, len(hosts))
@@ -48,18 +48,18 @@ class TestCosmicCluster(TestCase):
         self.assertEqual({'id': 'h2', 'name': 'host2'}, hosts[1]._data)
 
     def test_get_storage_pools(self):
-        self.cs_instance.listStoragePools.return_value = {
-            'storagepool': [{
+        self.cs_instance.listStoragePools.return_value = [
+            {
                 'id': 'p1',
                 'name': 'pool1'
-            }]
-        }
+            }
+        ]
 
         self.assertDictEqual({'id': 'p1', 'name': 'pool1'}, self.cluster.get_storage_pools()[0]._data)
 
     def test_find_migration_host(self):
-        self.cs_instance.listHosts.return_value = {
-            'host': [{
+        self.cs_instance.listHosts.return_value = [
+            {
                 'id': 'h1',
                 'name': 'same_host',
                 'resourcestate': 'Enabled',
@@ -87,8 +87,8 @@ class TestCosmicCluster(TestCase):
                 'state': 'Up',
                 'memorytotal': 1073741824,
                 'memoryallocated': 0
-            }]
-        }
+            }
+        ]
 
         vm = CosmicVM(Mock(), {
             'id': 'vm1',
@@ -116,15 +116,15 @@ class TestCosmicCluster(TestCase):
         self.assertEqual(1024, system_vm['memory'])
 
         # No hosts with enough memory available
-        self.cs_instance.listHosts.return_value = {
-            'host': [{
+        self.cs_instance.listHosts.return_value = [
+            {
                 'id': 'h1',
                 'name': 'low_mem_host',
                 'resourcestate': 'Enabled',
                 'state': 'Up',
                 'memorytotal': 1073741824,
                 'memoryallocated': 805306368
-            }]
-        }
+            }
+        ]
 
         self.assertIsNone(self.cluster.find_migration_host(vm))

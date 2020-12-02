@@ -486,6 +486,22 @@ class TestCosmicHost(TestCase):
         self.assertTrue(self.host.reboot())
         self.host.execute.assert_not_called()
 
+    def test_set_uid_led(self):
+        self.host.execute = Mock()
+
+        self.host.set_uid_led(False)
+        self.host.execute.assert_called_with('hpasmcli -s "set uid off"', sudo=True)
+
+        self.host.set_uid_led(True)
+        self.host.execute.assert_called_with('hpasmcli -s "set uid on"', sudo=True)
+
+    def test_set_uid_led_dry_run(self):
+        self.host.dry_run = True
+        self.host.execute = Mock()
+
+        self.host.set_uid_led(True)
+        self.host.execute.assert_not_called()
+
     def test_wait_until_offline(self):
         self.socket_context.connect_ex.side_effect = [0, 1]
 

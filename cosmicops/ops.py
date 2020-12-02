@@ -76,7 +76,7 @@ class CosmicOps(object):
             json = True
             del kwargs['json']
 
-        response = func(fetch_list=True, **kwargs).get(cs_type)
+        response = func(fetch_list=True, **kwargs)
 
         if not response:
             logging.error(f"{pretty_name.capitalize()} with attributes {kwargs} not found")
@@ -93,7 +93,7 @@ class CosmicOps(object):
             logging.error(f"Unknown list function '{list_function}'")
             return None
 
-        response = func(fetch_list=True, **kwargs).get(cs_type)
+        response = func(fetch_list=True, **kwargs)
 
         return [cosmic_object(self, item) for item in response]
 

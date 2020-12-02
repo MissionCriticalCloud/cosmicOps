@@ -92,12 +92,12 @@ class TestCosmicOps(TestCase):
         self.assertEqual('test_secret_key_2', secret)
 
     def test_cs_get_single_result(self):
-        self.cs_instance.listFunction.return_value = {
-            'type': [{
+        self.cs_instance.listFunction.return_value = [
+            {
                 'id': 'id_field',
                 'name': 'name_field'
-            }]
-        }
+            }
+        ]
 
         result = self.co._cs_get_single_result('listFunction', {'name': 'name_field'}, CosmicObject, 'type')
         self.cs_instance.listFunction.assert_called_with(fetch_list=True, name='name_field')
@@ -105,22 +105,22 @@ class TestCosmicOps(TestCase):
         self.assertDictEqual({'id': 'id_field', 'name': 'name_field'}, result._data)
 
     def test_get_get_single_result_failure(self):
-        self.cs_instance.listFunction.return_value = {'type': []}
+        self.cs_instance.listFunction.return_value = []
         self.assertIsNone(self.co._cs_get_single_result('listFunction', {}, CosmicObject, 'type'))
 
-        self.cs_instance.listFunction.return_value = {'type': [{}, {}]}
+        self.cs_instance.listFunction.return_value = [{}, {}]
         self.assertIsNone(self.co._cs_get_single_result('listFunction', {}, CosmicObject, 'type'))
 
     def test_cs_get_all_results(self):
-        self.cs_instance.listFunction.return_value = {
-            'type': [{
+        self.cs_instance.listFunction.return_value = [
+            {
                 'id': 'id1',
                 'name': 'name1'
             }, {
                 'id': 'id2',
                 'name': 'name2'
-            }]
-        }
+            }
+        ]
 
         result = self.co._cs_get_all_results('listFunction', {}, CosmicObject, 'type')
         self.cs_instance.listFunction.assert_called_with(fetch_list=True)

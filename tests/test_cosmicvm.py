@@ -86,7 +86,7 @@ class TestCosmicVM(TestCase):
         self.assertFalse(self.vm.start())
 
     def test_get_affinity_groups(self):
-        self.cs_instance.listAffinityGroups.return_value = {'affinitygroup': [{'id': 'a1'}]}
+        self.cs_instance.listAffinityGroups.return_value = [{'id': 'a1'}]
         self.assertEqual([{'id': 'a1'}], self.vm.get_affinity_groups())
 
     def test_get_affinity_groups_exception(self):
@@ -135,7 +135,7 @@ class TestCosmicVM(TestCase):
         self.assertFalse(self.vm.migrate(self.target_host))
 
     def test_get_volumes(self):
-        self.cs_instance.listVolumes.return_value = {'volume': [{'id': 'v1'}]}
+        self.cs_instance.listVolumes.return_value = [{'id': 'v1'}]
         self.assertEqual([{'id': 'v1'}], self.vm.get_volumes())
 
     def test_refresh(self):

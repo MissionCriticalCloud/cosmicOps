@@ -35,27 +35,27 @@ class TestCosmicStoragePool(TestCase):
         })
 
     def test_orphaned_volumes(self):
-        self.cs_instance.listVolumes.return_value = {
-            'volume': [{
+        self.cs_instance.listVolumes.return_value = [
+            {
                 'id': 'v1',
                 'name': 'attached_volume',
                 'vmname': 'vm1'
             }, {
                 'id': 'v2',
                 'name': 'detached_volume',
-            }]
-        }
+            }
+        ]
 
         self.assertEqual([{'id': 'v2', 'name': 'detached_volume'}], self.storage_pool.get_orphaned_volumes())
 
     def test_orphaned_volumes_empty_response(self):
-        self.cs_instance.listVolumes.return_value = {
-            'volume': [{
+        self.cs_instance.listVolumes.return_value = [
+            {
                 'id': 'v1',
                 'name': 'attached_volume',
                 'vmname': 'vm1'
-            }]
-        }
+            }
+        ]
 
         self.assertFalse(self.storage_pool.get_orphaned_volumes())
 
