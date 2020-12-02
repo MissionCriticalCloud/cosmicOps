@@ -18,7 +18,7 @@ from unittest.mock import patch, Mock, call
 from click.testing import CliRunner
 
 import migrate_offline_volumes
-from cosmicops import CosmicCluster, CosmicHost, CosmicSystemVM, CosmicStoragePool, CosmicVolume
+from cosmicops import CosmicCluster, CosmicStoragePool, CosmicVolume
 
 
 class TestMigrateOfflineVolumes(TestCase):
@@ -75,7 +75,8 @@ class TestMigrateOfflineVolumes(TestCase):
 
         self.co.assert_called_with(profile='config', dry_run=False)
 
-        self.co_instance.get_cluster.assert_has_calls([call(name='source_cluster'), call(name='destination_cluster')], True)
+        self.co_instance.get_cluster.assert_has_calls([call(name='source_cluster'), call(name='destination_cluster')],
+                                                      True)
         self.source_cluster.get_storage_pools.assert_called()
         self.destination_cluster.get_storage_pools.assert_called()
         self.source_storage_pool.get_volumes.assert_called_with(False)
@@ -99,7 +100,8 @@ class TestMigrateOfflineVolumes(TestCase):
         self.source_storage_pool.get_volumes = Mock(return_value=[ignore_volume, self.volume])
 
         self.assertEqual(0, self.runner.invoke(migrate_offline_volumes.main,
-                                               ['--exec', '--ignore-volumes', 'iv', 'source_cluster', 'destination_cluster']).exit_code)
+                                               ['--exec', '--ignore-volumes', 'iv', 'source_cluster',
+                                                'destination_cluster']).exit_code)
 
         ignore_volume.migrate.assert_not_called()
         self.volume.migrate.assert_called()
