@@ -48,7 +48,7 @@ def main(database_server, database_name, database_port, database_user, database_
 
     ha_workers = cs.list_ha_workers(hostname)
     if not ha_workers:
-        sys.exit(0)
+        sys.exit(1)
 
     table_headers = [
         "Domain",
@@ -71,7 +71,7 @@ def main(database_server, database_name, database_port, database_user, database_
             continue
         if non_running and state == 'Running':
             continue
-        if name_filter and not vm_name.find(name_filter):
+        if name_filter and name_filter not in vm_name:
             continue
 
         count += 1
