@@ -79,6 +79,9 @@ class CosmicVM(CosmicObject):
         if 'isoid' in self:
             self._ops.cs.detachIso(virtualmachineid=self['id'])
 
+    def is_user_vm(self):
+        return True if 'instancename' in self else False
+
     def migrate(self, target_host, with_volume=False):
         if self.dry_run:
             logging.info(f"Would live migrate VM '{self['name']}' to '{target_host['name']}'")
@@ -92,7 +95,7 @@ class CosmicVM(CosmicObject):
         try:
             logging.info(f"Live migrating VM '{self['name']}' to '{target_host['name']}'", self.log_to_slack)
 
-            if 'instancename' in self:
+            if self.is_user_vm():
                 self.detach_iso()
 
                 vm_result = migrate_func(virtualmachineid=self['id'], hostid=target_host['id'])

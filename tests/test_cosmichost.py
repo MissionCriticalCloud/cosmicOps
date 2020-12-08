@@ -198,8 +198,11 @@ class TestCosmicHost(TestCase):
         self.assertEqual((self.vm_count, self.vm_count, 0), self.host.empty())
         self.user_vm.stop.assert_not_called()
 
-        for vm in self.all_vms:
+        for vm in [self.user_vm, self.project_vm]:
             self.assertEqual('host_normal', vm.migrate.call_args[0][0]['id'])
+
+        for vm in [self.router_vm, self.project_router_vm, self.secondary_storage_vm, self.console_proxy]:
+            self.assertEqual('host_explicit_group_2', vm.migrate.call_args[0][0]['id'])
 
     def test_empty_dry_run(self):
         self.host._ops.dry_run = True

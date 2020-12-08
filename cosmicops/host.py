@@ -183,8 +183,8 @@ class CosmicHost(CosmicObject):
                             f"Skipping '{available_host['name']}' because host does not match the dedication group of VM '{vm['name']}'")
                         continue
                 else:
-                    # VM isn't dedicated, so skip dedicated hosts
-                    if 'affinitygroupid' in available_host:
+                    # If the user VM isn't dedicated, skip dedicated hosts
+                    if vm.is_user_vm() and 'affinitygroupid' in available_host:
                         logging.info(
                             f"Skipping '{available_host['name']}' because host is dedicated and VM '{vm['name']}' is not")
                         continue
