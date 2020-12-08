@@ -43,17 +43,17 @@ class CosmicVM(CosmicObject):
 
     def start(self, host=None):
         if host:
-            hostname = host['name']
             host_id = host['id']
+            on_host_msg = f" on host '{host['name']}'"
         else:
-            hostname = self['hostname']
             host_id = None
+            on_host_msg = ''
 
         if self.dry_run:
-            logging.info(f"Would start VM '{self['name']} on host '{hostname}'")
+            logging.info(f"Would start VM '{self['name']}{on_host_msg}")
             return True
 
-        logging.info(f"Starting VM '{self['name']}' on host '{hostname}'", self.log_to_slack)
+        logging.info(f"Starting VM '{self['name']}'{on_host_msg}'", self.log_to_slack)
         start_response = self._ops.cs.startVirtualMachine(id=self['id'], hostid=host_id)
         if not self._ops.wait_for_job(start_response['jobid']):
             logging.error(f"Failed to start VM '{self['name']}'")
@@ -79,6 +79,9 @@ class CosmicVM(CosmicObject):
         if 'isoid' in self:
             self._ops.cs.detachIso(virtualmachineid=self['id'])
 
+    def is_user_vm(self):
+        return True if 'instancename' in self else False
+
     def migrate(self, target_host, with_volume=False):
         if self.dry_run:
             logging.info(f"Would live migrate VM '{self['name']}' to '{target_host['name']}'")
@@ -92,7 +95,7 @@ class CosmicVM(CosmicObject):
         try:
             logging.info(f"Live migrating VM '{self['name']}' to '{target_host['name']}'", self.log_to_slack)
 
-            if 'instancename' in self:
+            if self.is_user_vm():
                 self.detach_iso()
 
                 vm_result = migrate_func(virtualmachineid=self['id'], hostid=target_host['id'])
