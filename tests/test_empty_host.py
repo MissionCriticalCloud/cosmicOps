@@ -18,13 +18,12 @@ from unittest.mock import Mock, patch
 from click.testing import CliRunner
 
 import empty_host
-from cosmicops import CosmicHost
-from cosmicops.host import RebootAction
+from cosmicops.objects.host import CosmicHost, RebootAction
 
 
 class TestEmptyHost(TestCase):
     def setUp(self):
-        co_patcher = patch('empty_host.CosmicOps')
+        co_patcher = patch('cosmicops.empty_host.CosmicOps')
         self.co = co_patcher.start()
         self.addCleanup(co_patcher.stop)
         self.co_instance = self.co.return_value

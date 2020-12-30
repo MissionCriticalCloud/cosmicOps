@@ -18,7 +18,7 @@ from unittest.mock import patch, Mock, call
 from click.testing import CliRunner
 
 import migrate_offline_volumes
-from cosmicops import CosmicCluster, CosmicStoragePool, CosmicVolume
+from cosmicops.objects import CosmicCluster, CosmicStoragePool, CosmicVolume
 
 
 class TestMigrateOfflineVolumes(TestCase):

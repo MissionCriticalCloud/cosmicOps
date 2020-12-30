@@ -19,13 +19,14 @@ from operator import itemgetter
 from xml.etree import ElementTree
 
 import click_spinner
+import hpilo
 import libvirt
 import paramiko
 from cs import CloudStackApiException
 from fabric import Connection
 from invoke import UnexpectedExit, CommandTimedOut
 
-from .log import logging
+from cosmicops import get_config, logging
 from .object import CosmicObject
 from .router import CosmicRouter
 from .vm import CosmicVM
@@ -58,8 +59,23 @@ class CosmicHost(CosmicObject):
             Connection.open = unsafe_open
             FABRIC_PATCHED = True
 
-        # Setup our connection
-        self._connection = Connection(self._data['name'])
+        # Load configuration
+        config = get_config()
+        ssh_user = config.get('ssh', 'user', fallback=None)
+        ssh_key_file = config.get('ssh', 'ssh_key_file', fallback=None)
+        connect_kwargs = {'key_filename': ssh_key_file} if ssh_key_file else None
+
+        ilo_user = config.get('ilo', 'user', fallback=None)
+        ilo_password = config.get('ilo', 'password', fallback=None)
+
+        # Setup SSH connection
+        self._connection = Connection(self['name'], user=ssh_user, connect_kwargs=connect_kwargs)
+
+        # Setup ILO connection
+        ilo_address = self['name'].split('.')
+        ilo_address.insert(1, 'ilom')
+        ilo_address = '.'.join(ilo_address)
+        self._ilo = hpilo.Ilo(ilo_address, login=ilo_user, password=ilo_password)
 
         self.vms_with_shutdown_policy = []
 
@@ -437,6 +453,14 @@ class CosmicHost(CosmicObject):
             return False
         else:
             return True
+
+    def power_on(self):
+        try:
+            self._ilo.set_host_power(True)
+            return True
+        except Exception as err:
+            logging.error(f"Failed to power on '{self['name']}': {err}")
+            return False
 
     def __del__(self):
         if self._connection:

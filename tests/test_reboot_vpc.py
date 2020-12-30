@@ -18,7 +18,7 @@ from unittest.mock import patch, Mock
 from click.testing import CliRunner
 
 import reboot_vpc
-from cosmicops import CosmicNetwork, CosmicVPC
+from cosmicops.objects import CosmicNetwork, CosmicVPC
 
 
 class TestRebootVPC(TestCase):

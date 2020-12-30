@@ -19,9 +19,8 @@ from unittest.mock import patch, Mock
 from click.testing import CliRunner
 
 import list_virtual_machines
-from cosmicops import CosmicCluster, CosmicHost, CosmicVM, CosmicDomain, CosmicPod, CosmicZone, CosmicProject, \
-    CosmicVPC, CosmicServiceOffering, CosmicNetwork
-from cosmicops.router import CosmicRouter
+from cosmicops.objects import CosmicCluster, CosmicHost, CosmicVM, CosmicDomain, CosmicPod, CosmicZone, CosmicProject, \
+    CosmicVPC, CosmicServiceOffering, CosmicNetwork, CosmicRouter
 
 
 class TestListVirtualMachines(TestCase):

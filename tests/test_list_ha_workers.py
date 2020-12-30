@@ -22,8 +22,8 @@ import list_ha_workers
 
 class TestListHAWorkers(TestCase):
     def setUp(self):
-        cs_patcher = patch('list_ha_workers.CosmicSQL')
-        tabulate_patcher = patch('list_ha_workers.tabulate')
+        cs_patcher = patch('cosmicops.list_ha_workers.CosmicSQL')
+        tabulate_patcher = patch('cosmicops.list_ha_workers.tabulate')
         self.cs = cs_patcher.start()
         self.tabulate = tabulate_patcher.start()
         self.addCleanup(cs_patcher.stop)
@@ -95,6 +95,6 @@ class TestListHAWorkers(TestCase):
         self.assertIn('vm_name_1', flat_data)
         self.assertNotIn('vm_name_3', flat_data)
 
-    def test_failures(self):
+    def test_without_workers(self):
         self.cs_instance.list_ha_workers.return_value = []
-        self.assertEqual(1, self.runner.invoke(list_ha_workers.main, ['-s', 'db_alias']).exit_code)
+        self.assertEqual(0, self.runner.invoke(list_ha_workers.main, ['-s', 'db_alias']).exit_code)

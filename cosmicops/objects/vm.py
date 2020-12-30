@@ -14,7 +14,7 @@
 
 from cs import CloudStackException
 
-from .log import logging
+from cosmicops.log import logging
 from .object import CosmicObject
 from .volume import CosmicVolume
 

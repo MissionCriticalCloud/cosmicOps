@@ -15,7 +15,8 @@
 from unittest import TestCase
 from unittest.mock import patch, Mock
 
-from cosmicops import CosmicOps, CosmicVolume, CosmicStoragePool
+from cosmicops import CosmicOps
+from cosmicops.objects import CosmicVolume, CosmicStoragePool
 
 
 class TestCosmicVolume(TestCase):

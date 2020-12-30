@@ -16,7 +16,8 @@
 import click
 import click_log
 
-from cosmicops import CosmicSQL, logging
+from cosmicops import logging
+from cosmicops.kill_jobs import kill_jobs
 
 
 @click.command()
@@ -39,11 +40,7 @@ def main(database_server, database_name, database_port, database_user, database_
     if dry_run:
         logging.warning('Running in dry-run mode, will only show changes')
 
-    cs = CosmicSQL(server=database_server, database=database_name, port=database_port, user=database_user,
-                   password=database_password,
-                   dry_run=dry_run)
-
-    cs.kill_jobs_of_instance(instance_id)
+    kill_jobs(database_server, database_name, database_port, database_user, database_password, dry_run, instance_id)
 
 
 if __name__ == '__main__':

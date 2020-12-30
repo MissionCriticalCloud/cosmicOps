@@ -21,8 +21,7 @@ from pathlib import Path
 import click
 import click_log
 
-from cosmicops import CosmicOps, logging
-from cosmicops.host import RebootAction
+from cosmicops import CosmicOps, logging, RebootAction
 
 
 @click.command()
