@@ -257,7 +257,7 @@ class CosmicHost(CosmicObject):
         if mode:
             self._connection.sudo(f'chmod {mode:o} {destination}')
 
-    def execute(self, command, sudo=False, hide_stdout=True):
+    def execute(self, command, sudo=False, hide_stdout=True, pty=False):
         if self.dry_run:
             logging.info(f"Would execute '{command}' on '{self['name']}")
             return
@@ -267,7 +267,7 @@ class CosmicHost(CosmicObject):
         else:
             runner = self._connection.run
 
-        return runner(command, hide=hide_stdout)
+        return runner(command, hide=hide_stdout, pty=pty)
 
     def reboot(self, action=RebootAction.REBOOT):
         reboot_or_halt = 'halt' if action == RebootAction.HALT else 'reboot'
@@ -295,10 +295,10 @@ class CosmicHost(CosmicObject):
                 self.execute('echo b > /proc/sysrq-trigger', sudo=True)
             elif action == RebootAction.UPGRADE_FIRMWARE:
                 logging.info(f"Rebooting '{self['name']}' after firmware upgrade", self.log_to_slack)
-                self.execute("tmux new -d 'yes | sudo /usr/sbin/smartupdate upgrade && sudo reboot'")
+                self.execute("tmux new -d 'yes | sudo /usr/sbin/smartupdate upgrade && sudo reboot'", pty=True)
             elif action == RebootAction.PXE_REBOOT:
                 logging.info(f"PXE Rebooting '{self['name']}' in 10s", self.log_to_slack)
-                self.execute("tmux new -d 'sleep 10 && sudo /usr/sbin/hp-reboot pxe'")
+                self.execute("tmux new -d 'sleep 10 && sudo /usr/sbin/hp-reboot pxe'", pty=True)
             elif action == RebootAction.SKIP:
                 logging.info(f"Skipping reboot for '{self['name']}'", self.log_to_slack)
         except Exception as e:

@@ -442,10 +442,10 @@ class TestCosmicHost(TestCase):
 
     def test_execute(self):
         self.host.execute('cmd')
-        self.connection_instance.run.assert_called_with('cmd', hide=True)
+        self.connection_instance.run.assert_called_with('cmd', hide=True, pty=False)
 
         self.host.execute('cmd', True)
-        self.connection_instance.sudo.assert_called_with('cmd', hide=True)
+        self.connection_instance.sudo.assert_called_with('cmd', hide=True, pty=False)
 
     def test_execute_dry_run(self):
         self.host.dry_run = True
@@ -465,9 +465,9 @@ class TestCosmicHost(TestCase):
         self.assertTrue(self.host.reboot(RebootAction.FORCE_RESET))
         self.host.execute.assert_has_calls([call('sync', sudo=True), call('echo b > /proc/sysrq-trigger', sudo=True)])
         self.assertTrue(self.host.reboot(RebootAction.UPGRADE_FIRMWARE))
-        self.host.execute.assert_called_with("tmux new -d 'yes | sudo /usr/sbin/smartupdate upgrade && sudo reboot'")
+        self.host.execute.assert_called_with("tmux new -d 'yes | sudo /usr/sbin/smartupdate upgrade && sudo reboot'", pty=True)
         self.assertTrue(self.host.reboot(RebootAction.PXE_REBOOT))
-        self.host.execute.assert_called_with("tmux new -d 'sleep 10 && sudo /usr/sbin/hp-reboot pxe'")
+        self.host.execute.assert_called_with("tmux new -d 'sleep 10 && sudo /usr/sbin/hp-reboot pxe'", pty=True)
         self.assertTrue(self.host.reboot(RebootAction.SKIP))
         self.host.execute.assert_called_with('virsh list | grep running | wc -l')
 

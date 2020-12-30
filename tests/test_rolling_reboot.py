@@ -131,9 +131,9 @@ class TestRollingReboot(TestCase):
             host.copy_file.assert_has_calls([call('pre_empty_script.sh', '/tmp/pre_empty_script.sh', mode=0o755),
                                              call('post_empty_script.sh', '/tmp/post_empty_script.sh', mode=0o755),
                                              call('post_reboot_script.sh', '/tmp/post_reboot_script.sh', mode=0o755)])
-            host.execute.assert_has_calls([call('/tmp/pre_empty_script.sh', sudo=True, hide_stdout=False),
-                                           call('/tmp/post_empty_script.sh', sudo=True, hide_stdout=False),
-                                           call('/tmp/post_reboot_script.sh', sudo=True, hide_stdout=False)])
+            host.execute.assert_has_calls([call('/tmp/pre_empty_script.sh', sudo=True, hide_stdout=False, pty=True),
+                                           call('/tmp/post_empty_script.sh', sudo=True, hide_stdout=False, pty=True),
+                                           call('/tmp/post_reboot_script.sh', sudo=True, hide_stdout=False, pty=True)])
 
     def test_failures(self):
         # Cluster lookup failure
