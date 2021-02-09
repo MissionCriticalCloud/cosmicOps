@@ -11,21 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .log import logging
-from .object import CosmicObject
+
+from configparser import ConfigParser
+from pathlib import Path
 
 
-class CosmicVPC(CosmicObject):
-    def restart(self):
-        if self.dry_run:
-            logging.info(f"Would restart VPC '{self['name']} with clean up")
-            return True
+def get_config():
+    locations = [str(Path.cwd() / 'config'), str(Path.home() / '.cosmicops' / 'config')]
+    config = ConfigParser(interpolation=None)
+    config.read(locations)
 
-        logging.info(f"Restarting VPC '{self['name']}' with clean up'", self.log_to_slack)
-
-        response = self._ops.cs.restartVPC(id=self['id'])
-        if not self._ops.wait_for_job(response['jobid']):
-            logging.error(f"Failed to restart VPC '{self['name']}' with cleanup'")
-            return False
-
-        return True
+    return config

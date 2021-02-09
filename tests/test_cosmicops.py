@@ -20,8 +20,9 @@ from cs import CloudStackException
 from requests.exceptions import ConnectionError
 from testfixtures import tempdir
 
-from cosmicops import CosmicOps, CosmicZone, CosmicPod
-from cosmicops.object import CosmicObject
+from cosmicops import CosmicOps
+from cosmicops.objects import CosmicZone, CosmicPod
+from cosmicops.objects.object import CosmicObject
 # noinspection PyProtectedMember
 from cosmicops.ops import _load_cloud_monkey_profile
 

@@ -1,6 +1,10 @@
 [slack]
 hookurl = https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX
 
+[ssh]
+user = ssh_user
+ssh_key_file = /home/ssh_user/.ssh/id_rsa
+
 [mariadb-alias]
 host = localhost
 database = cloud

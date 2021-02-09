@@ -41,7 +41,7 @@ class TestCosmicSQL(TestCase):
                   )
 
         tmp.write('config', config)
-        with patch('pathlib.Path.cwd') as path_cwd_mock:
+        with patch('cosmicops.config.Path.cwd') as path_cwd_mock:
             path_cwd_mock.return_value = Path(tmp.path)
             cs = CosmicSQL(server='testmariadb')
 
@@ -61,7 +61,7 @@ class TestCosmicSQL(TestCase):
                   )
 
         tmp.write('config', config)
-        with patch('pathlib.Path.cwd') as path_cwd_mock:
+        with patch('cosmicops.config.Path.cwd') as path_cwd_mock:
             path_cwd_mock.return_value = Path(tmp.path)
             cs = CosmicSQL(server='testmariadb')
 
@@ -77,7 +77,7 @@ class TestCosmicSQL(TestCase):
                   )
 
         tmp.write('config', config)
-        with patch('pathlib.Path.cwd') as path_cwd_mock:
+        with patch('cosmicops.config.Path.cwd') as path_cwd_mock:
             path_cwd_mock.return_value = Path(tmp.path)
             self.assertRaises(configparser.NoOptionError, CosmicSQL, server='testmariadb')
 
@@ -94,7 +94,7 @@ class TestCosmicSQL(TestCase):
                   )
 
         tmp.write('config', config)
-        with patch('pathlib.Path.cwd') as path_cwd_mock:
+        with patch('cosmicops.config.Path.cwd') as path_cwd_mock:
             path_cwd_mock.return_value = Path(tmp.path)
             self.assertListEqual(['db1', 'db2', 'db3'], CosmicSQL.get_all_dbs_from_config())
 

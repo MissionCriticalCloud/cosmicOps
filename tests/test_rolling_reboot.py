@@ -18,7 +18,7 @@ from unittest.mock import Mock, patch, call
 from click.testing import CliRunner
 
 import rolling_reboot
-from cosmicops.host import RebootAction, CosmicHost
+from cosmicops.objects.host import RebootAction, CosmicHost
 
 
 class TestRollingReboot(TestCase):

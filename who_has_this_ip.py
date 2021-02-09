@@ -16,9 +16,9 @@ import sys
 
 import click
 import click_log
-from tabulate import tabulate
 
-from cosmicops import CosmicSQL, logging
+from cosmicops import logging
+from cosmicops.who_has_this_ip import who_has_this_ip
 
 
 @click.command()
@@ -46,48 +46,14 @@ def main(database_server, all_databases, database_name, database_port, database_
         logging.error("The --database-server and --all-databases options can't be used together")
         sys.exit(1)
 
-    if all_databases:
-        databases = CosmicSQL.get_all_dbs_from_config()
-        if not databases:
-            logging.error("No databases found in configuration file")
-            sys.exit(1)
-    else:
-        databases = [database_server]
+    try:
+        result = who_has_this_ip(database_server, all_databases, database_name, database_port, database_user,
+                                 database_password, ip_address)
+    except RuntimeError as err:
+        logging.error(err)
+        sys.exit(1)
 
-    table_headers = [
-        "VM",
-        "Network",
-        "MAC address",
-        "IPv4",
-        "Netmask",
-        "Mode",
-        "State",
-        "Created"
-    ]
-    table_data = []
-
-    for database in databases:
-        cs = CosmicSQL(server=database, database=database_name, port=database_port, user=database_user,
-                       password=database_password,
-                       dry_run=False)
-
-        count = 0
-
-        for (network_name, mac_address, ipv4_address, netmask, _, mode, state, created, vm_name) \
-                in cs.get_ip_address_data(ip_address):
-            count += 1
-            table_data.append([vm_name, network_name, mac_address, ipv4_address, netmask, mode, state, created])
-
-        if count == 0:
-            for (vm_name, ipv4_address, created, network_name, state) in cs.get_ip_address_data_bridge(ip_address):
-                count += 1
-                table_data.append([vm_name, network_name, '-', ipv4_address, '-', '-', state, created])
-
-        if count == 0:
-            for (vm_name, _, state, ipv4_address, instance_id) in cs.get_ip_address_data_infra(ip_address):
-                table_data.append([f'{vm_name} ({instance_id})', '-', '-', ipv4_address, '-', '-', state, '-'])
-
-    logging.info(tabulate(table_data, headers=table_headers, tablefmt='pretty'))
+    logging.info(result)
 
 
 if __name__ == '__main__':

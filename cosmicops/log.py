@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import logging as logging_module
-from configparser import ConfigParser
 from datetime import datetime
 from logging import DEBUG, WARNING, ERROR, INFO
-from pathlib import Path
 from urllib.error import HTTPError, URLError
 
 from slack_webhook import Slack
+
+from cosmicops import get_config
 
 
 class CosmicLog(object):
@@ -35,16 +35,14 @@ class CosmicLog(object):
 
     @staticmethod
     def _configure_slack():
-        config_file = Path.cwd() / 'config'
-        config = ConfigParser()
-        config.read(str(config_file))
+        config = get_config()
 
         slack_hook_url = config.get('slack', 'hookurl', fallback=None)
 
         if slack_hook_url:
             return Slack(url=slack_hook_url)
         else:
-            print(f"warning: No Slack connection details found in '{config_file}'")
+            print(f"warning: No Slack connection details found in configuration file")
             return None
 
     def _log(self, log_level, message, to_slack):

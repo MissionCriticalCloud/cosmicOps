@@ -18,7 +18,7 @@ from unittest.mock import patch, Mock
 from click.testing import CliRunner
 
 import reboot_router_vm
-from cosmicops import CosmicCluster, CosmicHost, CosmicVPC, CosmicRouter
+from cosmicops.objects import CosmicCluster, CosmicHost, CosmicVPC, CosmicRouter
 
 
 class TestRebootRouterVM(TestCase):

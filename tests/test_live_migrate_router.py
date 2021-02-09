@@ -18,7 +18,7 @@ from unittest.mock import patch, Mock
 from click.testing import CliRunner
 
 import live_migrate_router
-from cosmicops import CosmicCluster, CosmicHost, CosmicSystemVM
+from cosmicops.objects import CosmicCluster, CosmicHost, CosmicSystemVM
 
 
 class TestLiveMigrateRouter(TestCase):

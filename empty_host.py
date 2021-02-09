@@ -18,8 +18,8 @@ import sys
 import click
 import click_log
 
-from cosmicops import CosmicOps, logging
-from cosmicops.host import RebootAction
+from cosmicops import logging
+from cosmicops.empty_host import empty_host
 
 
 @click.command()
@@ -37,21 +37,11 @@ def main(profile, shutdown, dry_run, host):
     if dry_run:
         logging.info('Running in dry-run mode, will only show changes')
 
-    co = CosmicOps(profile=profile, dry_run=dry_run)
-
-    host = co.get_host(name=host)
-    if not host:
+    try:
+        logging.info(empty_host(profile, shutdown, dry_run, host))
+    except RuntimeError as err:
+        logging.error(err)
         sys.exit(1)
-
-    (total, success, failed) = host.empty()
-    logging.info(f"Result: {success} successful, {failed} failed out of {total} total VMs")
-
-    if not failed and shutdown:
-        if not host.reboot(RebootAction.HALT):
-            sys.exit(1)
-        host.set_uid_led(True)
-    elif failed and shutdown:
-        logging.warning(f"Not shutting down host '{host['name']}' because migration completed with failed VMs")
 
 
 if __name__ == '__main__':

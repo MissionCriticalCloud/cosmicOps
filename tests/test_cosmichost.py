@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch, call
 
+import hpilo
 from cs import CloudStackApiException
 from invoke import UnexpectedExit, CommandTimedOut
+from testfixtures import tempdir
 
-from cosmicops import CosmicOps, CosmicHost, CosmicVM, CosmicProject
-from cosmicops.host import RebootAction
-from cosmicops.router import CosmicRouter
+from cosmicops import CosmicOps, RebootAction
+from cosmicops.objects import CosmicHost, CosmicVM, CosmicProject, CosmicRouter
 
 
 class TestCosmicHost(TestCase):
@@ -30,7 +32,7 @@ class TestCosmicHost(TestCase):
         self.addCleanup(cs_patcher.stop)
         self.cs_instance = self.mock_cs.return_value
 
-        connection_patcher = patch('cosmicops.host.Connection')
+        connection_patcher = patch('cosmicops.objects.host.Connection')
         self.mock_connection = connection_patcher.start()
         self.addCleanup(connection_patcher.stop)
         self.connection_instance = self.mock_connection.return_value
@@ -39,6 +41,11 @@ class TestCosmicHost(TestCase):
         self.mock_socket = socket_patcher.start()
         self.addCleanup(socket_patcher.stop)
         self.socket_context = self.mock_socket.return_value.__enter__.return_value
+
+        ilo_patcher = patch('hpilo.Ilo')
+        self.mock_ilo = ilo_patcher.start()
+        self.addCleanup(ilo_patcher.stop)
+        self.ilo_instance = self.mock_ilo.return_value
 
         slack_patcher = patch('cosmicops.log.Slack')
         self.mock_slack = slack_patcher.start()
@@ -152,6 +159,26 @@ class TestCosmicHost(TestCase):
                 'resourcestate': 'Enabled'
             }]
         }
+
+    @tempdir()
+    def test_load_config(self, tmp):
+        config = (b"[ssh]\n"
+                  b"user = test_user\n"
+                  b"ssh_key_file = /home/test_user/.ssh/id_rsa\n"
+                  b"[ilo]\n"
+                  b"user = ilo_test_user\n"
+                  b"password = super_secret_ilo_password\n"
+                  )
+
+        tmp.write('config', config)
+        with patch('cosmicops.config.Path.cwd') as path_cwd_mock:
+            path_cwd_mock.return_value = Path(tmp.path)
+            CosmicHost(self.ops, {'name': 'config_test_host'})
+
+        self.mock_connection.assert_called_with('config_test_host', user='test_user',
+                                                connect_kwargs={'key_filename': '/home/test_user/.ssh/id_rsa'})
+        self.mock_ilo.assert_called_with('config_test_host.ilom', login='ilo_test_user',
+                                         password='super_secret_ilo_password')
 
     def test_refresh(self):
         self.host.refresh()
@@ -669,3 +696,11 @@ class TestCosmicHost(TestCase):
 
         self.host.execute.return_value.return_code = 1
         self.assertFalse(self.host.merge_backing_files(vm))
+
+    def test_power_on(self):
+        self.assertTrue(self.host.power_on())
+        self.ilo_instance.set_host_power.assert_called_with(True)
+
+    def test_power_on_failure(self):
+        self.ilo_instance.set_host_power.side_effect = hpilo.IloCommunicationError
+        self.assertFalse(self.host.power_on())

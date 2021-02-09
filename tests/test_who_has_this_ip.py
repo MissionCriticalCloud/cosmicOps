@@ -21,7 +21,7 @@ import who_has_this_ip
 
 class TestWhoHasThisIP(TestCase):
     def setUp(self):
-        cs_patcher = patch('who_has_this_ip.CosmicSQL')
+        cs_patcher = patch('cosmicops.who_has_this_ip.CosmicSQL')
         self.cs = cs_patcher.start()
         self.addCleanup(cs_patcher.stop)
         self.cs_instance = self.cs.return_value

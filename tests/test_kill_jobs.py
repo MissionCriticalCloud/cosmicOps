@@ -22,7 +22,7 @@ import kill_jobs
 
 class TestKillJobs(TestCase):
     def setUp(self):
-        cs_patcher = patch('kill_jobs.CosmicSQL')
+        cs_patcher = patch('cosmicops.kill_jobs.CosmicSQL')
         self.cs = cs_patcher.start()
         self.addCleanup(cs_patcher.stop)
         self.cs_instance = self.cs.return_value

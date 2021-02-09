@@ -18,7 +18,7 @@ from unittest.mock import patch, Mock, call
 from click.testing import CliRunner
 
 import live_migrate_virtual_machine
-from cosmicops import CosmicCluster, CosmicHost, CosmicVM
+from cosmicops.objects import CosmicCluster, CosmicHost, CosmicVM
 
 
 class TestLiveMigrateVirtualMachine(TestCase):

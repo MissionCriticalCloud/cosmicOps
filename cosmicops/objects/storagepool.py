@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cosmicops.object import CosmicObject
-from cosmicops.volume import CosmicVolume
+from .object import CosmicObject
+from .volume import CosmicVolume
 
 
 class CosmicStoragePool(CosmicObject):

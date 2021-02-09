@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import logging
-from configparser import ConfigParser, NoOptionError
-from pathlib import Path
+from configparser import NoOptionError
 
 import pymysql
 
+from cosmicops import get_config
 from .log import logging
 
 
@@ -35,21 +35,17 @@ class CosmicSQL(object):
 
     @staticmethod
     def get_all_dbs_from_config():
-        config_file = Path.cwd() / 'config'
-        config = ConfigParser()
-        config.read(str(config_file))
+        config = get_config()
 
         return [section for section in config if 'host' in config[section]]
 
     def _connect(self):
         if not self.password:
-            config_file = Path.cwd() / 'config'
-            config = ConfigParser()
-            config.read(str(config_file))
-            logging.debug(f"Loading SQL server details for '{self.server}' from '{config_file}'")
+            config = get_config()
+            logging.debug(f"Loading SQL server details for '{self.server}''")
 
             if self.server not in config:
-                logging.error(f"Could not find configuration section for '{self.server}' in '{config_file}'")
+                logging.error(f"Could not find configuration section for '{self.server}'")
                 raise RuntimeError
 
             try:
@@ -59,7 +55,7 @@ class CosmicSQL(object):
                 self.database = config.get(self.server, 'database', fallback=self.database)
                 self.server = config.get(self.server, 'host', fallback=self.server)
             except NoOptionError as e:
-                logging.error(f"Unable to read details from '{config_file}' for '{self.server}': {e}")
+                logging.error(f"Unable to read details for '{self.server}': {e}")
                 raise
 
         try:

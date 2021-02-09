@@ -13,8 +13,8 @@
 # limitations under the License.
 from operator import itemgetter
 
+from cosmicops.log import logging
 from .host import CosmicHost
-from .log import logging
 from .object import CosmicObject
 from .storagepool import CosmicStoragePool
 

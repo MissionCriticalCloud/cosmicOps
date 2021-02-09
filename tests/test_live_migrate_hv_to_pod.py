@@ -18,7 +18,7 @@ from unittest.mock import patch, Mock
 from click.testing import CliRunner
 
 import live_migrate_hv_to_pod
-from cosmicops import CosmicCluster, CosmicHost, CosmicVM
+from cosmicops.objects import CosmicCluster, CosmicHost, CosmicVM
 
 
 class TestLiveMigrateHVToPod(TestCase):

@@ -6,6 +6,7 @@ fabric~=2.5.0
 humanfriendly~=8.2
 libvirt-python~=6.9.0
 PyMySQL~=0.10.1
+python-hpilo~=4.4.2
 requests~=2.25.0
 slack-webhook~=1.0.4
 testfixtures~=6.15.0

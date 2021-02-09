@@ -17,7 +17,8 @@ from unittest.mock import Mock, patch
 
 from cs import CloudStackException
 
-from cosmicops import CosmicOps, CosmicVM, CosmicHost
+from cosmicops import CosmicOps
+from cosmicops.objects import CosmicVM, CosmicHost
 
 
 class TestCosmicVM(TestCase):

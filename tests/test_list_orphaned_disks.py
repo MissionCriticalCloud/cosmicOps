@@ -18,12 +18,12 @@ from unittest.mock import Mock, patch
 from click.testing import CliRunner
 
 import list_orphaned_disks
-from cosmicops import CosmicStoragePool, CosmicCluster
+from cosmicops.objects import CosmicStoragePool, CosmicCluster
 
 
 class TestListOrphanedDisks(TestCase):
     def setUp(self):
-        co_patcher = patch('list_orphaned_disks.CosmicOps')
+        co_patcher = patch('cosmicops.list_orphaned_disks.CosmicOps')
         self.co = co_patcher.start()
         self.addCleanup(co_patcher.stop)
         self.co_instance = self.co.return_value
@@ -65,7 +65,7 @@ class TestListOrphanedDisks(TestCase):
         self.co_instance.get_cluster.assert_called_with(name='cluster1', zone='zone1')
         self.assertEqual(0, result.exit_code)
 
-    def test_main_with_cluster_lookup_failure(self):
+    def test_main_without_cluster_data(self):
         self.co_instance.get_all_clusters.return_value = []
         result = self.runner.invoke(list_orphaned_disks.main, ['zone1'])
-        self.assertEqual(1, result.exit_code)
+        self.assertEqual(0, result.exit_code)

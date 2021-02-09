@@ -20,21 +20,10 @@ import click_spinner
 from cs import CloudStack, CloudStackException
 from requests.exceptions import ConnectionError
 
-from .cluster import CosmicCluster
-from .domain import CosmicDomain
-from .host import CosmicHost
+from cosmicops.objects import CosmicCluster, CosmicDomain, CosmicHost, CosmicNetwork, CosmicPod, CosmicProject, \
+    CosmicRouter, CosmicServiceOffering, CosmicStoragePool, CosmicSystemVM, CosmicVM, CosmicVolume, CosmicVPC, \
+    CosmicZone
 from .log import logging
-from .network import CosmicNetwork
-from .pod import CosmicPod
-from .project import CosmicProject
-from .router import CosmicRouter
-from .serviceoffering import CosmicServiceOffering
-from .storagepool import CosmicStoragePool
-from .systemvm import CosmicSystemVM
-from .vm import CosmicVM
-from .volume import CosmicVolume
-from .vpc import CosmicVPC
-from .zone import CosmicZone
 
 
 def _load_cloud_monkey_profile(profile):

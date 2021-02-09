@@ -18,7 +18,7 @@ from unittest.mock import patch, Mock
 from click.testing import CliRunner
 
 import migrate_virtual_machine
-from cosmicops import CosmicCluster, CosmicHost, CosmicStoragePool, CosmicVolume, CosmicVM, \
+from cosmicops.objects import CosmicCluster, CosmicHost, CosmicStoragePool, CosmicVolume, CosmicVM, \
     CosmicServiceOffering
 
 
