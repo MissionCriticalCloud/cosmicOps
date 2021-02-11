@@ -257,7 +257,7 @@ class CosmicSQL(object):
         FROM service_offering_view
         WHERE name = '{service_offering_name}'
           AND removed IS NULL
-          AND domain_path = '/Cust/'
+          AND domain_path LIKE '/Cust/%'
         """
 
         return self._execute_select_query(query)[0][0]
