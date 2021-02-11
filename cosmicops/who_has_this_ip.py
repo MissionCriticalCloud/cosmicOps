@@ -18,14 +18,13 @@ from tabulate import tabulate
 from cosmicops import CosmicSQL
 
 
-def who_has_this_ip(database_server, all_databases, database_name, database_port, database_user, database_password,
-                    ip_address):
+def who_has_this_ip(profile, all_databases, ip_address):
     if all_databases:
         databases = CosmicSQL.get_all_dbs_from_config()
         if not databases:
             raise RuntimeError("No databases found in configuration file")
     else:
-        databases = [database_server]
+        databases = [profile]
 
     table_headers = [
         "VM",
@@ -40,8 +39,7 @@ def who_has_this_ip(database_server, all_databases, database_name, database_port
     table_data = []
 
     for database in databases:
-        cs = CosmicSQL(server=database, database=database_name, port=database_port, user=database_user,
-                       password=database_password, dry_run=False)
+        cs = CosmicSQL(server=database, dry_run=False)
 
         count = 0
 

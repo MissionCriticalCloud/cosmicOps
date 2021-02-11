@@ -16,9 +16,7 @@
 from cosmicops import CosmicSQL
 
 
-def kill_jobs(database_server, database_name, database_port, database_user, database_password, dry_run, instance_id):
-    cs = CosmicSQL(server=database_server, database=database_name, port=database_port, user=database_user,
-                   password=database_password,
-                   dry_run=dry_run)
+def kill_jobs(profile, dry_run, instance_id):
+    cs = CosmicSQL(server=profile, dry_run=dry_run)
 
     cs.kill_jobs_of_instance(instance_id)

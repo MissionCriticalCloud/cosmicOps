@@ -24,21 +24,12 @@ from live_migrate_virtual_machine import live_migrate
 
 @click.command()
 @click.option('--profile', '-p', default='config', help='Name of the CloudMonkey profile containing the credentials')
-@click.option('--database-server', '-s', metavar='<address>', required=True,
-              help='Address or alias of Cosmic database server')
-@click.option('--database-name', metavar='<database>', default='cloud', show_default=True, help='Name of the database')
-@click.option('--database-port', metavar='<port>', default=3306, show_default=True,
-              help='Port number of the database server')
-@click.option('--database-user', '-u', metavar='<user>', default='cloud', show_default=True,
-              help='Username of database account')
-@click.option('--database-password', '-p', metavar='<password>', help='Password of the database user')
 @click.option('--destination-dc', '-d', metavar='<DC name>', help='Migrate to this datacenter')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('host')
 @click.argument('cluster')
-def main(profile, database_server, database_name, database_port, database_user, database_password, destination_dc,
-         dry_run, host, cluster):
+def main(profile, destination_dc, dry_run, host, cluster):
     """Migrate all VMs on HOST to CLUSTER"""
 
     click_log.basic_config()
@@ -53,9 +44,7 @@ def main(profile, database_server, database_name, database_port, database_user, 
 
     co = CosmicOps(profile=profile, dry_run=dry_run, log_to_slack=log_to_slack)
 
-    cs = CosmicSQL(server=database_server, database=database_name, port=database_port, user=database_user,
-                   password=database_password,
-                   dry_run=dry_run)
+    cs = CosmicSQL(server=profile, dry_run=dry_run)
 
     host = co.get_host(name=host)
     if not host:

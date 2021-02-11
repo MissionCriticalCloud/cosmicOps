@@ -40,26 +40,23 @@ class TestWhoHasThisIP(TestCase):
 
     def test_main(self):
         self.assertEqual(0, self.runner.invoke(who_has_this_ip.main,
-                                               ['-s', 'server_address', '-p', 'password', '192.168.1.1']).exit_code)
-        self.cs.assert_called_with(server='server_address', database='cloud', port=3306, user='cloud',
-                                   password='password', dry_run=False)
+                                               ['-p', 'profile', '192.168.1.1']).exit_code)
+        self.cs.assert_called_with(server='profile', dry_run=False)
         self.cs_instance.get_ip_address_data.assert_called_with('192.168.1.1')
         self.cs_instance.get_ip_address_data_bridge.assert_not_called()
         self.cs_instance.get_ip_address_data_infra.assert_not_called()
 
     def test_argument_combinations(self):
         self.assertEqual(1, self.runner.invoke(who_has_this_ip.main,
-                                               ['-s', 'server_address', '-a', '192.168.1.1']).exit_code)
+                                               ['-p', 'profile', '-a', '192.168.1.1']).exit_code)
         self.assertEqual(1, self.runner.invoke(who_has_this_ip.main, ['192.168.1.1']).exit_code)
 
     def test_all_databases(self):
-        self.cs.get_all_dbs_from_config.return_value = ['server_address_1', 'server_address_2']
+        self.cs.get_all_dbs_from_config.return_value = ['database_1', 'database_2']
         self.assertEqual(0, self.runner.invoke(who_has_this_ip.main, ['--all-databases', '192.168.1.1']).exit_code)
         self.cs.assert_has_calls(
-            [call(server='server_address_1', database='cloud', port=3306, user='cloud', password=None,
-                  dry_run=False),
-             call(server='server_address_2', database='cloud', port=3306, user='cloud', password=None,
-                  dry_run=False)],
+            [call(server='database_1', dry_run=False),
+             call(server='database_2', dry_run=False)],
             any_order=True
         )
         self.cs_instance.get_ip_address_data.has_calls([call('192.168.1.1'), call('192.168.1.1')])
@@ -79,7 +76,7 @@ class TestWhoHasThisIP(TestCase):
         self.cs_instance.get_ip_address_data.return_value = ()
 
         self.assertEqual(0, self.runner.invoke(who_has_this_ip.main,
-                                               ['-s', 'server_address', '-p', 'password', '192.168.1.1']).exit_code)
+                                               ['-p', 'profile', '192.168.1.1']).exit_code)
         self.cs_instance.get_ip_address_data.assert_called_with('192.168.1.1')
         self.cs_instance.get_ip_address_data_bridge.assert_called_with('192.168.1.1')
         self.cs_instance.get_ip_address_data_infra.assert_not_called()
@@ -95,7 +92,7 @@ class TestWhoHasThisIP(TestCase):
         self.cs_instance.get_ip_address_data.return_value = ()
 
         self.assertEqual(0, self.runner.invoke(who_has_this_ip.main,
-                                               ['-s', 'server_address', '-p', 'password', '192.168.1.1']).exit_code)
+                                               ['-p', 'profile', '192.168.1.1']).exit_code)
         self.cs_instance.get_ip_address_data.assert_called_with('192.168.1.1')
         self.cs_instance.get_ip_address_data_bridge.assert_called_with('192.168.1.1')
         self.cs_instance.get_ip_address_data_infra.assert_called_with('192.168.1.1')

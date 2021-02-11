@@ -39,27 +39,22 @@ class TestWhoHasThisMAC(TestCase):
         )
 
     def test_main(self):
-        self.assertEqual(0, self.runner.invoke(who_has_this_mac.main,
-                                               ['-s', 'server_address', '-p', 'password',
-                                                'aa:bb:cc:dd:ee:ff']).exit_code)
-        self.cs.assert_called_with(server='server_address', database='cloud', port=3306, user='cloud',
-                                   password='password', dry_run=False)
+        self.assertEqual(0, self.runner.invoke(who_has_this_mac.main, ['-p', 'profile', 'aa:bb:cc:dd:ee:ff']).exit_code)
+        self.cs.assert_called_with(server='profile', dry_run=False)
         self.cs_instance.get_mac_address_data.assert_called_with('aa:bb:cc:dd:ee:ff')
 
     def test_argument_combinations(self):
-        self.assertEqual(1, self.runner.invoke(who_has_this_mac.main,
-                                               ['-s', 'server_address', '-a', 'aa:bb:cc:dd:ee:ff']).exit_code)
+        self.assertEqual(1, self.runner.invoke(who_has_this_mac.main, ['-p', 'profile',
+                                                                       '-a', 'aa:bb:cc:dd:ee:ff']).exit_code)
         self.assertEqual(1, self.runner.invoke(who_has_this_mac.main, ['aa:bb:cc:dd:ee:ff']).exit_code)
 
     def test_all_databases(self):
-        self.cs.get_all_dbs_from_config.return_value = ['server_address_1', 'server_address_2']
+        self.cs.get_all_dbs_from_config.return_value = ['database_1', 'database_2']
         self.assertEqual(0,
                          self.runner.invoke(who_has_this_mac.main, ['--all-databases', 'aa:bb:cc:dd:ee:ff']).exit_code)
         self.cs.assert_has_calls(
-            [call(server='server_address_1', database='cloud', port=3306, user='cloud', password=None,
-                  dry_run=False),
-             call(server='server_address_2', database='cloud', port=3306, user='cloud', password=None,
-                  dry_run=False)],
+            [call(server='database_1', dry_run=False),
+             call(server='database_2', dry_run=False)],
             any_order=True
         )
         self.cs_instance.get_ip_address_data.has_calls([call('aa:bb:cc:dd:ee:ff'), call('aa:bb:cc:dd:ee:ff')])
