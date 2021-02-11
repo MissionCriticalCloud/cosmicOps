@@ -25,12 +25,16 @@ from cosmicops.objects import CosmicCluster, CosmicHost, CosmicStoragePool, Cosm
 class TestMigrateVirtualMachine(TestCase):
     def setUp(self):
         co_patcher = patch('migrate_virtual_machine.CosmicOps')
+        cs_patcher = patch('migrate_virtual_machine.CosmicSQL')
         sleep_patcher = patch('time.sleep', return_value=None)
         self.co = co_patcher.start()
+        self.cs = cs_patcher.start()
         sleep_patcher.start()
         self.addCleanup(co_patcher.stop)
+        self.addCleanup(cs_patcher.stop)
         self.addCleanup(sleep_patcher.stop)
         self.co_instance = self.co.return_value
+        self.cs_instance = self.cs.return_value
         self.runner = CliRunner()
 
         self._setup_mocks()
@@ -50,6 +54,7 @@ class TestMigrateVirtualMachine(TestCase):
             'hostname': 'host',
             'instancename': 'i-VM-1',
             'serviceofferingid': 'so1',
+            'serviceofferingname': 'service_offering_EVO',
             'state': 'Running'
         })
 
@@ -67,7 +72,8 @@ class TestMigrateVirtualMachine(TestCase):
         self.target_storage_pool = CosmicStoragePool(Mock(), {
             'id': 'tsp',
             'name': 'target_storage_pool',
-            'tags': 'storage_tags'
+            'tags': 'storage_tags',
+            'scope': 'CLUSTER'
         })
 
         self.service_offering = CosmicServiceOffering(Mock(), {
@@ -136,6 +142,26 @@ class TestMigrateVirtualMachine(TestCase):
         self.volume.refresh.side_effect = refresh_effect
         self.assertEqual(0, self.runner.invoke(migrate_virtual_machine.main,
                                                ['--exec', 'vm', 'target_cluster']).exit_code)
+
+    def test_destination_dc(self):
+        self.assertEqual(0, self.runner.invoke(migrate_virtual_machine.main,
+                                               ['--exec', '-p', 'profile', '--destination-dc', 'EQXAMS2', 'vm',
+                                                'target_cluster']).exit_code)
+
+        self.cs_instance.update_service_offering_of_vm.assert_called_with(self.vm['instancename'],
+                                                                          'service_offering_EQXAMS2')
+
+        self.assertEqual(1, self.runner.invoke(migrate_virtual_machine.main,
+                                               ['--exec', '-p', 'profile', '--destination-dc', 'DUMMY', 'vm',
+                                                'target_cluster']).exit_code)
+
+    def test_destination_so(self):
+        self.assertEqual(0, self.runner.invoke(migrate_virtual_machine.main,
+                                               ['--exec', '-p', 'profile', '--destination-so', 'large_offering', 'vm',
+                                                'target_cluster']).exit_code)
+
+        self.cs_instance.update_service_offering_of_vm.assert_called_with(self.vm['instancename'],
+                                                                          'large_offering')
 
     def test_failures(self):
         self.co_instance.get_cluster.return_value = None
