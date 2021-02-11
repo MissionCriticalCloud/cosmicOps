@@ -22,33 +22,25 @@ from cosmicops.who_has_this_mac import who_has_this_mac
 
 
 @click.command()
-@click.option('--database-server', '-s', metavar='<address>',
-              help='Address or alias of Cosmic database server')
+@click.option('--profile', '-p', metavar='<name>', help='Name of the configuration profile containing the credentials')
 @click.option('--all-databases', '-a', is_flag=True, help='Search through all configured databases')
-@click.option('--database-name', metavar='<database>', default='cloud', show_default=True, help='Name of the database')
-@click.option('--database-port', metavar='<port>', default=3306, show_default=True,
-              help='Port number of the database server')
-@click.option('--database-user', '-u', metavar='<user>', default='cloud', show_default=True,
-              help='Username of database account')
-@click.option('--database-password', '-p', metavar='<password>', help='Password of the database user')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('mac_address')
-def main(database_server, all_databases, database_name, database_port, database_user, database_password, mac_address):
+def main(profile, all_databases, mac_address):
     """Shows who uses MAC_ADDRESS"""
 
     click_log.basic_config()
 
-    if not (database_server or all_databases):
-        logging.error("You must specify --database-server or --all-databases")
+    if not (profile or all_databases):
+        logging.error("You must specify --profile or --all-databases")
         sys.exit(1)
 
-    if database_server and all_databases:
-        logging.error("The --database-server and --all-databases options can't be used together")
+    if profile and all_databases:
+        logging.error("The --profile and --all-databases options can't be used together")
         sys.exit(1)
 
     try:
-        result = who_has_this_mac(database_server, all_databases, database_name, database_port, database_user,
-                                  database_password, mac_address)
+        result = who_has_this_mac(profile, all_databases, mac_address)
     except RuntimeError as err:
         logging.error(err)
         sys.exit(1)

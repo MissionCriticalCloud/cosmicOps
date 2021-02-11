@@ -27,14 +27,6 @@ DATACENTERS = ["SBP1", "EQXAMS2", "EVO"]
 
 @click.command()
 @click.option('--profile', '-p', default='config', help='Name of the CloudMonkey profile containing the credentials')
-@click.option('--database-server', '-s', metavar='<address>', required=True,
-              help='Address or alias of Cosmic database server')
-@click.option('--database-name', metavar='<database>', default='cloud', show_default=True, help='Name of the database')
-@click.option('--database-port', metavar='<port>', default=3306, show_default=True,
-              help='Port number of the database server')
-@click.option('--database-user', '-u', metavar='<user>', default='cloud', show_default=True,
-              help='Username of database account')
-@click.option('--database-password', '-p', metavar='<password>', help='Password of the database user')
 @click.option('--zwps-to-cwps', is_flag=True, help='Migrate from ZWPS to CWPS')
 @click.option('--add-affinity-group', metavar='<group name>', help='Add this affinity group after migration')
 @click.option('--destination-dc', '-d', metavar='<DC name>', help='Migrate to this datacenter')
@@ -43,8 +35,7 @@ DATACENTERS = ["SBP1", "EQXAMS2", "EVO"]
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('vm')
 @click.argument('cluster')
-def main(profile, database_server, database_name, database_port, database_user, database_password, zwps_to_cwps,
-         add_affinity_group, destination_dc, is_project_vm, dry_run, vm, cluster):
+def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_vm, dry_run, vm, cluster):
     """Live migrate VM to CLUSTER"""
 
     click_log.basic_config()
@@ -59,9 +50,7 @@ def main(profile, database_server, database_name, database_port, database_user, 
 
     co = CosmicOps(profile=profile, dry_run=dry_run, log_to_slack=log_to_slack)
 
-    cs = CosmicSQL(server=database_server, database=database_name, port=database_port, user=database_user,
-                   password=database_password,
-                   dry_run=dry_run)
+    cs = CosmicSQL(server=profile, dry_run=dry_run)
 
     if not live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
                         log_to_slack, dry_run):

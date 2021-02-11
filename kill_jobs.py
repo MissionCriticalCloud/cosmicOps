@@ -21,18 +21,11 @@ from cosmicops.kill_jobs import kill_jobs
 
 
 @click.command()
-@click.option('--database-server', '-s', metavar='<address>', required=True,
-              help='Address or alias of Cosmic database server')
-@click.option('--database-name', metavar='<database>', default='cloud', show_default=True, help='Name of the database')
-@click.option('--database-port', metavar='<port>', default=3306, show_default=True,
-              help='Port number of the database server')
-@click.option('--database-user', '-u', metavar='<user>', default='cloud', show_default=True,
-              help='Username of database account')
-@click.option('--database-password', '-p', metavar='<password>', help='Password of the database user')
+@click.option('--profile', '-p', metavar='<name>', help='Name of the configuration profile containing the credentials')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('instance_id')
-def main(database_server, database_name, database_port, database_user, database_password, dry_run, instance_id):
+def main(profile, dry_run, instance_id):
     """Kills all jobs related to INSTANCE_ID"""
 
     click_log.basic_config()
@@ -40,7 +33,7 @@ def main(database_server, database_name, database_port, database_user, database_
     if dry_run:
         logging.warning('Running in dry-run mode, will only show changes')
 
-    kill_jobs(database_server, database_name, database_port, database_user, database_password, dry_run, instance_id)
+    kill_jobs(profile, dry_run, instance_id)
 
 
 if __name__ == '__main__':

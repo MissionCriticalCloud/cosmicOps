@@ -492,7 +492,8 @@ class TestCosmicHost(TestCase):
         self.assertTrue(self.host.reboot(RebootAction.FORCE_RESET))
         self.host.execute.assert_has_calls([call('sync', sudo=True), call('echo b > /proc/sysrq-trigger', sudo=True)])
         self.assertTrue(self.host.reboot(RebootAction.UPGRADE_FIRMWARE))
-        self.host.execute.assert_called_with("tmux new -d 'yes | sudo /usr/sbin/smartupdate upgrade && sudo reboot'", pty=True)
+        self.host.execute.assert_called_with("tmux new -d 'yes | sudo /usr/sbin/smartupdate upgrade && sudo reboot'",
+                                             pty=True)
         self.assertTrue(self.host.reboot(RebootAction.PXE_REBOOT))
         self.host.execute.assert_called_with("tmux new -d 'sleep 10 && sudo /usr/sbin/hp-reboot pxe'", pty=True)
         self.assertTrue(self.host.reboot(RebootAction.SKIP))

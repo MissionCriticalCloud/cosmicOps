@@ -21,27 +21,18 @@ from cosmicops.list_ha_workers import list_ha_workers
 
 
 @click.command()
-@click.option('--database-server', '-s', metavar='<address>', required=True,
-              help='Address or alias of Cosmic database server')
-@click.option('--database-name', metavar='<database>', default='cloud', show_default=True, help='Name of the database')
-@click.option('--database-port', metavar='<port>', default=3306, show_default=True,
-              help='Port number of the database server')
-@click.option('--database-user', '-u', metavar='<user>', default='cloud', show_default=True,
-              help='Username of database account')
-@click.option('--database-password', '-p', metavar='<password>', help='Password of the database user')
+@click.option('--profile', '-p', metavar='<name>', help='Name of the configuration profile containing the credentials')
 @click.option('--hostname', '-n', metavar='<hostname>', default='', help='Show only works on this host')
 @click.option('--name-filter', metavar='<vm name>', help='Filter on specified VM name')
 @click.option('--non-running', is_flag=True, help='Only show entries with a non-running state')
 @click.option('--plain-display', is_flag=True, help='Plain text output, no pretty tables')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
-def main(database_server, database_name, database_port, database_user, database_password, hostname, name_filter,
-         non_running, plain_display):
+def main(profile, hostname, name_filter, non_running, plain_display):
     """Lists HA workers"""
 
     click_log.basic_config()
 
-    logging.info(list_ha_workers(database_server, database_name, database_port, database_user, database_password,
-                                 hostname, name_filter, non_running, plain_display))
+    logging.info(list_ha_workers(profile, hostname, name_filter, non_running, plain_display))
 
 
 if __name__ == '__main__':

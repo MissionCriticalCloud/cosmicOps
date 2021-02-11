@@ -18,14 +18,10 @@ from tabulate import tabulate
 from cosmicops import CosmicSQL
 
 
-def list_ha_workers(database_server, database_name, database_port, database_user, database_password, hostname,
-                    name_filter,
-                    non_running, plain_display):
+def list_ha_workers(profile, hostname, name_filter, non_running, plain_display):
     """Lists HA workers"""
 
-    cs = CosmicSQL(server=database_server, database=database_name, port=database_port, user=database_user,
-                   password=database_password,
-                   dry_run=False)
+    cs = CosmicSQL(server=profile, dry_run=False)
 
     ha_workers = cs.list_ha_workers(hostname)
     if not ha_workers:

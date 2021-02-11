@@ -93,11 +93,10 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
 
     def test_main(self):
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
 
-        self.co.assert_called_with(profile='config', dry_run=False, log_to_slack=True)
-        self.cs.assert_called_with(server='db', database='cloud', port=3306, user='cloud',
-                                   password=None, dry_run=False)
+        self.co.assert_called_with(profile='profile', dry_run=False, log_to_slack=True)
+        self.cs.assert_called_with(server='profile', dry_run=False)
 
         self.co_instance.get_storage_pool.assert_has_calls(
             [call(name='target_storage_pool'), call(id=self.volume['storage'])])
@@ -116,11 +115,10 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
 
     def test_main_dry_run(self):
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
 
-        self.co.assert_called_with(profile='config', dry_run=True, log_to_slack=False)
-        self.cs.assert_called_with(server='db', database='cloud', port=3306, user='cloud',
-                                   password=None, dry_run=True)
+        self.co.assert_called_with(profile='profile', dry_run=True, log_to_slack=False)
+        self.cs.assert_called_with(server='profile', dry_run=True)
 
         self.co_instance.get_storage_pool.assert_has_calls(
             [call(name='target_storage_pool'), call(id=self.volume['storage'])])
@@ -141,84 +139,84 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
         self.co_instance.get_storage_pool.side_effect = None
         self.co_instance.get_storage_pool.return_value = None
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
         self.co_instance.get_storage_pool.assert_called()
 
         self._setup_mocks()
         self.co_instance.get_vm.return_value = []
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
         self.co_instance.get_vm.assert_called()
 
         self._setup_mocks()
         self.co_instance.get_host.return_value = []
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
         self.co_instance.get_host.assert_called()
 
         self._setup_mocks()
         self.co_instance.get_cluster.return_value = []
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
         self.co_instance.get_cluster.assert_called()
 
         self._setup_mocks()
         self.host.set_iops_limit.return_value = False
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
         self.host.set_iops_limit.assert_called()
 
         self._setup_mocks()
         self.host.merge_backing_files.return_value = False
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
         self.host.merge_backing_files.assert_called()
 
     def test_continues(self):
         self.volume['storage'] = self.target_storage_pool['id']
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
         self.assertEqual(1, self.co_instance.get_storage_pool.call_count)
 
         self._setup_mocks()
         self.co_instance.get_storage_pool.side_effect = [self.target_storage_pool, None]
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
         self.assertEqual(2, self.co_instance.get_storage_pool.call_count)
         self.volume.migrate.assert_not_called()
 
         self._setup_mocks()
         self.source_storage_pool['scope'] = 'Host'
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
         self.assertEqual(2, self.co_instance.get_storage_pool.call_count)
         self.volume.migrate.assert_not_called()
 
         self._setup_mocks()
         self.volume.migrate.return_value = False
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
         self.volume.migrate.assert_called()
         self.volume.refresh.assert_not_called()
 
     def test_zwps_to_cwps(self):
         self.cs_instance.update_zwps_to_cwps.return_value = True
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', '--zwps-to-cwps', 'vm',
+                                               ['--exec', '-p', 'profile', '--zwps-to-cwps', 'vm',
                                                 'target_storage_pool']).exit_code)
         self.cs_instance.update_zwps_to_cwps.assert_called_with(self.vm['instancename'], 'MCC_v1.CWPS')
 
         self._setup_mocks()
         self.cs_instance.update_zwps_to_cwps.return_value = False
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', '--zwps-to-cwps', 'vm',
+                                               ['--exec', '-p', 'profile', '--zwps-to-cwps', 'vm',
                                                 'target_storage_pool']).exit_code)
 
     def test_volume_size_update(self):
         self.host.get_disks.return_value = {'path1': {'path': 'path1', 'size': '4321'}}
 
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
 
         self.cs_instance.update_volume_size.assert_called_with(self.vm['instancename'], 'path1', '4321')
 
@@ -228,4 +226,4 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
 
         self.volume.refresh.side_effect = refresh_effect
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-s', 'db', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)

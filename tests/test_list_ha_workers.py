@@ -69,9 +69,8 @@ class TestListHAWorkers(TestCase):
 
     def test_main(self):
         self.assertEqual(0,
-                         self.runner.invoke(list_ha_workers.main, ['-s', 'server_address', '-p', 'password']).exit_code)
-        self.cs.assert_called_with(server='server_address', database='cloud', port=3306, user='cloud',
-                                   password='password', dry_run=False)
+                         self.runner.invoke(list_ha_workers.main, ['-p', 'profile']).exit_code)
+        self.cs.assert_called_with(server='profile', dry_run=False)
         self.cs_instance.list_ha_workers.assert_called_with('')
         table_data = self.tabulate.call_args[0][0]
         flat_data = [worker for workers in table_data for worker in workers]
@@ -81,7 +80,7 @@ class TestListHAWorkers(TestCase):
 
     def test_non_running(self):
         self.assertEqual(0,
-                         self.runner.invoke(list_ha_workers.main, ['-s', 'server_address', '--non-running']).exit_code)
+                         self.runner.invoke(list_ha_workers.main, ['-p', 'profile', '--non-running']).exit_code)
         table_data = self.tabulate.call_args[0][0]
         flat_data = [worker for workers in table_data for worker in workers]
         self.assertNotIn('vm_name_1', flat_data)
@@ -89,7 +88,7 @@ class TestListHAWorkers(TestCase):
 
     def test_name_filter(self):
         self.assertEqual(0, self.runner.invoke(list_ha_workers.main,
-                                               ['-s', 'server_address', '--name-filter', 'name_1']).exit_code)
+                                               ['-p', 'profile', '--name-filter', 'name_1']).exit_code)
         table_data = self.tabulate.call_args[0][0]
         flat_data = [worker for workers in table_data for worker in workers]
         self.assertIn('vm_name_1', flat_data)
@@ -97,4 +96,4 @@ class TestListHAWorkers(TestCase):
 
     def test_without_workers(self):
         self.cs_instance.list_ha_workers.return_value = []
-        self.assertEqual(0, self.runner.invoke(list_ha_workers.main, ['-s', 'db_alias']).exit_code)
+        self.assertEqual(0, self.runner.invoke(list_ha_workers.main, ['-p', 'profile']).exit_code)

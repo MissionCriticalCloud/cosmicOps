@@ -84,4 +84,3 @@ def list_orphaned_disks(profile, cluster, zone):
     orphaned_disks_output += tabulate(storage_pool_table, headers=storage_pool_table_headers, tablefmt='pretty')
 
     return orphaned_disks_output
-

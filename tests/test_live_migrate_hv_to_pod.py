@@ -75,11 +75,10 @@ class TestLiveMigrateHVToPod(TestCase):
 
     def test_main(self):
         self.assertEqual(0, self.runner.invoke(live_migrate_hv_to_pod.main,
-                                               ['--exec', '-s', 'db', 'source_host', 'target_cluster']).exit_code)
+                                               ['--exec', '-p', 'profile', 'source_host', 'target_cluster']).exit_code)
 
-        self.co.assert_called_with(profile='config', dry_run=False, log_to_slack=True)
-        self.cs.assert_called_with(server='db', database='cloud', port=3306, user='cloud',
-                                   password=None, dry_run=False)
+        self.co.assert_called_with(profile='profile', dry_run=False, log_to_slack=True)
+        self.cs.assert_called_with(server='profile', dry_run=False)
 
         self.co_instance.get_host.assert_called_with(name='source_host')
         self.source_host.get_all_vms.assert_called()
@@ -92,11 +91,10 @@ class TestLiveMigrateHVToPod(TestCase):
 
     def test_main_dry_run(self):
         self.assertEqual(0, self.runner.invoke(live_migrate_hv_to_pod.main,
-                                               ['-s', 'db', 'source_host', 'target_cluster']).exit_code)
+                                               ['-p', 'profile', 'source_host', 'target_cluster']).exit_code)
 
-        self.co.assert_called_with(profile='config', dry_run=True, log_to_slack=False)
-        self.cs.assert_called_with(server='db', database='cloud', port=3306, user='cloud',
-                                   password=None, dry_run=True)
+        self.co.assert_called_with(profile='profile', dry_run=True, log_to_slack=False)
+        self.cs.assert_called_with(server='profile', dry_run=True)
 
         self.co_instance.get_host.assert_called_with(name='source_host')
         self.source_host.get_all_vms.assert_called()
@@ -111,4 +109,4 @@ class TestLiveMigrateHVToPod(TestCase):
         self.co_instance.get_host.return_value = None
 
         self.assertEqual(1, self.runner.invoke(live_migrate_hv_to_pod.main,
-                                               ['--exec', '-s', 'db', 'source_host', 'target_cluster']).exit_code)
+                                               ['--exec', '-p', 'profile', 'source_host', 'target_cluster']).exit_code)
