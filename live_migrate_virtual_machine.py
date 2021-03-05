@@ -148,6 +148,25 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
         if root_disk['storage'] == zwps_name:
             logging.warning(f"Volume '{root_disk['name']}' already on desired storage pool")
         else:
+            target_storage_pool = co.get_storage_pool(name=zwps_name)
+            if not target_storage_pool:
+                return False
+
+            volume_path = f"/mnt/{target_storage_pool['id']}/{root_disk['path']}"
+            file_details = source_host.file_exists(volume_path)
+            if file_details:
+                last_changed = f"{file_details[-4]} {file_details[-3]} {file_details[-2]}"
+                logging.info(
+                    f"Can't migrate: disk '{root_disk['name']}' already exists on target pool as '{volume_path}', last changed: {last_changed}")
+
+                if dry_run:
+                    logging.info(f"Would rename '{root_disk['name']}' ({volume_path})")
+                else:
+                    logging.info(f"Renaming '{root_disk['name']}' ({volume_path})")
+                    if not source_host.rename_existing_destination_file(volume_path):
+                        logging.error("Failed to rename '{root_disk['name']}' ({volume_path})")
+                        return False
+
             if dry_run:
                 logging.info(
                     f"Would migrate ROOT disk '{root_disk['name']}' of VM '{vm['name']}' to ZWPS pool '{zwps_name}'")
@@ -155,9 +174,6 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
                 logging.info(
                     f"Migrating ROOT disk '{root_disk['name']}' of VM '{vm['name']}' to ZWPS pool '{zwps_name}'",
                     to_slack=log_to_slack)
-                target_storage_pool = co.get_storage_pool(name=zwps_name)
-                if not target_storage_pool:
-                    return False
 
                 if not root_disk.migrate(target_storage_pool, live_migrate=True):
                     logging.error(f"Failed to migrate ROOT disk '{root_disk['name']}'", to_slack=log_to_slack)

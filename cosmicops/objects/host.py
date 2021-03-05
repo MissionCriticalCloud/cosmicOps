@@ -14,6 +14,7 @@
 
 import socket
 import time
+from datetime import datetime
 from enum import Enum, auto
 from operator import itemgetter
 from xml.etree import ElementTree
@@ -461,6 +462,31 @@ class CosmicHost(CosmicObject):
         except Exception as err:
             logging.error(f"Failed to power on '{self['name']}': {err}")
             return False
+
+    def file_exists(self, path):
+        try:
+            result = self.execute(f"/bin/ls -la \"{path}\"").stdout
+            return result.split()
+        except UnexpectedExit:
+            return []
+
+    def rename_file(self, source, destination):
+        try:
+            if not self.execute(f"/bin/mv \"{source}\" \"{destination}\"").return_code == 0:
+                return False
+
+            return True
+        except UnexpectedExit:
+            return False
+
+    def rename_existing_destination_file(self, path):
+        timestamp = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
+        magweg = f"magweg-migration-{timestamp}"
+        logging.info(f"Renaming {path} to {path}.{magweg} on host {self['name']}")
+        if not self.rename_file(path, f"{path}.{magweg}"):
+            return False
+
+        return True
 
     def __del__(self):
         if self._connection:
