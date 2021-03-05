@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from datetime import datetime
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch, call
@@ -705,3 +705,42 @@ class TestCosmicHost(TestCase):
     def test_power_on_failure(self):
         self.ilo_instance.set_host_power.side_effect = hpilo.IloCommunicationError
         self.assertFalse(self.host.power_on())
+
+    def test_file_exist(self):
+        ls_stdout = '-rw-r--r--. 1 qemu qemu 254279680 Mar  5  2021 /mnt/812ea6a3-7ad0-30f4-9cab-01e3f2985b98/9153b72d-ceac-48ae-b07e-07186ab0c97c\n'
+        self.host.execute = Mock(return_value=(Mock(stdout=ls_stdout)))
+
+        result = self.host.file_exists('/mnt/812ea6a3-7ad0-30f4-9cab-01e3f2985b98/9153b72d-ceac-48ae-b07e-07186ab0c97c')
+        self.host.execute.assert_called_with(
+            '/bin/ls -la "/mnt/812ea6a3-7ad0-30f4-9cab-01e3f2985b98/9153b72d-ceac-48ae-b07e-07186ab0c97c"')
+        self.assertEqual(('Mar', '5', '2021'), (result[-4], result[-3], result[-2]))
+
+        self.host.execute = Mock(side_effect=UnexpectedExit('mock unexpected exit'))
+        self.assertFalse(self.host.file_exists('/mnt/not/there'))
+
+    def test_rename_file(self):
+        self.host.execute = Mock(return_value=Mock(return_code=0))
+
+        self.assertTrue(self.host.rename_file('/foo', '/bar'))
+        self.host.execute.assert_called_with('/bin/mv "/foo" "/bar"')
+
+        self.host.execute = Mock(return_value=Mock(return_code=1))
+        self.assertFalse(self.host.rename_file('/foo', '/bar'))
+
+        self.host.execute = Mock(side_effect=UnexpectedExit('mock unexpected exit'))
+        self.assertFalse(self.host.rename_file('/foo', '/bar'))
+
+    def test_rename_existing_destination_file(self):
+        self.host.rename_file = Mock(return_value=True)
+
+        with patch('cosmicops.objects.host.datetime') as mock_datetime:
+            now = datetime.now()
+            mock_datetime.now.return_value = now
+            timestamp = now.strftime("%d-%m-%Y-%H-%M-%S")
+
+            self.assertTrue(self.host.rename_existing_destination_file('/mnt/a-b-c/d-e-f'))
+            self.host.rename_file.assert_called_with('/mnt/a-b-c/d-e-f',
+                                                     f"/mnt/a-b-c/d-e-f.magweg-migration-{timestamp}")
+
+        self.host.rename_file = Mock(return_value=False)
+        self.assertFalse(self.host.rename_existing_destination_file('/mnt/a-b-c/d-e-f'))
