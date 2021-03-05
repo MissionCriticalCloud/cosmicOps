@@ -122,17 +122,25 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     zwps_name = None
     root_disk = None
     cwps_found = False
+    hwps_found = False
     for volume in vm.get_volumes():
         if volume['type'] == 'DATADISK':
-            disk_offering = volume['diskofferingname'].upper()
+            source_storage_pool = co.get_storage_pool(name=volume['storage'])
 
-            if 'CWPS' in disk_offering:
+            if source_storage_pool['scope'] == 'CLUSTER':
                 cwps_found = True
-            if 'ZWPS' in disk_offering:
+            elif source_storage_pool['scope'] == 'ZONE':
                 zwps_found = True
                 zwps_name = volume['storage']
+            elif source_storage_pool['scope'] == 'HOST':
+                hwps_found = True
         elif volume['type'] == 'ROOT':
             root_disk = volume
+
+    if hwps_found:
+        logging.error(f"VM '{vm['name']} has HWPS data disks attached. This is currently not handled by this script.",
+                      to_slack=log_to_slack)
+        return False
 
     if cwps_found and zwps_found:
         logging.error(
