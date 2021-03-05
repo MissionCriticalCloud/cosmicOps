@@ -14,12 +14,12 @@
 # limitations under the License.
 
 import logging
-import time
 import sys
+import time
+from collections import defaultdict
 
 import click
 import click_log
-from collections import defaultdict
 
 from cosmicops import CosmicOps
 
@@ -42,7 +42,7 @@ def main(profile, dry_run, skip_version):
     svms = co.get_all_systemvms()
     zones = defaultdict(list)
     for svm in svms:
-        if skip_version and co.get_host_by_name(svm['name']).get('version') == skip_version:
+        if skip_version and co.get_host(name=svm['name']).get('version') == skip_version:
             continue
         zones[svm['zonename']].append(svm)
 
@@ -58,7 +58,7 @@ def main(profile, dry_run, skip_version):
                 if not dry_run:
                     time.sleep(5)
                 systemvms = {x['name']: x for x in co.get_all_systemvms()}
-                host_status = {k: co.get_host_by_name(host_name=k) for k in systemvms}
+                host_status = {k: co.get_host(name=k) for k in systemvms}
                 up = {k: v for k, v in host_status.items() if host_status[k] and host_status[k]['state'] == 'Up'
                       and host_status[k]['resourcestate'] == 'Enabled'}
                 retries -= 1
