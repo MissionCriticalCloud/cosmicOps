@@ -89,6 +89,16 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
         logging.error(f"VM '{vm['name']}' is already running on cluster '{target_cluster['name']}'")
         return False
 
+    if not dry_run:
+        disk_info = source_host.get_disks(vm)
+        for path, disk_info in disk_info.items():
+            _, path, _, _, size = cs.get_volume_size(path)
+
+            if int(size) < int(disk_info['size']):
+                logging.warning(
+                    f"Size for '{disk_info['path']}' in DB ({size}) is less than libvirt reports ({disk_info['size']}), updating DB")
+                cs.update_volume_size(vm['instancename'], path, disk_info['size'])
+
     if zwps_to_cwps:
         logging.info(f"Converting any ZWPS volume of VM '{vm['name']}' to CWPS before starting the migration",
                      to_slack=log_to_slack)
@@ -108,6 +118,51 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
                                                  vm['serviceofferingname'].replace(datacenter, destination_dc))
                 break
 
+    zwps_found = False
+    zwps_name = None
+    root_disk = None
+    cwps_found = False
+    for volume in vm.get_volumes():
+        if volume['type'] == 'DATADISK':
+            disk_offering = volume['diskofferingname'].upper()
+
+            if 'CWPS' in disk_offering:
+                cwps_found = True
+            if 'ZWPS' in disk_offering:
+                zwps_found = True
+                zwps_name = volume['storage']
+        elif volume['type'] == 'ROOT':
+            root_disk = volume
+
+    if cwps_found and zwps_found:
+        logging.error(
+            f"VM '{vm['name']}' has both ZWPS and CWPS data disks attached. This is currently not handled by this script.",
+            to_slack=log_to_slack)
+        return False
+
+    if zwps_found:
+        logging.info(f"ZWPS data disk attached to VM '{vm['name']}")
+        logging.info(
+            f"For migration to succeed we need to migrate root disk '{root_disk['name']}' to ZWPS pool '{zwps_name}' first")
+
+        if root_disk['storage'] == zwps_name:
+            logging.warning(f"Volume '{root_disk['name']}' already on desired storage pool")
+        else:
+            if dry_run:
+                logging.info(
+                    f"Would migrate ROOT disk '{root_disk['name']}' of VM '{vm['name']}' to ZWPS pool '{zwps_name}'")
+            else:
+                logging.info(
+                    f"Migrating ROOT disk '{root_disk['name']}' of VM '{vm['name']}' to ZWPS pool '{zwps_name}'",
+                    to_slack=log_to_slack)
+                target_storage_pool = co.get_storage_pool(name=zwps_name)
+                if not target_storage_pool:
+                    return False
+
+                if not root_disk.migrate(target_storage_pool, live_migrate=True):
+                    logging.error(f"Failed to migrate ROOT disk '{root_disk['name']}'", to_slack=log_to_slack)
+                    return False
+
     destination_host = target_cluster.find_migration_host(vm)
     if not destination_host:
         return False
@@ -117,16 +172,15 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
             f"Would migrate '{vm['name']}' to '{destination_host['name']}' on cluster '{target_cluster['name']}'")
         return True
 
-    disk_info = source_host.get_disks(vm)
-    for path, disk_info in disk_info.items():
-        _, path, _, _, size = cs.get_volume_size(path)
+    root_storage_pool = co.get_storage_pool(name=root_disk['storage'])
+    if not root_storage_pool:
+        logging.error(f"Unable to fetch storage pool details foor ROOT disk '{root_disk['name']}'",
+                      to_slack=log_to_slack)
+        return False
 
-        if int(size) < int(disk_info['size']):
-            logging.warning(
-                f"Size for '{disk_info['path']}' in DB ({size}) is less than libvirt reports ({disk_info['size']}), updating DB")
-            cs.update_volume_size(vm['instancename'], path, disk_info['size'])
+    migrate_with_volume = False if root_storage_pool['scope'] == 'ZONE' else True
 
-    if not vm.migrate(destination_host, with_volume=True):
+    if not vm.migrate(destination_host, with_volume=migrate_with_volume):
         return False
 
     with click_spinner.spinner():

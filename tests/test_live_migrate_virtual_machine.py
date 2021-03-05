@@ -18,7 +18,7 @@ from unittest.mock import patch, Mock, call
 from click.testing import CliRunner
 
 import live_migrate_virtual_machine
-from cosmicops.objects import CosmicCluster, CosmicHost, CosmicVM
+from cosmicops.objects import CosmicCluster, CosmicHost, CosmicVM, CosmicVolume, CosmicStoragePool
 
 
 class TestLiveMigrateVirtualMachine(TestCase):
@@ -67,6 +67,39 @@ class TestLiveMigrateVirtualMachine(TestCase):
             'name': 'destination_host',
             'clusterid': 'tc1'
         })
+        self.zwps_storage_pool = CosmicStoragePool(Mock(), {
+            'id': 'pool_zwps',
+            'name': 'zwps_pool',
+            'scope': 'ZONE'
+        })
+        self.root_storage_pool = CosmicStoragePool(Mock(), {
+            'id': 'pool_root',
+            'name': 'root_pool',
+            'scope': 'CLUSTER'
+        })
+        self.cwps_volume = CosmicVolume(Mock(), {
+            'id': 'v_cwps',
+            'name': 'cwps_volume',
+            'storage': 'cwps_pool',
+            'state': 'Ready',
+            'type': 'DATADISK',
+            'diskofferingname': 'disk_offering_CWPS'
+        })
+        self.zwps_volume = CosmicVolume(Mock(), {
+            'id': 'v_zwps',
+            'name': 'zwps_volume',
+            'storage': 'zwps_pool',
+            'state': 'Ready',
+            'type': 'DATADISK',
+            'diskofferingname': 'disk_offering_ZWPS'
+        })
+        self.root_volume = CosmicVolume(Mock(), {
+            'id': 'v_root',
+            'name': 'root_volume',
+            'storage': 'root_pool',
+            'state': 'Ready',
+            'type': 'ROOT'
+        })
 
         self.co_instance.get_cluster.side_effect = [self.target_cluster, self.source_cluster]
         self.co_instance.get_vm.return_value = self.vm
@@ -74,8 +107,11 @@ class TestLiveMigrateVirtualMachine(TestCase):
         self.target_cluster.find_migration_host = Mock(return_value=self.destination_host)
         self.source_host.get_disks = Mock(return_value={'path1': {'path': 'path1', 'size': '1234'}})
         self.cs_instance.get_volume_size.return_value = ('name', 'path1', 'uuid', 'voltype', '1234')
+        self.vm.get_volumes = Mock(return_value=[self.root_volume])
+        self.co_instance.get_storage_pool.return_value = self.root_storage_pool
         self.vm.migrate = Mock(return_value=True)
         self.vm.refresh = Mock()
+        self.root_volume.migrate = Mock(return_value=True)
 
     def test_main(self):
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine.main,
@@ -160,6 +196,12 @@ class TestLiveMigrateVirtualMachine(TestCase):
         self.target_cluster.find_migration_host.assert_called()
 
         self._setup_mocks()
+        self.co_instance.get_storage_pool.return_value = None
+        self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine.main,
+                                               ['--exec', '-p', 'profile', 'vm', 'target_cluster']).exit_code)
+        self.co_instance.get_storage_pool.assert_called_with(name='root_pool')
+
+        self._setup_mocks()
         self.vm.migrate.return_value = False
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine.main,
                                                ['--exec', '-p', 'profile', 'vm', 'target_cluster']).exit_code)
@@ -217,3 +259,55 @@ class TestLiveMigrateVirtualMachine(TestCase):
                                                ['--exec', '-p', 'profile', '--add-affinity-group', 'afgroup1', 'vm',
                                                 'target_cluster']).exit_code)
         self.cs_instance.add_vm_to_affinity_group.assert_called_with(self.vm['instancename'], 'afgroup1')
+
+    def test_cwps_and_zwps_combi(self):
+        self.vm.get_volumes.return_value = [self.cwps_volume, self.zwps_volume, self.root_volume]
+        self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine.main,
+                                               ['--exec', '-p', 'profile', 'vm', 'target_cluster']).exit_code)
+
+    def test_root_migration_to_zwps(self):
+        self.vm.get_volumes.return_value = [self.zwps_volume, self.root_volume]
+        self.co_instance.get_storage_pool.side_effect = [self.zwps_storage_pool, self.zwps_storage_pool]
+        self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine.main,
+                                               ['--exec', '-p', 'profile', 'vm', 'target_cluster']).exit_code)
+
+        self.co_instance.get_storage_pool.assert_has_calls([call(name='zwps_pool'), call(name='root_pool')])
+        self.root_volume.migrate.assert_called_with(self.zwps_storage_pool, live_migrate=True)
+
+    def test_root_migration_to_zwps_dry_run(self):
+        self.vm.get_volumes.return_value = [self.zwps_volume, self.root_volume]
+        self.co_instance.get_storage_pool.side_effect = [self.zwps_storage_pool, self.zwps_storage_pool]
+        self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine.main,
+                                               ['-p', 'profile', 'vm', 'target_cluster']).exit_code)
+
+        self.co_instance.get_storage_pool.assert_not_called()
+        self.root_volume.migrate.assert_not_called()
+
+    def test_root_migration_to_zwps_already_on_pool(self):
+        self.root_volume['storage'] = 'zwps_pool'
+        self.vm.get_volumes.return_value = [self.zwps_volume, self.root_volume]
+        self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine.main,
+                                               ['--exec', '-p', 'profile', 'vm', 'target_cluster']).exit_code)
+
+        self.co_instance.get_storage_pool.assert_called_once_with(name='zwps_pool')
+        self.root_volume.migrate.assert_not_called()
+
+    def test_root_migration_to_zwps_failure(self):
+        self.vm.get_volumes.return_value = [self.zwps_volume, self.root_volume]
+        self.co_instance.get_storage_pool.side_effect = [None, self.root_storage_pool]
+        self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine.main,
+                                               ['--exec', '-p', 'profile', 'vm', 'target_cluster']).exit_code)
+
+        self.co_instance.get_storage_pool.assert_called_with(name='zwps_pool')
+        self.root_volume.migrate.assert_not_called()
+
+        self._setup_mocks()
+        self.co_instance.get_storage_pool.reset_mock()
+        self.vm.get_volumes.return_value = [self.zwps_volume, self.root_volume]
+        self.co_instance.get_storage_pool.side_effect = [self.zwps_storage_pool, self.root_storage_pool]
+        self.root_volume.migrate.return_value = False
+        self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine.main,
+                                               ['--exec', '-p', 'profile', 'vm', 'target_cluster']).exit_code)
+
+        self.co_instance.get_storage_pool.assert_called_with(name='zwps_pool')
+        self.root_volume.migrate.assert_called_with(self.zwps_storage_pool, live_migrate=True)
