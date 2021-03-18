@@ -16,12 +16,16 @@
 from cosmicops import CosmicOps, RebootAction
 
 
-def empty_host(profile, shutdown, dry_run, host):
+def empty_host(profile, shutdown, skip_disable, dry_run, host):
     co = CosmicOps(profile=profile, dry_run=dry_run)
 
     host = co.get_host(name=host)
     if not host:
         raise RuntimeError(f"Host '{host['name']}' not found")
+
+    if not skip_disable and host['resourcestate'] != 'Disabled':
+        if not host.disable():
+            raise RuntimeError(f"Failed to disable host '{host['name']}'")
 
     (total, success, failed) = host.empty()
     result_message = f"Result: {success} successful, {failed} failed out of {total} total VMs"
