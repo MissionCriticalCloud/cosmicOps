@@ -35,8 +35,10 @@ class TestEmptyHost(TestCase):
         self.runner = CliRunner()
         self.host = CosmicHost(Mock(), {
             'id': 'h1',
-            'name': 'host1'
+            'name': 'host1',
+            'resourcestate': 'Enabled'
         })
+        self.host.disable = Mock(return_value=True)
         self.host.empty = Mock(return_value=(1, 1, 0))
         self.host.reboot = Mock(return_value=True)
         self.host.set_uid_led = Mock()
@@ -46,9 +48,21 @@ class TestEmptyHost(TestCase):
         self.assertEqual(0, self.runner.invoke(empty_host.main, ['--exec', 'host1']).exit_code)
         self.co.assert_called_with(profile='config', dry_run=False)
         self.co_instance.get_host.assert_called_with(name='host1')
+        self.host.disable.assert_called()
         self.host.empty.assert_called()
         self.host.reboot.assert_not_called()
         self.host.set_uid_led.assert_not_called()
+
+    def test_skip_disable(self):
+        self.assertEqual(0, self.runner.invoke(empty_host.main, ['--exec', '--skip-disable', 'host1']).exit_code)
+        self.host.disable.assert_not_called()
+        self.host.empty.assert_called()
+
+    def test_disable_failure(self):
+        self.host.disable.return_value = False
+
+        self.assertEqual(1, self.runner.invoke(empty_host.main, ['--exec', 'host1']).exit_code)
+        self.host.disable.assert_called()
 
     def test_fail_on_empty_host_response(self):
         self.co_instance.get_host.return_value = []
@@ -74,9 +88,5 @@ class TestEmptyHost(TestCase):
         self.host.reboot.assert_called_with(RebootAction.HALT)
 
     def test_dry_run(self):
-        host_mock = Mock()
-        host_mock.empty.return_value = (1, 1, 0)
-        self.co_instance.get_host.return_value = host_mock
-
         self.assertEqual(0, self.runner.invoke(empty_host.main, ['host1']).exit_code)
         self.co.assert_called_with(profile='config', dry_run=True)

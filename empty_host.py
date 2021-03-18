@@ -26,10 +26,11 @@ from cosmicops.empty_host import empty_host
 @click.option('--profile', '-p', metavar='<name>', default='config',
               help='Name of the CloudMonkey profile containing the credentials')
 @click.option('--shutdown', is_flag=True, help='Shutdown host when all VMs have been migrated')
+@click.option('--skip-disable', is_flag=True, help='Do not disable host before emptying it')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('host')
-def main(profile, shutdown, dry_run, host):
+def main(profile, shutdown, skip_disable, dry_run, host):
     """Empty HOST by migrating VMs to another host in the same cluster."""
 
     click_log.basic_config()
@@ -38,7 +39,7 @@ def main(profile, shutdown, dry_run, host):
         logging.info('Running in dry-run mode, will only show changes')
 
     try:
-        logging.info(empty_host(profile, shutdown, dry_run, host))
+        logging.info(empty_host(profile, shutdown, skip_disable, dry_run, host))
     except RuntimeError as err:
         logging.error(err)
         sys.exit(1)
