@@ -401,7 +401,7 @@ class CosmicHost(CosmicObject):
     def get_disks(self, vm):
         lv = libvirt.openReadOnly(f"qemu+tcp://{self['name']}/system")
 
-        domain = lv.lookupByName(vm['name'])
+        domain = lv.lookupByName(vm['instancename'])
 
         tree = ElementTree.fromstring(domain.XMLDesc())
         block_devs = tree.findall('devices/disk')
