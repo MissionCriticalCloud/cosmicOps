@@ -91,7 +91,7 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
         for path, disk_info in disk_info.items():
             _, path, _, _, size = cs.get_volume_size(path)
 
-            if int(size) < int(disk_info['size']):
+            if int(size) != int(disk_info['size']):
                 logging.warning(
                     f"Size for '{disk_info['path']}' in DB ({size}) is less than libvirt reports ({disk_info['size']}), updating DB")
                 cs.update_volume_size(vm['instancename'], path, disk_info['size'])
