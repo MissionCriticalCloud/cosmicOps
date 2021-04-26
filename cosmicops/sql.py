@@ -305,12 +305,7 @@ class CosmicSQL(object):
     def update_volume_size(self, instance_name, path, size):
         instance_id = self.get_instance_id_from_name(instance_name)
 
-        query = """
-        UPDATE volumes
-        SET size=%s
-        WHERE path='%s'
-          AND instance_id=%s
-        """
+        query = "UPDATE volumes SET size=%s WHERE path=%s AND instance_id=%s"
 
         return self._execute_update_query(query, (size, path, instance_id))
 
