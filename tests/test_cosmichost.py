@@ -616,7 +616,8 @@ class TestCosmicHost(TestCase):
     def test_get_disks(self):
         vm = CosmicVM(Mock(), {
             'id': 'vm1',
-            'name': 'vm'
+            'name': 'vm',
+            'instancename': 'vm'
         })
 
         xml_desc = """
