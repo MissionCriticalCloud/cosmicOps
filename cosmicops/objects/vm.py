@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from operator import itemgetter
 
-from cs import CloudStackException
+from cs import CloudStackException, CloudStackApiException
 
 from cosmicops.log import logging
 from .object import CosmicObject
@@ -81,6 +82,34 @@ class CosmicVM(CosmicObject):
 
     def is_user_vm(self):
         return True if 'instancename' in self else False
+
+    def migrate_within_cluster(self, vm, source_cluster):
+        logging.instance_name = vm['instancename']
+        logging.slack_value = vm['domain']
+        logging.vm_name = vm['name']
+        logging.zone_name = vm['zonename']
+        logging.cluster = source_cluster['name']
+
+        try:
+            available_hosts = self._ops.cs.findHostsForMigration(virtualmachineid=vm['id']).get('host', [])
+        except CloudStackApiException as e:
+            logging.error(f"Encountered API exception while finding suitable host for migration: {e}")
+            return False
+        available_hosts.sort(key=itemgetter('memoryallocated'))
+
+        migration_host = None
+
+        for available_host in available_hosts:
+            # Only hosts in the same cluster
+            if available_host['clusterid'] != source_cluster['id']:
+                logging.debug(f"Skipping '{available_host['name']}' because it's not part of the current cluster")
+                continue
+            migration_host = available_host
+            break
+        if migration_host is None:
+            return False
+
+        return self.migrate(target_host=migration_host)
 
     def migrate(self, target_host, with_volume=False):
         if self.dry_run:

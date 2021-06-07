@@ -52,6 +52,12 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
 
     cs = CosmicSQL(server=profile, dry_run=dry_run)
 
+    # Work around migration issue: first in the same pod to limit possible hiccup
+    vm_instance = co.get_vm(name=vm, is_project_vm=is_project_vm)
+    source_host = co.get_host(id=vm_instance['hostid'])
+    source_cluster = co.get_cluster(id=source_host['clusterid'])
+    vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster)
+
     if not live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
                         log_to_slack, dry_run):
         sys.exit(1)
@@ -193,7 +199,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
 
     if dry_run:
         logging.info(
-            f"Would migrate '{vm['name']}' to '{destination_host['name']}' on cluster '{target_cluster['name']}'")
+            f"Would live migrate VM '{vm['name']}' to '{destination_host['name']}'")
         return True
 
     root_storage_pool = co.get_storage_pool(name=root_disk['storage'])
