@@ -24,8 +24,11 @@ class CosmicCluster(CosmicObject):
         return [CosmicHost(self._ops, host) for host in
                 self._ops.cs.listHosts(fetch_list=True, clusterid=self['id'], listall='true')]
 
-    def get_storage_pools(self):
-        storage_pools = self._ops.cs.listStoragePools(fetch_list=True, clusterid=self['id'], listall='true')
+    def get_storage_pools(self, scope=None):
+        if scope is None:
+            storage_pools = self._ops.cs.listStoragePools(fetch_list=True, clusterid=self['id'], listall='true')
+        else:
+            storage_pools = self._ops.cs.listStoragePools(fetch_list=True, clusterid=self['id'], scope=scope, listall='true')
 
         return [CosmicStoragePool(self._ops, storage_pool) for storage_pool in storage_pools]
 

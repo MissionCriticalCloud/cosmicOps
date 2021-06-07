@@ -38,6 +38,10 @@ def main(profile, dry_run, ignore_volumes, skip_disk_offerings, only_project, so
 
     click_log.basic_config()
 
+    if source_cluster == destination_cluster:
+        logging.error('Destination cluster cannot be the same source cluster!')
+        sys.exit(1)
+
     if dry_run:
         logging.warning('Running in dry-run mode, will only show changes')
 
@@ -45,23 +49,31 @@ def main(profile, dry_run, ignore_volumes, skip_disk_offerings, only_project, so
 
     source_cluster = co.get_cluster(name=source_cluster)
     if not source_cluster:
+        logging.error(f"Source cluster not found:'{source_cluster['name']}'!")
         sys.exit(1)
 
     destination_cluster = co.get_cluster(name=destination_cluster)
     if not destination_cluster:
+        logging.error(f"Destination cluster not found:'{destination_cluster['name']}'!")
         sys.exit(1)
 
     try:
-        source_storage_pool = choice(source_cluster.get_storage_pools())
+        source_storage_pools = source_cluster.get_storage_pools(scope='CLUSTER')
     except IndexError:
         logging.error(f"No storage pools  found for cluster '{source_cluster['name']}'")
         sys.exit(1)
+    logging.info('Source storage pools found:')
+    for source_storage_pool in source_storage_pools:
+        logging.info(f" - '{source_storage_pool['name']}'")
 
     try:
-        destination_storage_pool = choice(destination_cluster.get_storage_pools())
+        destination_storage_pools = destination_cluster.get_storage_pools(scope='CLUSTER')
     except IndexError:
         logging.error(f"No storage pools  found for cluster '{destination_cluster['name']}'")
         sys.exit(1)
+    logging.info('Destination storage pools found:')
+    for destination_storage_pool in destination_storage_pools:
+        logging.info(f" - '{destination_storage_pool['name']}'")
 
     if ignore_volumes:
         ignore_volumes = ignore_volumes.replace(' ', '').split(',')
@@ -71,47 +83,40 @@ def main(profile, dry_run, ignore_volumes, skip_disk_offerings, only_project, so
         skip_disk_offerings = skip_disk_offerings.replace(' ', '').split(',')
         logging.info(f"Skipping disk offerings: {str(skip_disk_offerings)}")
 
-    volumes = source_storage_pool.get_volumes(only_project)
+    for source_storage_pool in source_storage_pools:
+        destination_storage_pool = choice(destination_storage_pools)
+        volumes = source_storage_pool.get_volumes(only_project)
 
-    for volume in volumes:
-        if volume['id'] in ignore_volumes:
-            continue
+        for volume in volumes:
+            if volume['id'] in ignore_volumes:
+                continue
 
-        if skip_disk_offerings and volume.get('diskofferingname') in skip_disk_offerings:
-            logging.warning(f"Volume '{volume['name']}' has offering '{volume['diskofferingname']}', skipping...")
-            continue
+            if skip_disk_offerings and volume.get('diskofferingname') in skip_disk_offerings:
+                logging.warning(f"Volume '{volume['name']}' has offering '{volume['diskofferingname']}', skipping...")
+                continue
 
-        if 'storage' not in volume:
-            logging.warning(f"No storage attribute found for volume '{volume['name']}' ({volume['id']}), skipping...")
-            continue
+            if 'storage' not in volume:
+                logging.warning(f"No storage attribute found for volume '{volume['name']}' ({volume['id']}), skipping...")
+                continue
 
-        if volume['storage'] == destination_storage_pool['name']:
-            logging.warning(
-                f"Volume '{volume['name']}' ({volume['id']}) already on cluster '{destination_cluster['name']}', skipping...")
-            continue
-
-        if volume['state'] != 'Ready':
-            logging.warning(f"Volume '{volume['name']}' ({volume['id']}) is in state '{volume['state']}', skipping...")
-            continue
-
-        if 'vmstate' in volume and volume['vmstate'] != 'Stopped':
-            logging.warning(
-                f"Volume '{volume['name']}' ({volume['id']}) is attached to {volume['vmstate']} VM '{volume['vmname']}', skipping...")
-            continue
-
-        if not volume.migrate(destination_storage_pool):
-            continue
-
-        with click_spinner.spinner():
-            while True:
-                volume.refresh()
-
-                if volume['state'] == 'Ready':
-                    break
-
+            if volume['storage'] == destination_storage_pool['name']:
                 logging.warning(
-                    f"Volume '{volume['name']}' ({volume['id']}) is in '{volume['state']}' state instead of 'Ready', sleeping...")
-                time.sleep(60)
+                    f"Volume '{volume['name']}' ({volume['id']}) already on cluster '{destination_cluster['name']}', skipping...")
+                continue
+
+            if volume['state'] != 'Ready':
+                logging.warning(f"Volume '{volume['name']}' ({volume['id']}) is in state '{volume['state']}', skipping...")
+                continue
+
+            if 'vmstate' in volume and volume['vmstate'] != 'Stopped':
+                logging.warning(
+                    f"Volume '{volume['name']}' ({volume['id']}) is attached to {volume['vmstate']} VM '{volume['vmname']}', skipping...")
+                continue
+
+            logging.info(
+                    f"Volume '{volume['name']}' will be migrated from cluster '{source_cluster['name']}' to '{destination_cluster['name']}'")
+            if not volume.migrate(destination_storage_pool):
+                continue
 
 
 if __name__ == '__main__':

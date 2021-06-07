@@ -274,8 +274,8 @@ class CosmicHost(CosmicObject):
         if mode:
             self._connection.sudo(f'chmod {mode:o} {destination}')
 
-    def execute(self, command, sudo=False, hide_stdout=True, pty=False):
-        if self.dry_run:
+    def execute(self, command, sudo=False, hide_stdout=True, pty=False, always=False):
+        if self.dry_run and not always:
             logging.info(f"Would execute '{command}' on '{self['name']}")
             return
 
@@ -465,14 +465,14 @@ class CosmicHost(CosmicObject):
 
     def file_exists(self, path):
         try:
-            result = self.execute(f"/bin/ls -la \"{path}\"").stdout
+            result = self.execute(f"/bin/ls -la \"{path}\"", always=True).stdout
             return result.split()
         except UnexpectedExit:
             return []
 
     def rename_file(self, source, destination):
         try:
-            if not self.execute(f"/bin/mv \"{source}\" \"{destination}\"").return_code == 0:
+            if not self.execute(f"/bin/mv \"{source}\" \"{destination}\"", True).return_code == 0:
                 return False
 
             return True

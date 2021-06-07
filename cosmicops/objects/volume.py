@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from cs import CloudStackException
+
 from cosmicops.log import logging
 from .object import CosmicObject
 
@@ -28,12 +30,21 @@ class CosmicVolume(CosmicObject):
         migrate_result = self._ops.cs.migrateVolume(volumeid=self['id'], storageid=storage_pool['id'],
                                                     livemigrate=live_migrate)
 
-        job_id = migrate_result['jobid']
-        if not self._ops.wait_for_job(job_id):
+        if not self._ops.wait_for_volume_job(volume_id=self['id'], job_id=migrate_result['jobid']):
             logging.error(f"Migration job '{migrate_result['jobid']}' failed")
             return False
 
         logging.debug(f"Migration job '{migrate_result['jobid']}' completed")
+        self.refresh()
 
-        logging.debug(f"Successfully migrated volume '{self['name']}' to '{storage_pool['name']}'")
+        logging.info(f"Successfully migrated volume '{self['name']}' to '{storage_pool['name']}'")
         return True
+
+    def get_snapshots(self):
+        volume_snapshots = []
+        try:
+            volume_snapshots = self._ops.cs.listSnapshots(fetch_list=True, volumeid=self['id'], listall='true')
+        except CloudStackException as e:
+            logging.error(f'Exception {str(e)}')
+
+        return volume_snapshots

@@ -175,6 +175,9 @@ class CosmicOps(object):
 
         return self._cs_get_all_results('listVirtualMachines', kwargs, CosmicVM, 'virtualmachine')
 
+    def get_all_storage_pools(self, list_all=True, **kwargs):
+        return self._cs_get_all_results('listStoragePools', kwargs, CosmicStoragePool, 'storagepool')
+
     def get_all_project_vms(self, list_all=True, **kwargs):
         kwargs['projectid'] = '-1'
         return self.get_all_vms(list_all=list_all, **kwargs)
@@ -208,3 +211,20 @@ class CosmicOps(object):
                 time.sleep(1)
 
         return False
+
+    def wait_for_volume_job(self, volume_id, job_id):
+        # Hack - Check when state of volume returns to Ready state
+        with click_spinner.spinner():
+            time.sleep(60)
+            while True:
+                volume = self.get_volume(id=volume_id, json=True)
+                if volume is None:
+                    logging.error(f"Error: Could not find volume '{volume_id}'")
+                    return False
+
+                if volume['state'] == "Ready":
+                    break
+                time.sleep(60)
+                logging.debug(f"Volume '{volume_id}' is in {volume['state']} state and not Ready. Sleeping.")
+        # Return result of job
+        return self.wait_for_job(job_id=job_id, retries=1)
