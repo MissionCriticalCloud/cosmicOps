@@ -28,12 +28,11 @@ class CosmicVolume(CosmicObject):
         migrate_result = self._ops.cs.migrateVolume(volumeid=self['id'], storageid=storage_pool['id'],
                                                     livemigrate=live_migrate)
 
-        job_id = migrate_result['jobid']
-        if not self._ops.wait_for_job(job_id):
+        if not self._ops.wait_for_volume_job(self['id']):
             logging.error(f"Migration job '{migrate_result['jobid']}' failed")
             return False
 
         logging.debug(f"Migration job '{migrate_result['jobid']}' completed")
 
-        logging.debug(f"Successfully migrated volume '{self['name']}' to '{storage_pool['name']}'")
+        logging.info(f"Successfully migrated volume '{self['name']}' to '{storage_pool['name']}'")
         return True
