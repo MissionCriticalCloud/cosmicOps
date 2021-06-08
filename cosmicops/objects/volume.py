@@ -33,6 +33,7 @@ class CosmicVolume(CosmicObject):
             return False
 
         logging.debug(f"Migration job '{migrate_result['jobid']}' completed")
+        self.refresh()
 
         logging.info(f"Successfully migrated volume '{self['name']}' to '{storage_pool['name']}'")
         return True
