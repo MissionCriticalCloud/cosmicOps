@@ -167,7 +167,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
                 return False
 
             if not clean_old_disk_file(co=co, host=source_host, dry_run=dry_run, volume=root_disk,
-                                       pool_name=zwps_name):
+                                       target_pool_name=zwps_name):
                 logging.error(f"Cleaning volume '{root_disk['name']}' failed on zwps")
                 return False
 
@@ -206,9 +206,9 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
 
     if migrate_with_volume:
         for volume in vm.get_volumes():
-            for pool in co.get_all_storage_pools(clusterid=target_cluster['id']):
+            for target_pool in co.get_all_storage_pools(clusterid=target_cluster['id']):
                 if not clean_old_disk_file(co=co, host=destination_host, dry_run=dry_run, volume=volume,
-                                           pool_name=pool['name']):
+                                           target_pool_name=target_pool['name']):
                     logging.error(f"Cleaning volume '{root_disk['name']}' failed")
                     return False
 
@@ -239,8 +239,8 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     return True
 
 
-def clean_old_disk_file(co, host, dry_run, volume, pool_name):
-    target_storage_pool = co.get_storage_pool(name=pool_name)
+def clean_old_disk_file(co, host, dry_run, volume, target_pool_name):
+    target_storage_pool = co.get_storage_pool(name=target_pool_name)
     if not target_storage_pool:
         return False
 
