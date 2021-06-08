@@ -206,7 +206,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
 
     if migrate_with_volume:
         if not clean_old_disk_file(co=co, host=destination_host, dry_run=dry_run, root_disk=root_disk,
-                                     pool_name=root_storage_pool):
+                                   pool_name=root_storage_pool['name']):
             logging.error(f"Cleaning volume '{root_disk['name']}' failed")
             return False
 

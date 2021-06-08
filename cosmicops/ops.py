@@ -217,7 +217,7 @@ class CosmicOps(object):
                 logging.error(f"Error: Could not find volume '{volume_id}'")
                 return False
 
-            if volume.state == "Ready":
+            if volume['state'] == "Ready":
                 break
             time.sleep(60)
             logging.debug(f"Volume '{volume_id}' is in {volume.state} state and not Ready. Sleeping.")
