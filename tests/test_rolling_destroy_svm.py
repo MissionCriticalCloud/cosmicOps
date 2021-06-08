@@ -38,37 +38,46 @@ class TestRollingDestroySVM(TestCase):
         self.svm1 = CosmicSystemVM(Mock(), {
             'id': 's1',
             'name': 's-1-VM',
-            'zonename': 'zone1'
+            'zonename': 'zone1',
+            'zoneid': 'ECC106A3-49EF-41E6-8A49-4C7ADF329A05'
         })
         self.svm1_host = CosmicHost(Mock(), {
             'id': 'sh1',
             'name': 's-1-VM',
             'version': '1.0.0',
             'state': 'Up',
+            'zonename': 'zone1',
+            'zoneid': 'ECC106A3-49EF-41E6-8A49-4C7ADF329A05',
             'resourcestate': 'Enabled'
         })
         self.svm2 = CosmicSystemVM(Mock(), {
             'id': 's2',
             'name': 'v-2-VM',
-            'zonename': 'zone1'
+            'zonename': 'zone2',
+            'zoneid': 'BD687FC1-F138-4B3D-929D-4695F9B6EC98'
         })
         self.svm2_host = CosmicHost(Mock(), {
             'id': 'sh2',
             'name': 'v-2-VM',
             'version': '2.0.0',
             'state': 'Up',
+            'zonename': 'zone2',
+            'zoneid': 'BD687FC1-F138-4B3D-929D-4695F9B6EC98',
             'resourcestate': 'Enabled'
         })
         self.svm3 = CosmicSystemVM(Mock(), {
             'id': 's3',
             'name': 'r-3-VM',
-            'zonename': 'zone1'
+            'zonename': 'zone1',
+            'zoneid': 'ECC106A3-49EF-41E6-8A49-4C7ADF329A05'
         })
         self.svm3_host = CosmicHost(Mock(), {
             'id': 'sh3',
             'name': 'r-3-VM',
             'version': '3.0.0',
             'state': 'Up',
+            'zonename': 'zone1',
+            'zoneid': 'ECC106A3-49EF-41E6-8A49-4C7ADF329A05',
             'resourcestate': 'Enabled'
         })
 
@@ -101,6 +110,18 @@ class TestRollingDestroySVM(TestCase):
     def test_skip_version(self):
         self.assertEqual(0, self.runner.invoke(rolling_destroy_svm.main,
                                                ['--exec', '-p', 'profile', '--skip-version', '2.0.0']).exit_code)
+
+        self.co.assert_called_with(profile='profile', dry_run=False)
+
+        self.co_instance.get_all_systemvms.assert_called()
+        for vm in [self.svm1, self.svm3]:
+            vm.destroy.assert_called()
+
+        self.svm2.destroy.assert_not_called()
+
+    def test_skip_zone(self):
+        self.assertEqual(0, self.runner.invoke(rolling_destroy_svm.main,
+                                               ['--exec', '-p', 'profile', '--skip-zone', 'zone1']).exit_code)
 
         self.co.assert_called_with(profile='profile', dry_run=False)
 

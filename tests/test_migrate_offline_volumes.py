@@ -59,7 +59,8 @@ class TestMigrateOfflineVolumes(TestCase):
             'id': 'v1',
             'name': 'volume1',
             'state': 'Ready',
-            'storage': 'source_storage_pool'
+            'storage': 'source_storage_pool',
+            'diskofferingname': 'disk_test_offering'
         })
 
         self.co_instance.get_cluster.side_effect = [self.source_cluster, self.destination_cluster]

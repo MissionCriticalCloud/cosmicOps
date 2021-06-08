@@ -77,7 +77,7 @@ def main(profile, dry_run, ignore_volumes, skip_disk_offerings, only_project, so
         if volume['id'] in ignore_volumes:
             continue
 
-        if volume.get('diskofferingname') in skip_disk_offerings:
+        if skip_disk_offerings and volume.get('diskofferingname') in skip_disk_offerings:
             logging.warning(f"Volume '{volume['name']}' has offering '{volume['diskofferingname']}', skipping...")
             continue
 

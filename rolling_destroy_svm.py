@@ -43,7 +43,7 @@ def main(profile, dry_run, skip_version, skip_zone):
     svms = co.get_all_systemvms()
     zones = defaultdict(list)
     for svm in svms:
-        if skip_zone and svm['zonename'] == skip_zone:
+        if skip_zone and co.get_host(name=svm['name']).get('zonename') == skip_zone:
             continue
         if skip_version and co.get_host(name=svm['name']).get('version') == skip_version:
             continue
