@@ -220,5 +220,5 @@ class CosmicOps(object):
             if volume.state == "Ready":
                 break
             time.sleep(60)
-            logging.error(f"Volume '{volume_id}' is in {volume.state} state and not Ready. Sleeping.")
+            logging.debug(f"Volume '{volume_id}' is in {volume.state} state and not Ready. Sleeping.")
         return True
