@@ -28,8 +28,9 @@ from cosmicops import CosmicOps
 @click.option('--profile', '-p', required=True, help='Name of the CloudMonkey profile containing the credentials')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click.option('--skip-version', metavar='<version>', help='Skips VM matching the specified version')
+@click.option('--skip-zone', metavar='<zone>', help='Skips zone')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO")
-def main(profile, dry_run, skip_version):
+def main(profile, dry_run, skip_version, skip_zone):
     """Destroy SVM per zone and waits for a new one"""
 
     click_log.basic_config()
@@ -42,6 +43,8 @@ def main(profile, dry_run, skip_version):
     svms = co.get_all_systemvms()
     zones = defaultdict(list)
     for svm in svms:
+        if skip_zone and svm['zonename'] == skip_zone:
+            continue
         if skip_version and co.get_host(name=svm['name']).get('version') == skip_version:
             continue
         zones[svm['zonename']].append(svm)
@@ -54,10 +57,11 @@ def main(profile, dry_run, skip_version):
 
             up = {}
             retries = 60
-            while len(up) != len(svms) and retries > 0:
+            zone_id = vm['zoneid']
+            while len(up) != len(zones[zone]) and retries > 0:
                 if not dry_run:
                     time.sleep(5)
-                systemvms = {x['name']: x for x in co.get_all_systemvms()}
+                systemvms = {x['name']: x for x in co.get_all_systemvms(zoneid=zone_id)}
                 host_status = {k: co.get_host(name=k) for k in systemvms}
                 up = {k: v for k, v in host_status.items() if host_status[k] and host_status[k]['state'] == 'Up'
                       and host_status[k]['resourcestate'] == 'Enabled'}
