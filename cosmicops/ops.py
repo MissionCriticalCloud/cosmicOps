@@ -175,6 +175,9 @@ class CosmicOps(object):
 
         return self._cs_get_all_results('listVirtualMachines', kwargs, CosmicVM, 'virtualmachine')
 
+    def get_all_storage_pools(self, list_all=True, **kwargs):
+        return self._cs_get_all_results('listStoragePools', kwargs, CosmicStoragePool, 'storagepool')
+
     def get_all_project_vms(self, list_all=True, **kwargs):
         kwargs['projectid'] = '-1'
         return self.get_all_vms(list_all=list_all, **kwargs)

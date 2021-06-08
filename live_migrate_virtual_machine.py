@@ -166,7 +166,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
             if not target_storage_pool:
                 return False
 
-            if not clean_old_disk_file(co=co, host=source_host, dry_run=dry_run, root_disk=root_disk,
+            if not clean_old_disk_file(co=co, host=source_host, dry_run=dry_run, volume=root_disk,
                                        pool_name=zwps_name):
                 logging.error(f"Cleaning volume '{root_disk['name']}' failed on zwps")
                 return False
@@ -205,10 +205,12 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     logging.info(f"migrate_with_volume has value: '{migrate_with_volume}'")
 
     if migrate_with_volume:
-        if not clean_old_disk_file(co=co, host=destination_host, dry_run=dry_run, root_disk=root_disk,
-                                   pool_name=root_storage_pool['name']):
-            logging.error(f"Cleaning volume '{root_disk['name']}' failed")
-            return False
+        for volume in vm.get_volumes():
+            for pool in co.get_all_storage_pools(clusterid=target_cluster['id']):
+                if not clean_old_disk_file(co=co, host=destination_host, dry_run=dry_run, volume=volume,
+                                           pool_name=pool['name']):
+                    logging.error(f"Cleaning volume '{root_disk['name']}' failed")
+                    return False
 
     if not vm.migrate(destination_host, with_volume=migrate_with_volume):
         return False
@@ -237,22 +239,22 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     return True
 
 
-def clean_old_disk_file(co, host, dry_run, root_disk, pool_name):
+def clean_old_disk_file(co, host, dry_run, volume, pool_name):
     target_storage_pool = co.get_storage_pool(name=pool_name)
     if not target_storage_pool:
         return False
 
-    volume_path = f"/mnt/{target_storage_pool['id']}/{root_disk['path']}"
+    volume_path = f"/mnt/{target_storage_pool['id']}/{volume['path']}"
     file_details = host.file_exists(volume_path)
     if file_details:
         last_changed = f"{file_details[-4]} {file_details[-3]} {file_details[-2]}"
         logging.info(
-            f"Can't migrate: disk '{root_disk['name']}' already exists on target pool as '{volume_path}', last changed: {last_changed}")
+            f"Can't migrate: disk '{volume['name']}' already exists on target pool as '{volume_path}', last changed: {last_changed}")
 
         if dry_run:
-            logging.info(f"Would rename '{root_disk['name']}' ({volume_path})")
+            logging.info(f"Would rename '{volume['name']}' ({volume_path})")
         else:
-            logging.info(f"Renaming '{root_disk['name']}' ({volume_path})")
+            logging.info(f"Renaming '{volume['name']}' ({volume_path})")
             if not host.rename_existing_destination_file(volume_path):
                 logging.error("Failed to rename '{root_disk['name']}' ({volume_path})")
                 return False
