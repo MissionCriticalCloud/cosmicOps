@@ -210,6 +210,8 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
 
     migrate_with_volume = False if root_storage_pool['scope'] == 'ZONE' else True
 
+    logging.info(f"migrate_with_volume has value: '{migrate_with_volume}'")
+
     if not vm.migrate(destination_host, with_volume=migrate_with_volume):
         return False
 
