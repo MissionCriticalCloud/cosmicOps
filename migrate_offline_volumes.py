@@ -27,12 +27,13 @@ from cosmicops import CosmicOps, logging
 @click.command()
 @click.option('--profile', '-p', default='config', help='Name of the CloudMonkey profile containing the credentials')
 @click.option('--ignore-volumes', metavar='<list>', default=[], help='Comma separated list of volume IDs to skip')
+@click.option('--skip-disk-offerings', metavar='<list>', help='Comma separated list of disk offerings to skip')
 @click.option('--only-project', is_flag=True, help='Only migrate volumes belonging to project VMs')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('source_cluster')
 @click.argument('destination_cluster')
-def main(profile, dry_run, ignore_volumes, only_project, source_cluster, destination_cluster):
+def main(profile, dry_run, ignore_volumes, skip_disk_offerings, only_project, source_cluster, destination_cluster):
     """Migrate offline volumes from SOURCE_CLUSTER to DESTINATION_CLUSTER"""
 
     click_log.basic_config()
@@ -66,10 +67,18 @@ def main(profile, dry_run, ignore_volumes, only_project, source_cluster, destina
         ignore_volumes = ignore_volumes.replace(' ', '').split(',')
         logging.info(f"Ignoring volumes: {str(ignore_volumes)}")
 
+    if skip_disk_offerings:
+        skip_disk_offerings = skip_disk_offerings.replace(' ', '').split(',')
+        logging.info(f"Skipping disk offerings: {str(skip_disk_offerings)}")
+
     volumes = source_storage_pool.get_volumes(only_project)
 
     for volume in volumes:
         if volume['id'] in ignore_volumes:
+            continue
+
+        if volume.get('diskofferingname') in skip_disk_offerings:
+            logging.warning(f"Volume '{volume['name']}' has offering '{volume['diskofferingname']}', skipping...")
             continue
 
         if 'storage' not in volume:
