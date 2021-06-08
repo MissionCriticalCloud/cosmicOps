@@ -193,6 +193,8 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
                     logging.error(f"Failed to migrate ROOT disk '{root_disk['name']}'", to_slack=log_to_slack)
                     return False
 
+    logging.info(f"ROOT disk is at storage pool: '{root_disk['storage']}'")
+
     destination_host = target_cluster.find_migration_host(vm)
     if not destination_host:
         return False
