@@ -82,12 +82,14 @@ class TestRollingDestroySVM(TestCase):
         })
 
         self.all_systemvms = [self.svm1, self.svm2, self.svm3]
+        self.zone1_systemvms = [svm for svm in self.all_systemvms if svm['zonename'] == 'zone1']
+        self.zone2_systemvms = [svm for svm in self.all_systemvms if svm['zonename'] == 'zone2']
         self.all_hosts = [self.svm1_host, self.svm2_host, self.svm3_host]
 
         for svm in self.all_systemvms:
             svm.destroy = Mock(return_value=True)
 
-        self.co_instance.get_all_systemvms.return_value = self.all_systemvms
+        self.co_instance.get_all_systemvms.side_effect = [self.all_systemvms, self.zone1_systemvms, self.zone1_systemvms, self.zone2_systemvms]
         self.co_instance.get_host.side_effect = len(self.all_systemvms) * self.all_hosts
 
     def test_main(self):
@@ -126,10 +128,11 @@ class TestRollingDestroySVM(TestCase):
         self.co.assert_called_with(profile='profile', dry_run=False)
 
         self.co_instance.get_all_systemvms.assert_called()
-        for vm in [self.svm1, self.svm3]:
-            vm.destroy.assert_called()
+        for vm in self.zone1_systemvms:
+            vm.destroy.assert_not_called()
 
-        self.svm2.destroy.assert_not_called()
+        for vm in self.zone2_systemvms:
+            vm.destroy.assert_called()
 
     def test_failures(self):
         self.svm1.destroy.return_value = False
@@ -138,6 +141,8 @@ class TestRollingDestroySVM(TestCase):
                                                ['--exec', '-p', 'profile']).exit_code)
 
     def test_retries(self):
+        self.co_instance.get_all_systemvms.side_effect = None
+        self.co_instance.get_all_systemvms.return_value = self.zone1_systemvms
         self.svm1_host['state'] = 'Disconnected'
         self.co_instance.get_host = Mock(return_value=self.svm1_host)
 
