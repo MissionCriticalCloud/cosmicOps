@@ -142,6 +142,14 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     hwps_found = False
     for volume in vm.get_volumes():
         if volume['type'] == 'DATADISK':
+            if volume['state'] != 'READY':
+                logging.error(f"Volume '{volume['name']} has non-READY state '{volume['state']}. halting")
+                return False
+
+            for snapshot in volume.get_snapshots():
+                logging.error(f"Cannot migrate, volume '{volume['name']} has snapshot: '{snapshot['name']}'")
+                return False
+
             source_storage_pool = co.get_storage_pool(name=volume['storage'])
 
             if source_storage_pool['scope'] == 'CLUSTER':

@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from cs import CloudStackException
+
 from cosmicops.log import logging
 from .object import CosmicObject
 
@@ -37,3 +39,12 @@ class CosmicVolume(CosmicObject):
 
         logging.info(f"Successfully migrated volume '{self['name']}' to '{storage_pool['name']}'")
         return True
+
+    def get_snapshots(self):
+        volume_snapshots = []
+        try:
+            volume_snapshots = self._ops.cs.listSnapshot(fetch_list=True, virtualmachineid=self['id'], listall='true')
+        except CloudStackException as e:
+            logging.error(f'Exception {str(e)}')
+
+        return volume_snapshots
