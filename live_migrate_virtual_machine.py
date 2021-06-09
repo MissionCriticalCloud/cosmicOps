@@ -71,6 +71,10 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
         logging.error(f"Unknown datacenter '{destination_dc}', should be one of {str(DATACENTERS)}")
         return False
 
+    for vm_snapshot in vm.get_snapshots():
+        logging.error(f"Cannot migrate, VM has VM snapshots! datacenter '{vm_snapshot['name']}'")
+        return False
+
     target_cluster = co.get_cluster(name=cluster)
     if not target_cluster:
         return False

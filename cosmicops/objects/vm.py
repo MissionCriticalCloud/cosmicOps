@@ -71,6 +71,15 @@ class CosmicVM(CosmicObject):
 
         return affinity_groups
 
+    def get_snapshots(self):
+        vm_snapshots = []
+        try:
+            vm_snapshots = self._ops.cs.listVMSnapshot(fetch_list=True, virtualmachineid=self['id'])
+        except CloudStackException:
+            pass
+
+        return vm_snapshots
+
     def get_volumes(self):
         volumes = self._ops.cs.listVolumes(fetch_list=True, virtualmachineid=self['id'], listall='true')
 
