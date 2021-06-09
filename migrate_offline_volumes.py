@@ -93,7 +93,7 @@ def main(profile, dry_run, ignore_volumes, only_project, source_cluster, destina
             continue
 
         logging.info(
-                f"Volume '{volume['name']}' will be migrated from cluster '{source_cluster['name']}' to {destination_cluster['name']}'")
+                f"Volume '{volume['name']}' will be migrated from cluster '{source_cluster['name']}' to '{destination_cluster['name']}'")
         if not volume.migrate(destination_storage_pool):
             continue
 
