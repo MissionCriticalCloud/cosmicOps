@@ -212,7 +212,7 @@ class CosmicOps(object):
 
         return False
 
-    def wait_for_volume_job(self, volume_id):
+    def wait_for_volume_job(self, volume_id, job_id):
         # Hack - Check when state of volume returns to Ready state
         time.sleep(60)
         while True:
@@ -225,4 +225,5 @@ class CosmicOps(object):
                 break
             time.sleep(60)
             logging.debug(f"Volume '{volume_id}' is in {volume.state} state and not Ready. Sleeping.")
-        return True
+        # Return result of job
+        return self.wait_for_job(job_id=job_id, retries=1)
