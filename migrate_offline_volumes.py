@@ -44,10 +44,12 @@ def main(profile, dry_run, ignore_volumes, only_project, source_cluster, destina
 
     source_cluster = co.get_cluster(name=source_cluster)
     if not source_cluster:
+        logging.error(f"Source cluster not found:'{source_cluster['name']}'!")
         sys.exit(1)
 
     destination_cluster = co.get_cluster(name=destination_cluster)
     if not destination_cluster:
+        logging.error(f"Destination cluster not found:'{destination_cluster['name']}'!")
         sys.exit(1)
 
     try:
@@ -90,19 +92,10 @@ def main(profile, dry_run, ignore_volumes, only_project, source_cluster, destina
                 f"Volume '{volume['name']}' ({volume['id']}) is attached to {volume['vmstate']} VM '{volume['vmname']}', skipping...")
             continue
 
+        logging.info(
+                f"Volume '{volume['name']}' will be migrated from cluster '{source_cluster['name']}' to {destination_cluster['name']}'")
         if not volume.migrate(destination_storage_pool):
             continue
-
-        with click_spinner.spinner():
-            while True:
-                volume.refresh()
-
-                if volume['state'] == 'Ready':
-                    break
-
-                logging.warning(
-                    f"Volume '{volume['name']}' ({volume['id']}) is in '{volume['state']}' state instead of 'Ready', sleeping...")
-                time.sleep(60)
 
 
 if __name__ == '__main__':
