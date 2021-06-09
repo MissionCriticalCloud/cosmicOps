@@ -83,6 +83,9 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     vm = co.get_vm(name=vm, is_project_vm=is_project_vm)
     if not vm:
         return False
+    if not vm['state'] == 'Running':
+        logging.error(f"Cannot migrate, VM has has state: '{vm['state']}'")
+        return False
 
     for vm_snapshot in vm.get_snapshots():
         logging.error(f"Cannot migrate, VM has VM snapshots: '{vm_snapshot['name']}'")
