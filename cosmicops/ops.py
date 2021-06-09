@@ -225,6 +225,6 @@ class CosmicOps(object):
                 if volume['state'] == "Ready":
                     break
                 time.sleep(60)
-                logging.debug(f"Volume '{volume_id}' is in {volume.state} state and not Ready. Sleeping.")
+                logging.debug(f"Volume '{volume_id}' is in {volume['state']} state and not Ready. Sleeping.")
         # Return result of job
         return self.wait_for_job(job_id=job_id, retries=1)
