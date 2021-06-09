@@ -19,6 +19,7 @@ import time
 import click
 import click_log
 import click_spinner
+from datetime import datetime
 
 from cosmicops import CosmicOps, logging, CosmicSQL
 
@@ -60,9 +61,13 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
 
     if not live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
                         log_to_slack, dry_run):
-        logging.info(f"VM Migration failed at {time.clock()}\n")
+        now = datetime.now()
+        date_sting = now.strftime("%d-%m-%YY %H:%M:%S")
+        logging.info(f"VM Migration failed at {date_sting}\n")
         sys.exit(1)
-    logging.info(f"VM Migration completed at {time.clock()}\n")
+    now = datetime.now()
+    date_sting = now.strftime("%d-%m-%YY %H:%M:%S")
+    logging.info(f"VM Migration completed at {date_sting}\n")
 
 
 def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps, log_to_slack,
@@ -80,7 +85,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
         return False
 
     for vm_snapshot in vm.get_snapshots():
-        logging.error(f"Cannot migrate, VM has VM snapshots! datacenter '{vm_snapshot['name']}'")
+        logging.error(f"Cannot migrate, VM has VM snapshots: '{vm_snapshot['name']}'")
         return False
 
     logging.instance_name = vm['instancename']
