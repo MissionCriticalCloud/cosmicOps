@@ -182,7 +182,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
             logging.warning(f"Volume '{root_disk['name']}' already on desired storage pool")
         else:
             if not migrate_root_disk(co=co, dry_run=dry_run, log_to_slack=log_to_slack, root_disk=root_disk,
-                                               source_host=source_host, vm=vm, target_pool_name=zwps_name)
+                                               source_host=source_host, vm=vm, target_pool_name=zwps_name):
                 logging.error(f"Volume '{root_disk['name']}'failed to migrate")
                 return False
 
@@ -240,7 +240,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     if not migrate_with_volume:
         target_pool = co.get_storage_pool(clusterid=target_cluster['id'])
         if not migrate_root_disk(co=co, dry_run=dry_run, log_to_slack=log_to_slack, root_disk=root_disk,
-                                           source_host=source_host, vm=vm, target_pool_name=target_pool['name'])
+                                           source_host=source_host, vm=vm, target_pool_name=target_pool['name']):
             logging.error(f"Volume '{root_disk['name']}'failed to migrate")
             return False
 
