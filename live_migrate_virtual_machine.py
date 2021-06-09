@@ -143,7 +143,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     for volume in vm.get_volumes():
         if volume['type'] == 'DATADISK':
             if volume['state'] != 'Ready':
-                logging.error(f"Volume '{volume['name']}' has non-READY state '{volume['state']}. halting")
+                logging.error(f"Volume '{volume['name']}' has non-READY state '{volume['state']}'. halting")
                 return False
 
             for snapshot in volume.get_snapshots():
