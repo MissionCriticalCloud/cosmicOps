@@ -125,8 +125,6 @@ class CosmicVM(CosmicObject):
             logging.info(f"Would live migrate VM '{self['name']}' to '{target_host['name']}'")
             return True
 
-        logging.info(f"with_volume has value: '{with_volume}'")
-
         if with_volume:
             migrate_func = self._ops.cs.migrateVirtualMachineWithVolume
         else:
