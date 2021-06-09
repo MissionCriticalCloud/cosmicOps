@@ -214,6 +214,7 @@ class CosmicOps(object):
 
     def wait_for_volume_job(self, volume_id):
         # Hack - Check when state of volume returns to Ready state
+        time.sleep(60)
         while True:
             volume = self.get_volume(id=volume_id, json=True)
             if volume is None:
