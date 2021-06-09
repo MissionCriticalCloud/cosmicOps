@@ -60,7 +60,9 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
 
     if not live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
                         log_to_slack, dry_run):
+        logging.info(f"VM Migration failed at {time.clock()}\n")
         sys.exit(1)
+    logging.info(f"VM Migration completed at {time.clock()}\n")
 
 
 def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps, log_to_slack,
@@ -256,7 +258,7 @@ def clean_old_disk_file(co, host, dry_run, volume, target_pool_name):
         else:
             logging.info(f"Renaming '{volume['name']}' ({volume_path})")
             if not host.rename_existing_destination_file(volume_path):
-                logging.error("Failed to rename '{root_disk['name']}' ({volume_path})")
+                logging.error(f"Failed to rename '{volume['name']}' ({volume_path})")
                 return False
     return True
 

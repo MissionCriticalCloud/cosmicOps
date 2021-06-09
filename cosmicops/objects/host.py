@@ -472,7 +472,7 @@ class CosmicHost(CosmicObject):
 
     def rename_file(self, source, destination):
         try:
-            if not self.execute(f"/bin/mv \"{source}\" \"{destination}\"").return_code == 0:
+            if not self.execute(f"/bin/mv \"{source}\" \"{destination}\"", True).return_code == 0:
                 return False
 
             return True
