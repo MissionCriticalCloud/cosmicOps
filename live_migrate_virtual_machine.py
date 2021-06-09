@@ -141,13 +141,13 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     cwps_found = False
     hwps_found = False
     for volume in vm.get_volumes():
+        for snapshot in volume.get_snapshots():
+            logging.error(f"Cannot migrate, volume '{volume['name']}' has snapshot: '{snapshot['name']}'")
+            return False
+
         if volume['type'] == 'DATADISK':
             if volume['state'] != 'Ready':
                 logging.error(f"Volume '{volume['name']}' has non-READY state '{volume['state']}'. halting")
-                return False
-
-            for snapshot in volume.get_snapshots():
-                logging.error(f"Cannot migrate, volume '{volume['name']}' has snapshot: '{snapshot['name']}'")
                 return False
 
             source_storage_pool = co.get_storage_pool(name=volume['storage'])
@@ -181,10 +181,10 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
         if root_disk['storage'] == zwps_name:
             logging.warning(f"Volume '{root_disk['name']}' already on desired storage pool")
         else:
-            migrate_result = migrate_root_disk(co=co, dry_run=dry_run, log_to_slack=log_to_slack, root_disk=root_disk,
+            if not migrate_root_disk(co=co, dry_run=dry_run, log_to_slack=log_to_slack, root_disk=root_disk,
                                                source_host=source_host, vm=vm, target_pool_name=zwps_name)
-            if not migrate_result:
                 logging.error(f"Volume '{root_disk['name']}'failed to migrate")
+                return False
 
     logging.info(f"ROOT disk is at storage pool: '{root_disk['storage']}'")
 
@@ -239,10 +239,10 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
 
     if not migrate_with_volume:
         target_pool = co.get_storage_pool(clusterid=target_cluster['id'])
-        migrate_result = migrate_root_disk(co=co, dry_run=dry_run, log_to_slack=log_to_slack, root_disk=root_disk,
+        if not migrate_root_disk(co=co, dry_run=dry_run, log_to_slack=log_to_slack, root_disk=root_disk,
                                            source_host=source_host, vm=vm, target_pool_name=target_pool['name'])
-        if not migrate_result:
             logging.error(f"Volume '{root_disk['name']}'failed to migrate")
+            return False
 
     return True
 
@@ -266,7 +266,7 @@ def migrate_root_disk(co, dry_run, log_to_slack, root_disk, source_host, vm, tar
         if not root_disk.migrate(target_storage_pool, live_migrate=True):
             logging.error(f"Failed to migrate ROOT disk '{root_disk['name']}'", to_slack=log_to_slack)
             return False
-
+    return True
 
 def clean_old_disk_file(co, host, dry_run, volume, target_pool_name):
     target_storage_pool = co.get_storage_pool(name=target_pool_name)
