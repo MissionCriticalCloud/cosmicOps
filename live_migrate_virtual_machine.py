@@ -55,6 +55,11 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
 
     # Work around migration issue: first in the same pod to limit possible hiccup
     vm_instance = co.get_vm(name=vm, is_project_vm=is_project_vm)
+
+    if not vm_instance['state'] == 'Running':
+        logging.error(f"Cannot migrate, VM has has state: '{vm_instance['state']}'")
+        return False
+
     source_host = co.get_host(id=vm_instance['hostid'])
     source_cluster = co.get_cluster(id=source_host['clusterid'])
     vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster)
@@ -83,6 +88,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     vm = co.get_vm(name=vm, is_project_vm=is_project_vm)
     if not vm:
         return False
+
     if not vm['state'] == 'Running':
         logging.error(f"Cannot migrate, VM has has state: '{vm['state']}'")
         return False
