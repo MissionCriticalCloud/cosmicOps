@@ -62,11 +62,11 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
     if not live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
                         log_to_slack, dry_run):
         now = datetime.now()
-        date_sting = now.strftime("%d-%m-%YY %H:%M:%S")
+        date_sting = now.strftime("%d-%m-%Y %H:%M:%S")
         logging.info(f"VM Migration failed at {date_sting}\n")
         sys.exit(1)
     now = datetime.now()
-    date_sting = now.strftime("%d-%m-%YY %H:%M:%S")
+    date_sting = now.strftime("%d-%m-%Y %H:%M:%S")
     logging.info(f"VM Migration completed at {date_sting}\n")
 
 
