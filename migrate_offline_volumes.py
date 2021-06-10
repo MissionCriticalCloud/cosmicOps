@@ -61,18 +61,18 @@ def main(profile, dry_run, ignore_volumes, only_project, source_cluster, destina
     except IndexError:
         logging.error(f"No storage pools  found for cluster '{source_cluster['name']}'")
         sys.exit(1)
-    logging.warning('Source storage pools found:')
+    logging.info('Source storage pools found:')
     for source_storage_pool in source_storage_pools:
-        logging.warning(f"  '{source_storage_pool['name']}'")
+        logging.info(f"  '{source_storage_pool['name']}'")
 
     try:
         destination_storage_pools = destination_cluster.get_storage_pools()
     except IndexError:
         logging.error(f"No storage pools  found for cluster '{destination_cluster['name']}'")
         sys.exit(1)
-    logging.warning('Destination storage pools found:')
+    logging.info('Destination storage pools found:')
     for destination_storage_pool in destination_storage_pools:
-        logging.warning(f"  '{destination_storage_pool['name']}'")
+        logging.info(f"  '{destination_storage_pool['name']}'")
 
     if ignore_volumes:
         ignore_volumes = ignore_volumes.replace(' ', '').split(',')
