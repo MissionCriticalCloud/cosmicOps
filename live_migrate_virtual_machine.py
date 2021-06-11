@@ -270,7 +270,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
                 target_pool = choice(target_cluster.get_storage_pools(scope='CLUSTER'))
                 if not temp_migrate_volume(co=co, dry_run=dry_run, log_to_slack=log_to_slack, volume=volume,
                                            vm=vm, target_pool_name=target_pool['name']):
-                    logging.error(f"Volume '{root_disk['name']}'failed to migrate")
+                    logging.error(f"Volume '{volume['name']}'failed to migrate")
                     return False
 
     return True
