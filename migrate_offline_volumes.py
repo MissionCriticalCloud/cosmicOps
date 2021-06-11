@@ -63,7 +63,7 @@ def main(profile, dry_run, ignore_volumes, only_project, source_cluster, destina
         sys.exit(1)
     logging.info('Source storage pools found:')
     for source_storage_pool in source_storage_pools:
-        logging.info(f"  '{source_storage_pool['name']}'")
+        logging.info(f" - '{source_storage_pool['name']}'")
 
     try:
         destination_storage_pools = destination_cluster.get_storage_pools(scope='CLUSTER')
@@ -72,7 +72,7 @@ def main(profile, dry_run, ignore_volumes, only_project, source_cluster, destina
         sys.exit(1)
     logging.info('Destination storage pools found:')
     for destination_storage_pool in destination_storage_pools:
-        logging.info(f"  '{destination_storage_pool['name']}'")
+        logging.info(f" - '{destination_storage_pool['name']}'")
 
     if ignore_volumes:
         ignore_volumes = ignore_volumes.replace(' ', '').split(',')
