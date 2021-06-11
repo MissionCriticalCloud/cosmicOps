@@ -59,7 +59,8 @@ class TestMigrateOfflineVolumes(TestCase):
             'id': 'v1',
             'name': 'volume1',
             'state': 'Ready',
-            'storage': 'source_storage_pool'
+            'storage': 'source_storage_pool',
+            'diskofferingname': 'disk_test_offering'
         })
 
         self.co_instance.get_cluster.side_effect = [self.source_cluster, self.destination_cluster]
@@ -104,6 +105,25 @@ class TestMigrateOfflineVolumes(TestCase):
                                                 'destination_cluster']).exit_code)
 
         ignore_volume.migrate.assert_not_called()
+        self.volume.migrate.assert_called()
+
+    def test_skip_disk_offerings(self):
+        skip_volume = CosmicVolume(Mock(), {
+            'id': 'sv',
+            'name': 'skip_volume',
+            'state': 'Ready',
+            'storage': 'source_storage_pool',
+            'diskofferingname': 'SKIP_ME'
+        })
+        skip_volume.migrate = Mock()
+
+        self.source_storage_pool.get_volumes = Mock(return_value=[skip_volume, self.volume])
+
+        self.assertEqual(0, self.runner.invoke(migrate_offline_volumes.main,
+                                               ['--exec', '--skip-disk-offerings', 'SKIP_ME', 'source_cluster',
+                                                'destination_cluster']).exit_code)
+
+        skip_volume.migrate.assert_not_called()
         self.volume.migrate.assert_called()
 
     def test_wait_for_ready_state(self):
