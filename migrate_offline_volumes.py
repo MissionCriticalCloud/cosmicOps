@@ -57,7 +57,7 @@ def main(profile, dry_run, ignore_volumes, only_project, source_cluster, destina
         sys.exit(1)
 
     try:
-        source_storage_pools = source_cluster.get_storage_pools()
+        source_storage_pools = source_cluster.get_storage_pools(scope='CLUSTER')
     except IndexError:
         logging.error(f"No storage pools  found for cluster '{source_cluster['name']}'")
         sys.exit(1)
@@ -66,7 +66,7 @@ def main(profile, dry_run, ignore_volumes, only_project, source_cluster, destina
         logging.info(f"  '{source_storage_pool['name']}'")
 
     try:
-        destination_storage_pools = destination_cluster.get_storage_pools()
+        destination_storage_pools = destination_cluster.get_storage_pools(scope='CLUSTER')
     except IndexError:
         logging.error(f"No storage pools  found for cluster '{destination_cluster['name']}'")
         sys.exit(1)
