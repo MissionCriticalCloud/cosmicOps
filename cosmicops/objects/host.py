@@ -58,6 +58,7 @@ class DomJobType(Enum):
 @dataclass(frozen=True, order=True)
 class DomJobInfo:
     jobType: int
+    operation: int
     timeElapsed: int
     timeRemaining: int
     dataTotal: int
@@ -471,7 +472,34 @@ class CosmicHost(CosmicObject):
         except libvirt.libvirtError as _:
             # Ignore exception
             pass
-        return DomJobInfo(DomJobType.JOB_COMPLETED, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        return DomJobInfo(DomJobType.JOB_COMPLETED.value, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+    def get_domjobstats(self, vm):
+        try:
+            lv = libvirt.openReadOnly(f"qemu+tcp://{self['name']}/system")
+            all_domains = lv.listAllDomains()
+            if any([x for x in all_domains if x.name() == vm]):
+                domain = lv.lookupByName(vm)
+                domjobstats = domain.jobStats()
+                return DomJobInfo(
+                    jobType=domjobstats.get('type', 0),
+                    operation=domjobstats.get('operation', 0),
+                    timeElapsed=domjobstats.get('time_elapsed', 0),
+                    timeRemaining=domjobstats.get('time_remaining', 0),
+                    dataTotal=domjobstats.get('data_total', 0),
+                    dataProcessed=domjobstats.get('data_processed', 0),
+                    dataRemaining=domjobstats.get('data_remaining', 0),
+                    memTotal=domjobstats.get('memory_total', 0),
+                    memProcessed=domjobstats.get('memory_processed', 0),
+                    memRemaining=domjobstats.get('memory_remaining', 0),
+                    fileTotal=domjobstats.get('disk_total', 0),
+                    fileProcessed=domjobstats.get('disk_processed', 0),
+                    fileRemaing=domjobstats.get('disk_remaining', 0)
+                )
+        except libvirt.libvirtError as _:
+            # Ignore exception
+            pass
+        return DomJobInfo(DomJobType.JOB_COMPLETED.value, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
     def set_iops_limit(self, vm, max_iops):
         command = f"""

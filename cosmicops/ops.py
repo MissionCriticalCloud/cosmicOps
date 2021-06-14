@@ -222,7 +222,7 @@ class CosmicOps(object):
 
         while True:
             if show_domjobinfo and source_host and instancename:
-                domjobinfo = source_host.get_domjobinfo(instancename)
+                domjobinfo = source_host.get_domjobstats(instancename)
                 print("%4.f%% %s\r" % (
                     float(domjobinfo.dataProcessed/domjobinfo.dataTotal*100) if domjobinfo.dataTotal > 0 else 0.,
                     next(self.spinner)),

@@ -66,7 +66,7 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
     extra_param = {
         'show_domjobinfo': {
             'source_host': source_host,
-            'instancename': vm['instancename']
+            'instancename': vm_instance
         }
     }
     vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster, **extra_param)
