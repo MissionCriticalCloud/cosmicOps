@@ -15,6 +15,7 @@
 import socket
 import time
 from datetime import datetime
+from dataclasses import dataclass
 from enum import Enum, auto
 from operator import itemgetter
 from xml.etree import ElementTree
@@ -42,6 +43,36 @@ class RebootAction(Enum):
     UPGRADE_FIRMWARE = auto()
     PXE_REBOOT = auto()
     SKIP = auto()
+
+
+class DomJobType(Enum):
+    JOB_NONE = 0
+    JOB_BOUNDED = 1
+    JOB_UNBOUNDED = 2
+    JOB_COMPLETED = 3
+    JOB_FAILED = 4
+    JOB_CANCELLED = 5
+    JOB_LAST = 6
+
+
+@dataclass(frozen=True, order=True)
+class DomJobInfo:
+    jobType: DomJobType
+    timeElapsed: int
+    timeRemaining: int
+    dataTotal: int
+    dataProcessed: int
+    dataRemaining: int
+    memTotal: int
+    memProcessed: int
+    memRemaining: int
+    fileTotal: int
+    fileProcessed: int
+    fileRemaing: int
+
+    @classmethod
+    def from_list(cls, i: list):
+        return cls(DomJobType(i.pop()), *i)
 
 
 # Patch Fabric connection to use different host policy (see https://github.com/fabric/fabric/issues/2071)
@@ -428,6 +459,19 @@ class CosmicHost(CosmicObject):
         lv.close()
 
         return disk_data
+
+    def get_domjobinfo(self, vm):
+        try:
+            lv = libvirt.openReadOnly(f"qemu+tcp://{self['name']}/system")
+            all_domains = lv.listAllDomains()
+            if any([x for x in all_domains if x.name() == vm]):
+                domain = lv.lookupByName(vm)
+                domjobinfo = domain.jobInfo()
+                return DomJobInfo.from_list(domjobinfo)
+        except libvirt.libvirtError as _:
+            # Ignore exception
+            pass
+        return DomJobInfo(DomJobType.JOB_COMPLETED, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
     def set_iops_limit(self, vm, max_iops):
         command = f"""

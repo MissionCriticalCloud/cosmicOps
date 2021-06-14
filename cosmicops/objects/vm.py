@@ -120,7 +120,7 @@ class CosmicVM(CosmicObject):
 
         return self.migrate(target_host=migration_host)
 
-    def migrate(self, target_host, with_volume=False):
+    def migrate(self, target_host, with_volume=False, **extra_args):
         if self.dry_run:
             logging.info(f"Would live migrate VM '{self['name']}' to '{target_host['name']}'")
             return True
@@ -148,7 +148,7 @@ class CosmicVM(CosmicObject):
             return False
 
         job_id = vm_result['jobid']
-        if not self._ops.wait_for_job(job_id):
+        if not self._ops.wait_for_vm_migration(job_id, **extra_args):
             logging.error(f"Migration job '{vm_result['jobid']}' failed")
             return False
 

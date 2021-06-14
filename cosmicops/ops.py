@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import itertools
 import time
 from configparser import ConfigParser
 from pathlib import Path
@@ -39,6 +39,8 @@ def _load_cloud_monkey_profile(profile):
 
 
 class CosmicOps(object):
+    spinner = itertools.cycle(['-', '\\', '|', '/'])
+
     def __init__(self, endpoint=None, key=None, secret=None, profile=None, timeout=60, dry_run=True,
                  log_to_slack=False):
         if profile:
@@ -209,6 +211,46 @@ class CosmicOps(object):
                     break
 
                 time.sleep(1)
+
+        return False
+
+    def wait_for_vm_migration(self, job_id, retries=10, **extra_params):
+        job_status = 0
+        show_domjobinfo = extra_params.get('show_domjobinfo', {})
+        source_host = show_domjobinfo.get('source_host', None)
+        instancename = show_domjobinfo.get('instancename', None)
+
+        while True:
+            if show_domjobinfo and source_host and instancename:
+                domjobinfo = source_host.get_domjobinfo(instancename)
+                print("%4.f%% %s\r" % (
+                    domjobinfo.dataProcessed / domjobinfo.dataTotal if domjobinfo.dataTotal > 0 else 0.,
+                    next(self.spinner)),
+                    flush=True, end=''
+                )
+
+            if retries <= 0:
+                break
+
+            try:
+                job_status = self.cs.queryAsyncJobResult(jobid=job_id).get('jobstatus', 0)
+            except CloudStackException as e:
+                if 'multiple JSON fields named jobstatus' not in str(e):
+                    raise e
+                logging.debug(e)
+                retries -= 1
+            except ConnectionError as e:
+                if 'Connection aborted' not in str(e):
+                    raise e
+                logging.debug(e)
+                retries -= 1
+
+            if int(job_status) == 1:
+                return True
+            elif int(job_status) == 2:
+                break
+
+            time.sleep(1)
 
         return False
 
