@@ -92,7 +92,7 @@ class CosmicVM(CosmicObject):
     def is_user_vm(self):
         return True if 'instancename' in self else False
 
-    def migrate_within_cluster(self, vm, source_cluster):
+    def migrate_within_cluster(self, vm, source_cluster, **extra_params):
         logging.instance_name = vm['instancename']
         logging.slack_value = vm['domain']
         logging.vm_name = vm['name']
@@ -118,7 +118,7 @@ class CosmicVM(CosmicObject):
         if migration_host is None:
             return False
 
-        return self.migrate(target_host=migration_host)
+        return self.migrate(target_host=migration_host, **extra_params)
 
     def migrate(self, target_host, with_volume=False, **extra_args):
         if self.dry_run:

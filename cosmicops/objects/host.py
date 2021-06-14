@@ -57,7 +57,7 @@ class DomJobType(Enum):
 
 @dataclass(frozen=True, order=True)
 class DomJobInfo:
-    jobType: DomJobType
+    jobType: int
     timeElapsed: int
     timeRemaining: int
     dataTotal: int
@@ -72,7 +72,7 @@ class DomJobInfo:
 
     @classmethod
     def from_list(cls, i: list):
-        return cls(DomJobType(i.pop()), *i)
+        return cls(*i)
 
 
 # Patch Fabric connection to use different host policy (see https://github.com/fabric/fabric/issues/2071)

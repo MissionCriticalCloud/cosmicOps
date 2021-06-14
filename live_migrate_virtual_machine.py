@@ -63,7 +63,13 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
 
     source_host = co.get_host(id=vm_instance['hostid'])
     source_cluster = co.get_cluster(id=source_host['clusterid'])
-    vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster)
+    extra_param = {
+        'show_domjobinfo': {
+            'source_host': source_host,
+            'instancename': vm['instancename']
+        }
+    }
+    vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster, **extra_param)
 
     if not live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
                         log_to_slack, dry_run):
