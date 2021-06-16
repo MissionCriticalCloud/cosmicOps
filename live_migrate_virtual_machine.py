@@ -181,10 +181,6 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
         return False
 
     if cwps_found and zwps_found:
-        #logging.error(
-        #    f"VM '{vm['name']}' has both ZWPS and CWPS data disks attached. This is currently not handled by this script.",
-        #    to_slack=log_to_slack)
-        #return False
         logging.info(
             f"VM '{vm['name']}' has both ZWPS and CWPS data disks attached. We are going to temporarily migrate all CWPS volumes to ZWPS.",
             to_slack=log_to_slack)
