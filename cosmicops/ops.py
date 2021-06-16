@@ -214,20 +214,19 @@ class CosmicOps(object):
 
         return False
 
-    def wait_for_vm_migration(self, job_id, retries=10, **extra_params):
+    def wait_for_vm_migration(self, job_id, retries=10, domjobinfo=True, source_host=None, instancename=None):
+        status = False
         job_status = 0
-        show_domjobinfo = extra_params.get('show_domjobinfo', {})
-        source_host = show_domjobinfo.get('source_host', None)
-        instancename = show_domjobinfo.get('instancename', None)
+        prev_percentage = 0.
 
         while True:
-            if show_domjobinfo and source_host and instancename:
-                domjobinfo = source_host.get_domjobstats(instancename)
-                print("%4.f%% %s\r" % (
-                    float(domjobinfo.dataProcessed/domjobinfo.dataTotal*100) if domjobinfo.dataTotal > 0 else 0.,
-                    next(self.spinner)),
-                    flush=True, end=''
-                )
+            if domjobinfo and source_host and instancename:
+                djstats = source_host.get_domjobstats(instancename)
+                cur_percentage = float(djstats.dataProcessed / (djstats.dataTotal or 1) * 100)
+                if cur_percentage > prev_percentage:
+                    prev_percentage = cur_percentage
+                print("%4.f%% " % prev_percentage, flush=True, end='')
+            print("%s" % next(self.spinner), flush=True, end='\r')
 
             if retries <= 0:
                 break
@@ -246,27 +245,38 @@ class CosmicOps(object):
                 retries -= 1
 
             if int(job_status) == 1:
-                return True
+                status = True
+                break
             elif int(job_status) == 2:
                 break
 
             time.sleep(1)
 
-        return False
+        print()
+        return status
 
-    def wait_for_volume_job(self, volume_id, job_id):
-        # Hack - Check when state of volume returns to Ready state
-        with click_spinner.spinner():
-            time.sleep(60)
-            while True:
-                volume = self.get_volume(id=volume_id, json=True)
-                if volume is None:
-                    logging.error(f"Error: Could not find volume '{volume_id}'")
-                    return False
+    def wait_for_volume_job(self, volume_id, job_id, blkjobinfo=True, source_host=None, vm=None, vol=None):
+        prev_percentage = 0.
 
-                if volume['state'] == "Ready":
-                    break
-                time.sleep(60)
-                logging.debug(f"Volume '{volume_id}' is in {volume['state']} state and not Ready. Sleeping.")
+        while True:
+            if blkjobinfo and source_host and vm and vol:
+                blkjobinfo = source_host.get_blkjobinfo(vm, vol)
+                cur_percentage = float(blkjobinfo.current / (blkjobinfo.end or 1) * 100)
+                if cur_percentage > prev_percentage:
+                    prev_percentage = cur_percentage
+                print("%4.f%% " % prev_percentage, flush=True, end='')
+            print("%s" % next(self.spinner), flush=True, end='\r')
+
+            volume = self.get_volume(id=volume_id, json=True)
+            if volume is None:
+                logging.error(f"Error: Could not find volume '{volume_id}'")
+                return False
+
+            if volume['state'] == "Ready":
+                break
+            time.sleep(1)
+            logging.debug(f"Volume '{volume_id}' is in {volume['state']} state and not Ready. Sleeping.")
         # Return result of job
-        return self.wait_for_job(job_id=job_id, retries=1)
+        status = self.wait_for_job(job_id=job_id, retries=1)
+        print()
+        return status

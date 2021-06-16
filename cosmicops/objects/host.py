@@ -45,35 +45,33 @@ class RebootAction(Enum):
     SKIP = auto()
 
 
-class DomJobType(Enum):
-    JOB_NONE = 0
-    JOB_BOUNDED = 1
-    JOB_UNBOUNDED = 2
-    JOB_COMPLETED = 3
-    JOB_FAILED = 4
-    JOB_CANCELLED = 5
-    JOB_LAST = 6
+@dataclass(frozen=True, order=True)
+class DomJobInfo:
+    jobType: int = libvirt.VIR_DOMAIN_JOB_NONE
+    operation: int = 0
+    timeElapsed: int = 0
+    timeRemaining: int = 0
+    dataTotal: int = 0
+    dataProcessed: int = 0
+    dataRemaining: int = 0
+    memTotal: int = 0
+    memProcessed: int = 0
+    memRemaining: int = 0
+    fileTotal: int = 0
+    fileProcessed: int = 0
+    fileRemaing: int = 0
+
+    @classmethod
+    def from_list(cls, l: list):
+        return cls(*l)
 
 
 @dataclass(frozen=True, order=True)
-class DomJobInfo:
-    jobType: int
-    operation: int
-    timeElapsed: int
-    timeRemaining: int
-    dataTotal: int
-    dataProcessed: int
-    dataRemaining: int
-    memTotal: int
-    memProcessed: int
-    memRemaining: int
-    fileTotal: int
-    fileProcessed: int
-    fileRemaing: int
-
-    @classmethod
-    def from_list(cls, i: list):
-        return cls(*i)
+class BlkJobInfo:
+    jobType: int = 0
+    bandWidth: int = 0
+    current: int = 0
+    end: int = 0
 
 
 # Patch Fabric connection to use different host policy (see https://github.com/fabric/fabric/issues/2071)
@@ -470,26 +468,30 @@ class CosmicHost(CosmicObject):
                 domjobinfo = domain.jobInfo()
                 return DomJobInfo.from_list(domjobinfo)
         except libvirt.libvirtError as _:
-            # Ignore exception
-            pass
-        return DomJobInfo(DomJobType.JOB_COMPLETED.value, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            pass  # Ignore exception
+        return DomJobInfo()
 
-    def get_domjobstats(self, vm):
+    def get_domjobstats(self, vm, correction=True):
         try:
             lv = libvirt.openReadOnly(f"qemu+tcp://{self['name']}/system")
             all_domains = lv.listAllDomains()
             if any([x for x in all_domains if x.name() == vm]):
                 domain = lv.lookupByName(vm)
                 domjobstats = domain.jobStats()
+                memory_total = domjobstats.get('memory_total', 0)
+                if correction:
+                    if memory_total == 0:
+                        c_add = domain.info()[0]
+                        memory_total = memory_total + c_add
                 return DomJobInfo(
-                    jobType=domjobstats.get('type', 0),
+                    jobType=domjobstats.get('type', libvirt.VIR_DOMAIN_JOB_NONE),
                     operation=domjobstats.get('operation', 0),
                     timeElapsed=domjobstats.get('time_elapsed', 0),
                     timeRemaining=domjobstats.get('time_remaining', 0),
                     dataTotal=domjobstats.get('data_total', 0),
                     dataProcessed=domjobstats.get('data_processed', 0),
                     dataRemaining=domjobstats.get('data_remaining', 0),
-                    memTotal=domjobstats.get('memory_total', 0),
+                    memTotal=memory_total,
                     memProcessed=domjobstats.get('memory_processed', 0),
                     memRemaining=domjobstats.get('memory_remaining', 0),
                     fileTotal=domjobstats.get('disk_total', 0),
@@ -497,9 +499,27 @@ class CosmicHost(CosmicObject):
                     fileRemaing=domjobstats.get('disk_remaining', 0)
                 )
         except libvirt.libvirtError as _:
-            # Ignore exception
-            pass
-        return DomJobInfo(DomJobType.JOB_COMPLETED.value, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            pass  # Ignore exception
+        return DomJobInfo()
+
+    def get_blkjobinfo(self, vm, volume):
+        try:
+            disks = self.get_disks(vm)
+            disk = dict(filter(lambda x: x[0] == volume, disks.items()))
+            lv = libvirt.openReadOnly(f"qemu+tcp://{self['name']}/system")
+            all_domains = lv.listAllDomains()
+            if any([x for x in all_domains if x.name() == vm['instancename']]):
+                domain = lv.lookupByName(vm['instancename'])
+                blkjobinfo = domain.blockJobInfo(disk[volume]['dev'], 0)
+                return BlkJobInfo(
+                    jobType=blkjobinfo.get('type', 0),
+                    bandWidth=blkjobinfo.get('bandwidth', 0),
+                    current=blkjobinfo.get('cur', 0),
+                    end=blkjobinfo.get('end', 0)
+                )
+        except libvirt.libvirtError as _:
+            pass  # Ignore exception
+        return BlkJobInfo()
 
     def set_iops_limit(self, vm, max_iops):
         command = f"""
