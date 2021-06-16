@@ -101,7 +101,7 @@ class CosmicVM(CosmicObject):
     def is_user_vm(self):
         return True if 'instancename' in self else False
 
-    def migrate_within_cluster(self, vm, source_cluster):
+    def migrate_within_cluster(self, vm, source_cluster, **kwargs):
         logging.instance_name = vm['instancename']
         logging.slack_value = vm['domain']
         logging.vm_name = vm['name']
@@ -127,9 +127,9 @@ class CosmicVM(CosmicObject):
         if migration_host is None:
             return False
 
-        return self.migrate(target_host=migration_host)
+        return self.migrate(target_host=migration_host, **kwargs)
 
-    def migrate(self, target_host, with_volume=False):
+    def migrate(self, target_host, with_volume=False, **kwargs):
         if self.dry_run:
             logging.info(f"Would live migrate VM '{self['name']}' to '{target_host['name']}'")
             return True
@@ -157,7 +157,7 @@ class CosmicVM(CosmicObject):
             return False
 
         job_id = vm_result['jobid']
-        if not self._ops.wait_for_job(job_id):
+        if not self._ops.wait_for_vm_migration(job_id, **kwargs):
             logging.error(f"Migration job '{vm_result['jobid']}' failed")
             return False
 
