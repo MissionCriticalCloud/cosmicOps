@@ -63,7 +63,8 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
 
     source_host = co.get_host(id=vm_instance['hostid'])
     source_cluster = co.get_cluster(id=source_host['clusterid'])
-    vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster)
+    vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster,
+                                       source_host=source_host, instancename=vm_instance)
 
     if not live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
                         log_to_slack, dry_run):
@@ -193,7 +194,6 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
                 logging.error(f"Volume '{root_disk['name']}'failed to migrate")
                 return False
 
-
     if zwps_found:
         logging.info(f"ZWPS data disk attached to VM '{vm['name']}")
         logging.info(
@@ -234,7 +234,14 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
                     logging.error(f"Cleaning volume '{root_disk['name']}' failed")
                     return False
 
-    if not vm.migrate(destination_host, with_volume=migrate_with_volume):
+    extra_param = {
+        'show_domjobinfo': {
+            'source_host': source_host,
+            'instancename': vm['instancename']
+        }
+    }
+    if not vm.migrate(destination_host, with_volume=migrate_with_volume,
+                      source_host=source_host, instancename=vm['instancename']):
         return False
 
     with click_spinner.spinner():
@@ -298,7 +305,8 @@ def temp_migrate_volume(co, dry_run, log_to_slack, volume, vm, target_pool_name)
             f"Migrating volume '{volume['name']}' of VM '{vm['name']}' to pool '{target_pool_name}'",
             to_slack=log_to_slack)
 
-        if not volume.migrate(target_storage_pool, live_migrate=True):
+        if not volume.migrate(target_storage_pool, live_migrate=True, source_host=source_host,
+                              vm=vm, vol=volume['path']):
             logging.error(f"Failed to migrate volume '{volume['name']}'", to_slack=log_to_slack)
             return False
     return True
