@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import itertools
 import time
 from configparser import ConfigParser
 from pathlib import Path
@@ -39,6 +39,8 @@ def _load_cloud_monkey_profile(profile):
 
 
 class CosmicOps(object):
+    spinner = itertools.cycle(['-', '\\', '|', '/'])
+
     def __init__(self, endpoint=None, key=None, secret=None, profile=None, timeout=60, dry_run=True,
                  log_to_slack=False):
         if profile:
@@ -175,6 +177,9 @@ class CosmicOps(object):
 
         return self._cs_get_all_results('listVirtualMachines', kwargs, CosmicVM, 'virtualmachine')
 
+    def get_all_storage_pools(self, list_all=True, **kwargs):
+        return self._cs_get_all_results('listStoragePools', kwargs, CosmicStoragePool, 'storagepool')
+
     def get_all_project_vms(self, list_all=True, **kwargs):
         kwargs['projectid'] = '-1'
         return self.get_all_vms(list_all=list_all, **kwargs)
@@ -208,3 +213,72 @@ class CosmicOps(object):
                 time.sleep(1)
 
         return False
+
+    def wait_for_vm_migration(self, job_id, retries=10, domjobinfo=True, source_host=None, instancename=None):
+        status = False
+        job_status = 0
+        prev_percentage = 0.
+
+        while True:
+            if domjobinfo and source_host and instancename:
+                djstats = source_host.get_domjobstats(instancename)
+                cur_percentage = float(djstats.dataProcessed / (djstats.dataTotal or 1) * 100)
+                if cur_percentage > prev_percentage:
+                    prev_percentage = cur_percentage
+                print("%4.f%% " % prev_percentage, flush=True, end='')
+            print("%s" % next(self.spinner), flush=True, end='\r')
+
+            if retries <= 0:
+                break
+
+            try:
+                job_status = self.cs.queryAsyncJobResult(jobid=job_id).get('jobstatus', 0)
+            except CloudStackException as e:
+                if 'multiple JSON fields named jobstatus' not in str(e):
+                    raise e
+                logging.debug(e)
+                retries -= 1
+            except ConnectionError as e:
+                if 'Connection aborted' not in str(e):
+                    raise e
+                logging.debug(e)
+                retries -= 1
+
+            if int(job_status) == 1:
+                status = True
+                break
+            elif int(job_status) == 2:
+                break
+
+            time.sleep(1)
+
+        print()
+        return status
+
+    def wait_for_volume_job(self, volume_id, job_id, blkjobinfo=True, source_host=None, vm=None, vol=None):
+        prev_percentage = 0.
+
+        # Hack to wait for job to start
+        time.sleep(60)
+        while True:
+            if blkjobinfo and source_host and vm and vol:
+                blkjobinfo = source_host.get_blkjobinfo(vm, vol)
+                cur_percentage = float(blkjobinfo.current / (blkjobinfo.end or 1) * 100)
+                if cur_percentage > prev_percentage:
+                    prev_percentage = cur_percentage
+                print("%4.f%% " % prev_percentage, flush=True, end='')
+            print("%s" % next(self.spinner), flush=True, end='\r')
+
+            volume = self.get_volume(id=volume_id, json=True)
+            if volume is None:
+                logging.error(f"Error: Could not find volume '{volume_id}'")
+                return False
+
+            if volume['state'] == "Ready":
+                break
+            time.sleep(1)
+            logging.debug(f"Volume '{volume_id}' is in {volume['state']} state and not Ready. Sleeping.")
+        # Return result of job
+        status = self.wait_for_job(job_id=job_id, retries=1)
+        print()
+        return status

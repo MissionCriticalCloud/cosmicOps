@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from operator import itemgetter
 
-from cs import CloudStackException
+from cs import CloudStackException, CloudStackApiException
 
 from cosmicops.log import logging
 from .object import CosmicObject
@@ -70,8 +71,26 @@ class CosmicVM(CosmicObject):
 
         return affinity_groups
 
+    def get_snapshots(self):
+        vm_snapshots = []
+        try:
+            if 'projectid' in self:
+                vm_snapshots = self._ops.cs.listVMSnapshot(fetch_list=True, virtualmachineid=self['id'], listall='true',
+                                                           projectid=-1)
+            else:
+                vm_snapshots = self._ops.cs.listVMSnapshot(fetch_list=True, virtualmachineid=self['id'], listall='true')
+
+        except CloudStackException as e:
+            logging.error(f'Exception {str(e)}')
+
+        return vm_snapshots
+
     def get_volumes(self):
-        volumes = self._ops.cs.listVolumes(fetch_list=True, virtualmachineid=self['id'], listall='true')
+        if 'projectid' in self:
+            volumes = self._ops.cs.listVolumes(fetch_list=True, virtualmachineid=self['id'], listall='true',
+                                               projectid=-1)
+        else:
+            volumes = self._ops.cs.listVolumes(fetch_list=True, virtualmachineid=self['id'], listall='true')
 
         return [CosmicVolume(self._ops, volume) for volume in volumes]
 
@@ -82,7 +101,35 @@ class CosmicVM(CosmicObject):
     def is_user_vm(self):
         return True if 'instancename' in self else False
 
-    def migrate(self, target_host, with_volume=False):
+    def migrate_within_cluster(self, vm, source_cluster, **kwargs):
+        logging.instance_name = vm['instancename']
+        logging.slack_value = vm['domain']
+        logging.vm_name = vm['name']
+        logging.zone_name = vm['zonename']
+        logging.cluster = source_cluster['name']
+
+        try:
+            available_hosts = self._ops.cs.findHostsForMigration(virtualmachineid=vm['id']).get('host', [])
+        except CloudStackApiException as e:
+            logging.error(f"Encountered API exception while finding suitable host for migration: {e}")
+            return False
+        available_hosts.sort(key=itemgetter('memoryallocated'))
+
+        migration_host = None
+
+        for available_host in available_hosts:
+            # Only hosts in the same cluster
+            if available_host['clusterid'] != source_cluster['id']:
+                logging.debug(f"Skipping '{available_host['name']}' because it's not part of the current cluster")
+                continue
+            migration_host = available_host
+            break
+        if migration_host is None:
+            return False
+
+        return self.migrate(target_host=migration_host, **kwargs)
+
+    def migrate(self, target_host, with_volume=False, **kwargs):
         if self.dry_run:
             logging.info(f"Would live migrate VM '{self['name']}' to '{target_host['name']}'")
             return True
@@ -110,7 +157,7 @@ class CosmicVM(CosmicObject):
             return False
 
         job_id = vm_result['jobid']
-        if not self._ops.wait_for_job(job_id):
+        if not self._ops.wait_for_vm_migration(job_id, **kwargs):
             logging.error(f"Migration job '{vm_result['jobid']}' failed")
             return False
 
