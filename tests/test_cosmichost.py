@@ -713,7 +713,7 @@ class TestCosmicHost(TestCase):
 
         result = self.host.file_exists('/mnt/812ea6a3-7ad0-30f4-9cab-01e3f2985b98/9153b72d-ceac-48ae-b07e-07186ab0c97c')
         self.host.execute.assert_called_with(
-            '/bin/ls -la "/mnt/812ea6a3-7ad0-30f4-9cab-01e3f2985b98/9153b72d-ceac-48ae-b07e-07186ab0c97c"')
+            '/bin/ls -la "/mnt/812ea6a3-7ad0-30f4-9cab-01e3f2985b98/9153b72d-ceac-48ae-b07e-07186ab0c97c"', always=True)
         self.assertEqual(('Mar', '5', '2021'), (result[-4], result[-3], result[-2]))
 
         self.host.execute = Mock(side_effect=UnexpectedExit('mock unexpected exit'))
@@ -723,7 +723,7 @@ class TestCosmicHost(TestCase):
         self.host.execute = Mock(return_value=Mock(return_code=0))
 
         self.assertTrue(self.host.rename_file('/foo', '/bar'))
-        self.host.execute.assert_called_with('/bin/mv "/foo" "/bar"')
+        self.host.execute.assert_called_with('/bin/mv "/foo" "/bar"', True)
 
         self.host.execute = Mock(return_value=Mock(return_code=1))
         self.assertFalse(self.host.rename_file('/foo', '/bar'))

@@ -26,8 +26,12 @@ class TestCosmicVolume(TestCase):
         self.addCleanup(cs_patcher.stop)
         self.cs_instance = self.mock_cs.return_value
 
+        sleep_patcher = patch('time.sleep', return_value=None)
+        self.mock_sleep = sleep_patcher.start()
+        self.addCleanup(sleep_patcher.stop)
+
         self.ops = CosmicOps(endpoint='https://localhost', key='key', secret='secret', dry_run=False)
-        self.ops.wait_for_job = Mock(return_value=True)
+        self.ops.wait_for_volume_job = Mock(return_value=True)
         self.cs_instance.migrateVolume.return_value = {'jobid': 1}
 
         self.volume = CosmicVolume(self.ops, {
@@ -45,11 +49,11 @@ class TestCosmicVolume(TestCase):
         self.cs_instance.listVolumes.assert_called_with(fetch_list=True, id='vol1')
 
     def test_migrate(self):
+        self.volume.refresh = Mock()
         self.assertTrue(self.volume.migrate(self.storage_pool))
         self.cs_instance.migrateVolume.assert_called_with(volumeid=self.volume['id'], storageid=self.storage_pool['id'],
                                                           livemigrate=False)
-
-        self.ops.wait_for_job.return_value = False
+        self.ops.wait_for_volume_job.return_value = False
         self.assertFalse(self.volume.migrate(self.storage_pool))
 
     def test_migrate_dry_run(self):

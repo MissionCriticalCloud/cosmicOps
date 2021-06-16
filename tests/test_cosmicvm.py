@@ -132,7 +132,7 @@ class TestCosmicVM(TestCase):
         self.assertFalse(self.vm.migrate(self.target_host))
 
     def test_migrate_with_job_failure(self):
-        self.vm._ops.wait_for_job = Mock(return_value=False)
+        self.vm._ops.wait_for_vm_migration = Mock(return_value=False)
         self.assertFalse(self.vm.migrate(self.target_host))
 
     def test_get_volumes(self):

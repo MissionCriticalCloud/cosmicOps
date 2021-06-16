@@ -82,7 +82,6 @@ class TestMigrateOfflineVolumes(TestCase):
         self.destination_cluster.get_storage_pools.assert_called()
         self.source_storage_pool.get_volumes.assert_called_with(False)
         self.volume.migrate.assert_called_with(self.destination_storage_pool)
-        self.volume.refresh.assert_called()
 
     def test_main_dry_run(self):
         self.assertEqual(0, self.runner.invoke(migrate_offline_volumes.main,
@@ -147,13 +146,13 @@ class TestMigrateOfflineVolumes(TestCase):
         self.co_instance.get_cluster.assert_called_with(name='destination_cluster')
 
         self._setup_mocks()
-        self.source_cluster.get_storage_pools.return_value = []
+        self.source_cluster.get_storage_pools.side_effect = IndexError
         self.assertEqual(1, self.runner.invoke(migrate_offline_volumes.main,
                                                ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
         self.source_cluster.get_storage_pools.assert_called()
 
         self._setup_mocks()
-        self.destination_cluster.get_storage_pools.return_value = []
+        self.destination_cluster.get_storage_pools.side_effect = IndexError
         self.assertEqual(1, self.runner.invoke(migrate_offline_volumes.main,
                                                ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
         self.destination_cluster.get_storage_pools.assert_called()
