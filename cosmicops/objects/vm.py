@@ -74,14 +74,23 @@ class CosmicVM(CosmicObject):
     def get_snapshots(self):
         vm_snapshots = []
         try:
-            vm_snapshots = self._ops.cs.listVMSnapshot(fetch_list=True, virtualmachineid=self['id'], listall='true')
+            if 'projectid' in self:
+                vm_snapshots = self._ops.cs.listVMSnapshot(fetch_list=True, virtualmachineid=self['id'], listall='true',
+                                                           projectid=-1)
+            else:
+                vm_snapshots = self._ops.cs.listVMSnapshot(fetch_list=True, virtualmachineid=self['id'], listall='true')
+
         except CloudStackException as e:
             logging.error(f'Exception {str(e)}')
 
         return vm_snapshots
 
     def get_volumes(self):
-        volumes = self._ops.cs.listVolumes(fetch_list=True, virtualmachineid=self['id'], listall='true')
+        if 'projectid' in self:
+            volumes = self._ops.cs.listVolumes(fetch_list=True, virtualmachineid=self['id'], listall='true',
+                                               projectid=-1)
+        else:
+            volumes = self._ops.cs.listVolumes(fetch_list=True, virtualmachineid=self['id'], listall='true')
 
         return [CosmicVolume(self._ops, volume) for volume in volumes]
 

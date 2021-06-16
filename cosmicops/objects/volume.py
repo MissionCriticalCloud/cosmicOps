@@ -43,7 +43,12 @@ class CosmicVolume(CosmicObject):
     def get_snapshots(self):
         volume_snapshots = []
         try:
-            volume_snapshots = self._ops.cs.listSnapshots(fetch_list=True, volumeid=self['id'], listall='true')
+            if 'projectid' in self:
+                volume_snapshots = self._ops.cs.listSnapshots(fetch_list=True, volumeid=self['id'], listall='true',
+                                                              projectid=-1)
+            else:
+                volume_snapshots = self._ops.cs.listSnapshots(fetch_list=True, volumeid=self['id'], listall='true')
+
         except CloudStackException as e:
             logging.error(f'Exception {str(e)}')
 
