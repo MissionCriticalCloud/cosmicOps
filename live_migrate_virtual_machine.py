@@ -234,12 +234,6 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
                     logging.error(f"Cleaning volume '{root_disk['name']}' failed")
                     return False
 
-    extra_param = {
-        'show_domjobinfo': {
-            'source_host': source_host,
-            'instancename': vm['instancename']
-        }
-    }
     if not vm.migrate(destination_host, with_volume=migrate_with_volume,
                       source_host=source_host, instancename=vm['instancename']):
         return False

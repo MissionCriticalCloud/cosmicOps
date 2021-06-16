@@ -258,6 +258,8 @@ class CosmicOps(object):
     def wait_for_volume_job(self, volume_id, job_id, blkjobinfo=True, source_host=None, vm=None, vol=None):
         prev_percentage = 0.
 
+        # Hack to wait for job to start
+        time.sleep(60)
         while True:
             if blkjobinfo and source_host and vm and vol:
                 blkjobinfo = source_host.get_blkjobinfo(vm, vol)
