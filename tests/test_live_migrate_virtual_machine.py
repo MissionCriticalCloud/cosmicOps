@@ -149,7 +149,7 @@ class TestLiveMigrateVirtualMachine(TestCase):
         self.hwps_volume.get_snapshots = Mock(return_value=[])
         self.vm.get_snapshots = Mock(return_value=[])
         self.vm.migrate_within_cluster = Mock()
-        self.co_instance.wait_for_vm_migration = Mock(return_value=True)
+        self.co_instance.wait_for_vm_migration_job = Mock(return_value=True)
 
 
     def test_main(self):
