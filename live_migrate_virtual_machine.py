@@ -33,11 +33,14 @@ DATACENTERS = ["SBP1", "EQXAMS2", "EVO"]
 @click.option('--add-affinity-group', metavar='<group name>', help='Add this affinity group after migration')
 @click.option('--destination-dc', '-d', metavar='<DC name>', help='Migrate to this datacenter')
 @click.option('--is-project-vm', is_flag=True, help='The specified VM is a project VM')
+@click.option('--skip-within-cluster', is_flag=True, default=False, show_default=True,
+              help='Enable/disable migration within cluster')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('vm')
 @click.argument('cluster')
-def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_vm, dry_run, vm, cluster):
+def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_vm,
+         skip_within_cluster, dry_run, vm, cluster):
     """Live migrate VM to CLUSTER"""
 
     click_log.basic_config()
@@ -63,18 +66,17 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
 
     source_host = co.get_host(id=vm_instance['hostid'])
     source_cluster = co.get_cluster(id=source_host['clusterid'])
-    vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster,
-                                       source_host=source_host, instancename=vm_instance)
+    if not skip_within_cluster:
+        if not vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster,
+                                       source_host=source_host, instancename=vm_instance):
+            logging.info(f"VM Migration failed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
+            sys.exit(1)
 
     if not live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
                         log_to_slack, dry_run):
-        now = datetime.now()
-        date_sting = now.strftime("%d-%m-%Y %H:%M:%S")
-        logging.info(f"VM Migration failed at {date_sting}\n")
+        logging.info(f"VM Migration failed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
         sys.exit(1)
-    now = datetime.now()
-    date_sting = now.strftime("%d-%m-%Y %H:%M:%S")
-    logging.info(f"VM Migration completed at {date_sting}\n")
+    logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
 
 
 def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps, log_to_slack,

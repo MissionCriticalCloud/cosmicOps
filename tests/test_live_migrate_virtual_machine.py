@@ -148,9 +148,8 @@ class TestLiveMigrateVirtualMachine(TestCase):
         self.hwps_volume.migrate = Mock(return_value=True)
         self.hwps_volume.get_snapshots = Mock(return_value=[])
         self.vm.get_snapshots = Mock(return_value=[])
-        self.vm.migrate_within_cluster = Mock()
-        self.co_instance.wait_for_vm_migration_job = Mock(return_value=True)
-
+        self.vm.migrate_within_cluster = Mock(return_value=True)
+        self.co_instance.wait_for_vm_migration = Mock(return_value=True)
 
     def test_main(self):
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine.main,
@@ -169,6 +168,7 @@ class TestLiveMigrateVirtualMachine(TestCase):
         self.source_host.get_disks.assert_called_with(self.vm)
         self.cs_instance.get_volume_size.assert_called_with('path1')
         self.cs_instance.update_volume_size.assert_not_called()
+        self.vm.migrate_within_cluster.assert_called()
         self.vm.migrate.assert_called_with(self.destination_host, with_volume=True,
                       source_host=self.source_host, instancename=self.vm['instancename'])
         self.vm.refresh.assert_called()
@@ -245,6 +245,21 @@ class TestLiveMigrateVirtualMachine(TestCase):
         self.vm.migrate.return_value = False
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine.main,
                                                ['--exec', '-p', 'profile', 'vm', 'target_cluster']).exit_code)
+        self.vm.migrate_within_cluster.assert_called()
+        self.vm.migrate.assert_called()
+
+        self._setup_mocks()
+        self.vm.migrate_within_cluster.return_value = False
+        self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine.main,
+                                               ['--exec', '-p', 'profile', 'vm', 'target_cluster']).exit_code)
+        self.vm.migrate_within_cluster.assert_called()
+        self.vm.migrate.assert_not_called()
+
+        self._setup_mocks()
+        self.vm.migrate.return_value = False
+        self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine.main,
+                                               ['--exec', '--skip-within-cluster', '-p', 'profile', 'vm', 'target_cluster']).exit_code)
+        self.vm.migrate_within_cluster.assert_not_called()
         self.vm.migrate.assert_called()
 
         self._setup_mocks()
@@ -299,6 +314,21 @@ class TestLiveMigrateVirtualMachine(TestCase):
                                                ['--exec', '-p', 'profile', '--add-affinity-group', 'afgroup1', 'vm',
                                                 'target_cluster']).exit_code)
         self.cs_instance.add_vm_to_affinity_group.assert_called_with(self.vm['instancename'], 'afgroup1')
+
+    def test_skip_within_cluster(self):
+        self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine.main,
+                                               ['--exec', '-p', 'profile', '--skip-within-cluster', 'vm',
+                                                'target_cluster']).exit_code)
+        self.vm.migrate_within_cluster.assert_not_called()
+        self.vm.migrate.assert_called_with(self.destination_host, with_volume=True,
+                      source_host=self.source_host, instancename=self.vm['instancename'])
+
+    def test_skip_within_cluster_dryrun(self):
+        self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine.main,
+                                               ['-p', 'profile', '--skip-within-cluster', 'vm',
+                                                'target_cluster']).exit_code)
+        self.vm.migrate_within_cluster.assert_not_called()
+        self.vm.migrate.assert_not_called()
 
     def test_cwps_and_zwps_combi(self):
         self.vm.get_volumes.return_value = [self.cwps_volume, self.zwps_volume, self.root_volume]
