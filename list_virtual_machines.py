@@ -19,6 +19,7 @@ import click
 import click_log
 import click_spinner
 import humanfriendly
+import logging as log_module
 from tabulate import tabulate
 
 from cosmicops import CosmicOps, logging
@@ -66,15 +67,19 @@ storage_pool_table_headers = [
 @click.option('--calling-credentials', is_flag=True, help='Only list VMs belonging to the calling credentials')
 @click.option('--only-summary', is_flag=True, help='Only show summary of results')
 @click.option('--no-summary', is_flag=True, help='Hide the summary')
+@click.option('--log-file', metavar='<logfile>', help='Write output to file (and to screen)')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 def main(profile, domain_name, cluster_name, pod_name, zone_name, keyword_filter, only_routers,
          only_routers_to_be_upgraded,
          no_routers,
          router_nic_count, nic_count_is_minimum, nic_count_is_maximum, router_max_version, router_min_version,
-         project_name, only_project, ignore_domains, calling_credentials, only_summary, no_summary):
+         project_name, only_project, ignore_domains, calling_credentials, only_summary, no_summary, log_file):
     """List VMs"""
 
     click_log.basic_config()
+    if log_file:
+        logger = logging.getLogger()
+        logger.addHandler(log_module.FileHandler(log_file))
 
     if project_name and domain_name:
         logging.error("The project and domain options can't be used together")
