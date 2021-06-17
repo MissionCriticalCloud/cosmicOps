@@ -157,7 +157,7 @@ class CosmicVM(CosmicObject):
             return False
 
         job_id = vm_result['jobid']
-        if not self._ops.wait_for_vm_migration(job_id, **kwargs):
+        if not self._ops.wait_for_vm_migration_job(job_id, **kwargs):
             logging.error(f"Migration job '{vm_result['jobid']}' failed")
             return False
 

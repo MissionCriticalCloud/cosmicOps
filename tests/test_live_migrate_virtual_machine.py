@@ -151,7 +151,6 @@ class TestLiveMigrateVirtualMachine(TestCase):
         self.vm.migrate_within_cluster = Mock(return_value=True)
         self.co_instance.wait_for_vm_migration = Mock(return_value=True)
 
-
     def test_main(self):
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine.main,
                                                ['--exec', '-p', 'profile', 'vm', 'target_cluster']).exit_code)

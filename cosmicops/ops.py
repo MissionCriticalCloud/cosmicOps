@@ -214,7 +214,7 @@ class CosmicOps(object):
 
         return False
 
-    def wait_for_vm_migration(self, job_id, retries=10, domjobinfo=True, source_host=None, instancename=None):
+    def wait_for_vm_migration_job(self, job_id, retries=10, domjobinfo=True, source_host=None, instancename=None):
         status = False
         job_status = 0
         prev_percentage = 0.
@@ -255,7 +255,7 @@ class CosmicOps(object):
         print()
         return status
 
-    def wait_for_volume_job(self, volume_id, job_id, blkjobinfo=True, source_host=None, vm=None, vol=None):
+    def wait_for_volume_migration_job(self, volume_id, job_id, blkjobinfo=True, source_host=None, vm=None, vol=None):
         prev_percentage = 0.
 
         # Hack to wait for job to start
