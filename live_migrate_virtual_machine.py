@@ -60,9 +60,13 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
     # Work around migration issue: first in the same pod to limit possible hiccup
     vm_instance = co.get_vm(name=vm, is_project_vm=is_project_vm)
 
+    if not vm_instance:
+        logging.error(f"Cannot migrate, VM '{vm}' not found!")
+        sys.exit(1)
+
     if not vm_instance['state'] == 'Running':
         logging.error(f"Cannot migrate, VM has has state: '{vm_instance['state']}'")
-        return False
+        sys.exit(1)
 
     source_host = co.get_host(id=vm_instance['hostid'])
     source_cluster = co.get_cluster(id=source_host['clusterid'])
@@ -212,6 +216,9 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
         return False
 
     if dry_run:
+        if add_affinity_group:
+            logging.info(
+                f"Would have added affinity group '{add_affinity_group}' to VM '{vm['name']}'")
         logging.info(
             f"Would live migrate VM '{vm['name']}' to '{destination_host['name']}'")
         return True
@@ -252,7 +259,12 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
         return False
     else:
         if add_affinity_group:
-            cs.add_vm_to_affinity_group(vm['instancename'], add_affinity_group)
+            if not cs.add_vm_to_affinity_group(vm['instancename'], add_affinity_group):
+                logging.error(
+                    f"Failed to add affinity group '{add_affinity_group}' to VM '{vm['name']}'")
+            else:
+                logging.info(
+                    f"Successfully added affinity group '{add_affinity_group}' to VM '{vm['name']}'")
 
         logging.info(
             f"VM '{vm['name']}' successfully migrated to '{destination_host['name']}' on cluster '{target_cluster['name']}'")
