@@ -62,11 +62,11 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
 
     if not vm_instance:
         logging.error(f"Cannot migrate, VM '{vm}' not found!")
-        return False
+        sys.exit(1)
 
     if not vm_instance['state'] == 'Running':
         logging.error(f"Cannot migrate, VM has has state: '{vm_instance['state']}'")
-        return False
+        sys.exit(1)
 
     source_host = co.get_host(id=vm_instance['hostid'])
     source_cluster = co.get_cluster(id=source_host['clusterid'])
@@ -218,7 +218,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     if dry_run:
         if add_affinity_group:
             logging.info(
-                f"Would have added affinity group {add_affinity_group} to VM '{vm['name']}'")
+                f"Would have added affinity group '{add_affinity_group}' to VM '{vm['name']}'")
         logging.info(
             f"Would live migrate VM '{vm['name']}' to '{destination_host['name']}'")
         return True
