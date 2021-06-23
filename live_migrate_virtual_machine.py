@@ -60,6 +60,10 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
     # Work around migration issue: first in the same pod to limit possible hiccup
     vm_instance = co.get_vm(name=vm, is_project_vm=is_project_vm)
 
+    if not vm_instance:
+        logging.error(f"Cannot migrate, VM '{vm}' not found!")
+        return False
+
     if not vm_instance['state'] == 'Running':
         logging.error(f"Cannot migrate, VM has has state: '{vm_instance['state']}'")
         return False
