@@ -212,6 +212,9 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
         return False
 
     if dry_run:
+        if add_affinity_group:
+            logging.info(
+                f"Would have added affinity group {add_affinity_group} to VM '{vm['name']}'")
         logging.info(
             f"Would live migrate VM '{vm['name']}' to '{destination_host['name']}'")
         return True
@@ -252,7 +255,12 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
         return False
     else:
         if add_affinity_group:
-            cs.add_vm_to_affinity_group(vm['instancename'], add_affinity_group)
+            if not cs.add_vm_to_affinity_group(vm['instancename'], add_affinity_group):
+                logging.error(
+                    f"Failed to add affinity group '{add_affinity_group}' to VM '{vm['name']}'")
+            else:
+                logging.info(
+                    f"Successfully added affinity group '{add_affinity_group}' to VM '{vm['name']}'")
 
         logging.info(
             f"VM '{vm['name']}' successfully migrated to '{destination_host['name']}' on cluster '{target_cluster['name']}'")
