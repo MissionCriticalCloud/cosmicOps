@@ -158,7 +158,7 @@ def main(profile, is_project_vm, dry_run, vm, cluster, destination_dc, destinati
         if not vm.start(destination_host):
             sys.exit(1)
     else:
-        logging.info(f"Not starting VM '{vm['name']}' as it was not running")
+        logging.info(f"Not starting VM '{vm['name']}' as it was not running", log_to_slack)
 
 
 if __name__ == '__main__':
