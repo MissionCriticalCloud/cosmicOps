@@ -67,7 +67,7 @@ def main(profile, uuid, network_uuid, dry_run, vpc):
     if not vpc.restart():
         sys.exit(1)
 
-    logging.info(f"Successfully restarted VPC '{vpc['name']}' ({vpc['id']}) with clean up")
+    logging.info(f"Successfully restarted VPC '{vpc['name']}' ({vpc['id']}) with clean up", log_to_slack)
 
 
 if __name__ == '__main__':
