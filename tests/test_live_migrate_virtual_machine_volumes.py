@@ -61,14 +61,15 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
             'scope': 'CLUSTER'
         })
         self.target_storage_pool = CosmicStoragePool(Mock(), {
-            'id': 'dsp1',
-            'name': 'destination_pool',
+            'id': 'tsp1',
+            'name': 'target_pool',
             'scope': 'CLUSTER'
         })
         self.volume = CosmicVolume(Mock(), {
             'id': 'v1',
             'name': 'volume1',
-            'storage': 'ssp1',
+            'storageid': 'ssp1',
+            'storage': 'source_pool',
             'state': 'Ready'
         })
 
@@ -93,13 +94,13 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
 
     def test_main(self):
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
 
         self.co.assert_called_with(profile='profile', dry_run=False, log_to_slack=True)
         self.cs.assert_called_with(server='profile', dry_run=False)
 
         self.co_instance.get_storage_pool.assert_has_calls(
-            [call(name='target_storage_pool'), call(id=self.volume['storage'])])
+            [call(name='target_pool'), call(id=self.volume['storageid'])])
         self.co_instance.get_vm.assert_called_with(name='vm', is_project_vm=False)
         self.co_instance.get_host.assert_called_with(id=self.vm['hostid'])
         self.co_instance.get_cluster.assert_called_with(id=self.host['clusterid'])
@@ -115,13 +116,13 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
 
     def test_main_dry_run(self):
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
+                                               ['-p', 'profile', 'vm', 'target_pool']).exit_code)
 
         self.co.assert_called_with(profile='profile', dry_run=True, log_to_slack=False)
         self.cs.assert_called_with(server='profile', dry_run=True)
 
         self.co_instance.get_storage_pool.assert_has_calls(
-            [call(name='target_storage_pool'), call(id=self.volume['storage'])])
+            [call(name='target_pool'), call(id=self.volume['storageid'])])
         self.co_instance.get_vm.assert_called_with(name='vm', is_project_vm=False)
         self.co_instance.get_host.assert_called_with(id=self.vm['hostid'])
         self.co_instance.get_cluster.assert_called_with(id=self.host['clusterid'])
@@ -129,8 +130,6 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
         self.host.get_disks.assert_not_called()
         self.cs_instance.get_volume_size.assert_not_called()
         self.cs_instance.update_volume_size.assert_not_called()
-        self.host.set_iops_limit.assert_has_calls([call(self.vm, 1000), call(self.vm, 0)])
-        self.host.merge_backing_files.assert_called_with(self.vm)
         self.vm.get_volumes.assert_called()
         self.volume.migrate.assert_not_called()
         self.volume.refresh.assert_not_called()
@@ -139,63 +138,63 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
         self.co_instance.get_storage_pool.side_effect = None
         self.co_instance.get_storage_pool.return_value = None
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
         self.co_instance.get_storage_pool.assert_called()
 
         self._setup_mocks()
         self.co_instance.get_vm.return_value = []
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
         self.co_instance.get_vm.assert_called()
 
         self._setup_mocks()
         self.co_instance.get_host.return_value = []
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
         self.co_instance.get_host.assert_called()
 
         self._setup_mocks()
         self.co_instance.get_cluster.return_value = []
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
         self.co_instance.get_cluster.assert_called()
 
         self._setup_mocks()
         self.host.set_iops_limit.return_value = False
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
         self.host.set_iops_limit.assert_called()
 
         self._setup_mocks()
         self.host.merge_backing_files.return_value = False
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
         self.host.merge_backing_files.assert_called()
 
     def test_continues(self):
         self.volume['storage'] = self.target_storage_pool['id']
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
-        self.assertEqual(1, self.co_instance.get_storage_pool.call_count)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
+        self.assertEqual(2, self.co_instance.get_storage_pool.call_count)
 
         self._setup_mocks()
         self.co_instance.get_storage_pool.side_effect = [self.target_storage_pool, None]
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
         self.assertEqual(2, self.co_instance.get_storage_pool.call_count)
         self.volume.migrate.assert_not_called()
 
         self._setup_mocks()
         self.source_storage_pool['scope'] = 'Host'
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
         self.assertEqual(2, self.co_instance.get_storage_pool.call_count)
         self.volume.migrate.assert_not_called()
 
         self._setup_mocks()
         self.volume.migrate.return_value = False
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
         self.volume.migrate.assert_called()
         self.volume.refresh.assert_not_called()
 
@@ -203,20 +202,20 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
         self.cs_instance.update_zwps_to_cwps.return_value = True
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
                                                ['--exec', '-p', 'profile', '--zwps-to-cwps', 'vm',
-                                                'target_storage_pool']).exit_code)
+                                                'target_pool']).exit_code)
         self.cs_instance.update_zwps_to_cwps.assert_called_with(self.vm['instancename'], 'MCC_v1.CWPS')
 
         self._setup_mocks()
         self.cs_instance.update_zwps_to_cwps.return_value = False
         self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
                                                ['--exec', '-p', 'profile', '--zwps-to-cwps', 'vm',
-                                                'target_storage_pool']).exit_code)
+                                                'target_pool']).exit_code)
 
     def test_volume_size_update(self):
         self.host.get_disks.return_value = {'path1': {'path': 'path1', 'size': '4321'}}
 
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
 
         self.cs_instance.update_volume_size.assert_called_with(self.vm['instancename'], 'path1', '4321')
 
@@ -226,4 +225,4 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
 
         self.volume.refresh.side_effect = refresh_effect
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
-                                               ['--exec', '-p', 'profile', 'vm', 'target_storage_pool']).exit_code)
+                                               ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
