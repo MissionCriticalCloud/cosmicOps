@@ -114,7 +114,7 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
         if not host.merge_backing_files(vm):
             if set_max_iops:
                 host.set_iops_limit(vm, 0)
-                return False
+            return False
     else:
         logging.info(
             f'Would have merged all backing files if any exist')
