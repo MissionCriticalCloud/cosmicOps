@@ -26,7 +26,7 @@ from cosmicops import CosmicOps, logging, CosmicSQL
 @click.command()
 @click.option('--profile', '-p', default='config', help='Name of the CloudMonkey profile containing the credentials')
 @click.option('--max-iops', '-m', metavar='<# IOPS>', default=1000, show_default=True,
-              help='Limit amount of IOPS used during migration')
+              help='Limit amount of IOPS used during migration, use 0 to disable')
 @click.option('--zwps-to-cwps', is_flag=True, help='Migrate from ZWPS to CWPS')
 @click.option('--is-project-vm', is_flag=True, help='The specified VM is a project VM')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
@@ -59,6 +59,9 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
     storage_pool = co.get_storage_pool(name=storage_pool)
     if not storage_pool:
         return False
+
+    # disable setting max IOPS, if max_iops != 0
+    set_max_iops = max_iops != 0
 
     vm = co.get_vm(name=vm, is_project_vm=is_project_vm)
     if not vm:
@@ -96,24 +99,37 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
                     f"Size for '{disk_info['path']}' in DB ({size}) is less than libvirt reports ({disk_info['size']}), updating DB")
                 cs.update_volume_size(vm['instancename'], path, disk_info['size'])
 
-    if not host.set_iops_limit(vm, max_iops):
-        return False
+    if set_max_iops:
+        if not dry_run:
+            if not host.set_iops_limit(vm, max_iops):
+                return False
+        else:
+            logging.info(
+                f"Would have set an IOPS limit to '{max_iops}'")
+    else:
+        logging.info(
+            f'Not setting an IOPS limit as it is disabled')
 
-    if not host.merge_backing_files(vm):
-        host.set_iops_limit(vm, 0)
-        return False
+    if not dry_run:
+        if not host.merge_backing_files(vm):
+            if set_max_iops:
+                host.set_iops_limit(vm, 0)
+                return False
+    else:
+        logging.info(
+            f'Would have merged all backing files if any exist')
 
     for volume in vm.get_volumes():
-        if volume['storage'] == storage_pool['id']:
+        if volume['storageid'] == storage_pool['id']:
             logging.warning(f"Skipping volume '{volume['name']}' as it's already on the specified storage pool",
                             to_slack=log_to_slack)
             continue
 
-        current_storage_pool = co.get_storage_pool(id=volume['storage'])
+        current_storage_pool = co.get_storage_pool(id=volume['storageid'])
         if not current_storage_pool:
             continue
 
-        if current_storage_pool['scope'] in ('Host', 'ZONE'):
+        if current_storage_pool['scope'] == 'Host' or (current_storage_pool['scope'] == 'ZONE' and not zwps_to_cwps):
             logging.warning(f"Skipping volume '{volume['name']}' as it's scope is '{current_storage_pool['scope']}'",
                             to_slack=log_to_slack)
             continue
@@ -123,6 +139,8 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
                 f"Would migrate volume '{volume['name']}' to storage pool '{storage_pool['name']}' ({storage_pool['id']})")
             continue
 
+        logging.info(
+            f"Starting migration of volume '{volume['name']}' to storage pool '{storage_pool['name']}' ({storage_pool['id']})")
         if not volume.migrate(storage_pool, live_migrate=True):
             continue
 
@@ -137,7 +155,8 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
                     f"Volume '{volume['name']}' is in '{volume['state']}' state instead of 'Ready', sleeping...")
                 time.sleep(60)
 
-    host.set_iops_limit(vm, 0)
+    if not dry_run:
+        host.set_iops_limit(vm, 0)
 
     return True
 
