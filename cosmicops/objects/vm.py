@@ -54,7 +54,7 @@ class CosmicVM(CosmicObject):
             logging.info(f"Would start VM '{self['name']}{on_host_msg}")
             return True
 
-        logging.info(f"Starting VM '{self['name']}'{on_host_msg}'", self.log_to_slack)
+        logging.info(f"Starting VM '{self['name']}'{on_host_msg}", self.log_to_slack)
         start_response = self._ops.cs.startVirtualMachine(id=self['id'], hostid=host_id)
         if not self._ops.wait_for_job(start_response['jobid']):
             logging.error(f"Failed to start VM '{self['name']}'")
