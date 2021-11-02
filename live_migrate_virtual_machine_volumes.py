@@ -83,11 +83,14 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
     logging.cluster = cluster['name']
 
     if zwps_to_cwps:
-        logging.info(f"Converting any ZWPS volume of VM '{vm['name']}' to CWPS before starting the migration",
-                     to_slack=log_to_slack)
-        if not cs.update_zwps_to_cwps(vm['instancename'], 'MCC_v1.CWPS'):
-            logging.error(f"Failed to apply CWPS disk offering to VM '{vm['name']}'", to_slack=log_to_slack)
-            return False
+        if not dry_run:
+            logging.info(f"Converting any ZWPS volume of VM '{vm['name']}' to CWPS before starting the migration",
+                         to_slack=log_to_slack)
+            if not cs.update_zwps_to_cwps(vm['instancename'], 'MCC_v1.CWPS'):
+                logging.error(f"Failed to apply CWPS disk offering to VM '{vm['name']}'", to_slack=log_to_slack)
+                return False
+        else:
+            logging.info('Would have changed the diskoffering from ZWPS to CWPS of all ZWPS volumes')
 
     if not dry_run:
         disk_info = host.get_disks(vm)

@@ -134,11 +134,14 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
                 cs.update_volume_size(vm['instancename'], path, disk_info['size'])
 
     if zwps_to_cwps:
-        logging.info(f"Converting any ZWPS volume of VM '{vm['name']}' to CWPS before starting the migration",
-                     to_slack=log_to_slack)
-        if not cs.update_zwps_to_cwps(vm['instancename'], 'MCC_v1.CWPS'):
-            logging.error(f"Failed to apply CWPS disk offering to VM '{vm['name']}'", to_slack=log_to_slack)
-            return False
+        if not dry_run:
+            logging.info(f"Converting any ZWPS volume of VM '{vm['name']}' to CWPS before starting the migration",
+                         to_slack=log_to_slack)
+            if not cs.update_zwps_to_cwps(vm['instancename'], 'MCC_v1.CWPS'):
+                logging.error(f"Failed to apply CWPS disk offering to VM '{vm['name']}'", to_slack=log_to_slack)
+                return False
+        else:
+            logging.info('Would have changed the diskoffering from ZWPS to CWPS of all ZWPS volumes')
 
     if destination_dc:
         for datacenter in DATACENTERS:
@@ -158,6 +161,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     cwps_found = False
     hwps_found = False
     data_disks_to_zwps = []
+    zwps_disks_to_cwps = []
     for volume in vm.get_volumes():
         for snapshot in volume.get_snapshots():
             logging.error(f"Cannot migrate, volume '{volume['name']}' has snapshot: '{snapshot['name']}'")
@@ -176,6 +180,8 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
             elif source_storage_pool['scope'] == 'ZONE':
                 zwps_found = True
                 zwps_name = volume['storage']
+                if zwps_to_cwps:
+                    zwps_disks_to_cwps.append(volume)
             elif source_storage_pool['scope'] == 'HOST':
                 hwps_found = True
         elif volume['type'] == 'ROOT':
@@ -193,7 +199,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
         for volume in data_disks_to_zwps:
             if not temp_migrate_volume(co=co, dry_run=dry_run, log_to_slack=log_to_slack, volume=volume,
                                        vm=vm, target_pool_name=zwps_name):
-                logging.error(f"Volume '{root_disk['name']}'failed to migrate")
+                logging.error(f"Volume '{volume['name']}'failed to migrate")
                 return False
 
     if zwps_found:
@@ -278,6 +284,13 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
             return False
         if cwps_found and zwps_found:
             for volume in data_disks_to_zwps:
+                target_pool = choice(target_cluster.get_storage_pools(scope='CLUSTER'))
+                if not temp_migrate_volume(co=co, dry_run=dry_run, log_to_slack=log_to_slack, volume=volume,
+                                           vm=vm, target_pool_name=target_pool['name']):
+                    logging.error(f"Volume '{volume['name']}'failed to migrate")
+                    return False
+        if zwps_to_cwps:
+            for volume in zwps_disks_to_cwps:
                 target_pool = choice(target_cluster.get_storage_pools(scope='CLUSTER'))
                 if not temp_migrate_volume(co=co, dry_run=dry_run, log_to_slack=log_to_slack, volume=volume,
                                            vm=vm, target_pool_name=target_pool['name']):
