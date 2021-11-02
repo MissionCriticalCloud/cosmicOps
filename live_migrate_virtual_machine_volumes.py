@@ -144,7 +144,11 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
 
         logging.info(
             f"Starting migration of volume '{volume['name']}' to storage pool '{storage_pool['name']}' ({storage_pool['id']})")
-        if not volume.migrate(storage_pool, live_migrate=True):
+
+        # get the source host to read the blkjobinfo
+        source_host = co.get_host(id=vm['hostid'])
+
+        if not volume.migrate(storage_pool, live_migrate=True, source_host=source_host, vm=vm, vol=volume['path']):
             continue
 
         with click_spinner.spinner():
