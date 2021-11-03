@@ -29,11 +29,12 @@ from cosmicops import CosmicOps, logging
 @click.option('--ignore-volumes', metavar='<list>', default=[], help='Comma separated list of volume IDs to skip')
 @click.option('--skip-disk-offerings', metavar='<list>', help='Comma separated list of disk offerings to skip')
 @click.option('--only-project', is_flag=True, help='Only migrate volumes belonging to project VMs')
+@click.option('--zwps-to-cwps', is_flag=True, help='Migrate from ZWPS to CWPS')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('source_cluster')
 @click.argument('destination_cluster')
-def main(profile, dry_run, ignore_volumes, skip_disk_offerings, only_project, source_cluster, destination_cluster):
+def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, only_project, source_cluster, destination_cluster):
     """Migrate offline volumes from SOURCE_CLUSTER to DESTINATION_CLUSTER"""
 
     click_log.basic_config()
@@ -46,11 +47,22 @@ def main(profile, dry_run, ignore_volumes, skip_disk_offerings, only_project, so
         logging.warning('Running in dry-run mode, will only show changes')
 
     co = CosmicOps(profile=profile, dry_run=dry_run)
+    cs = CosmicSQL(server=profile, dry_run=dry_run)
 
     source_cluster = co.get_cluster(name=source_cluster)
     if not source_cluster:
         logging.error(f"Source cluster not found:'{source_cluster['name']}'!")
         sys.exit(1)
+
+    if zwps_to_cwps:
+        if not dry_run:
+            logging.info(f"Converting any ZWPS volume of VM '{vm['name']}' to CWPS before starting the migration",
+                         log_to_slack=log_to_slack)
+            if not cs.update_zwps_to_cwps(vm['instancename'], 'MCC_v1.CWPS'):
+                logging.error(f"Failed to apply CWPS disk offering to VM '{vm['name']}'", log_to_slack=log_to_slack)
+                return False
+        else:
+            logging.info('Would have changed the diskoffering from ZWPS to CWPS of all ZWPS volumes')
 
     destination_cluster = co.get_cluster(name=destination_cluster)
     if not destination_cluster:
