@@ -85,9 +85,9 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
     if zwps_to_cwps:
         if not dry_run:
             logging.info(f"Converting any ZWPS volume of VM '{vm['name']}' to CWPS before starting the migration",
-                         to_slack=log_to_slack)
+                         log_to_slack=log_to_slack)
             if not cs.update_zwps_to_cwps(vm['instancename'], 'MCC_v1.CWPS'):
-                logging.error(f"Failed to apply CWPS disk offering to VM '{vm['name']}'", to_slack=log_to_slack)
+                logging.error(f"Failed to apply CWPS disk offering to VM '{vm['name']}'", log_to_slack=log_to_slack)
                 return False
         else:
             logging.info('Would have changed the diskoffering from ZWPS to CWPS of all ZWPS volumes')
@@ -125,7 +125,7 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
     for volume in vm.get_volumes():
         if volume['storageid'] == storage_pool['id']:
             logging.warning(f"Skipping volume '{volume['name']}' as it's already on the specified storage pool",
-                            to_slack=log_to_slack)
+                            log_to_slack=log_to_slack)
             continue
 
         current_storage_pool = co.get_storage_pool(id=volume['storageid'])
@@ -134,7 +134,7 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
 
         if current_storage_pool['scope'] == 'Host' or (current_storage_pool['scope'] == 'ZONE' and not zwps_to_cwps):
             logging.warning(f"Skipping volume '{volume['name']}' as it's scope is '{current_storage_pool['scope']}'",
-                            to_slack=log_to_slack)
+                            log_to_slack=log_to_slack)
             continue
 
         if dry_run:
@@ -143,12 +143,13 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
             continue
 
         logging.info(
-            f"Starting migration of volume '{volume['name']}' to storage pool '{storage_pool['name']}' ({storage_pool['id']})")
+            f"Starting migration of volume '{volume['name']}' to storage pool '{storage_pool['name']}' ({storage_pool['id']})",
+            log_to_slack=log_to_slack)
 
         # get the source host to read the blkjobinfo
         source_host = co.get_host(id=vm['hostid'])
 
-        if not volume.migrate(storage_pool, live_migrate=True, source_host=source_host, vm=vm, vol=volume['path'], to_slack=log_to_slack):
+        if not volume.migrate(storage_pool, live_migrate=True, source_host=source_host, vm=vm, vol=volume['path']):
             continue
 
         with click_spinner.spinner():

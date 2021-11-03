@@ -31,13 +31,13 @@ class CosmicVolume(CosmicObject):
                                                     livemigrate=live_migrate)
 
         if not self._ops.wait_for_volume_migration_job(volume_id=self['id'], job_id=migrate_result['jobid'], **kwargs):
-            logging.error(f"Migration job '{migrate_result['jobid']}' failed", to_slack=log_to_slack)
+            logging.error(f"Migration job '{migrate_result['jobid']}' failed")
             return False
 
         logging.debug(f"Migration job '{migrate_result['jobid']}' completed")
         self.refresh()
 
-        logging.info(f"Successfully migrated volume '{self['name']}' to '{storage_pool['name']}'", to_slack=log_to_slack)
+        logging.info(f"Successfully migrated volume '{self['name']}' to '{storage_pool['name']}'")
         return True
 
     def get_snapshots(self):

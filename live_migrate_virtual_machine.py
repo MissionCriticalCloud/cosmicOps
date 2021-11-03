@@ -136,9 +136,9 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     if zwps_to_cwps:
         if not dry_run:
             logging.info(f"Converting any ZWPS volume of VM '{vm['name']}' to CWPS before starting the migration",
-                         to_slack=log_to_slack)
+                         log_to_slack=log_to_slack)
             if not cs.update_zwps_to_cwps(vm['instancename'], 'MCC_v1.CWPS'):
-                logging.error(f"Failed to apply CWPS disk offering to VM '{vm['name']}'", to_slack=log_to_slack)
+                logging.error(f"Failed to apply CWPS disk offering to VM '{vm['name']}'", log_to_slack=log_to_slack)
                 return False
         else:
             logging.info('Would have changed the diskoffering from ZWPS to CWPS of all ZWPS volumes')
@@ -189,13 +189,13 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
 
     if hwps_found:
         logging.error(f"VM '{vm['name']} has HWPS data disks attached. This is currently not handled by this script.",
-                      to_slack=log_to_slack)
+                      log_to_slack=log_to_slack)
         return False
 
     if cwps_found and zwps_found:
         logging.info(
             f"VM '{vm['name']}' has both ZWPS and CWPS data disks attached. We are going to temporarily migrate all CWPS volumes to ZWPS.",
-            to_slack=log_to_slack)
+            log_to_slack=log_to_slack)
         for volume in data_disks_to_zwps:
             if not temp_migrate_volume(co=co, dry_run=dry_run, log_to_slack=log_to_slack, volume=volume,
                                        vm=vm, target_pool_name=zwps_name):
@@ -232,7 +232,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     root_storage_pool = co.get_storage_pool(name=root_disk['storage'])
     if not root_storage_pool:
         logging.error(f"Unable to fetch storage pool details foor ROOT disk '{root_disk['name']}'",
-                      to_slack=log_to_slack)
+                      log_to_slack=log_to_slack)
         return False
 
     migrate_with_volume = False if root_storage_pool['scope'] == 'ZONE' else True
@@ -320,12 +320,16 @@ def temp_migrate_volume(co, dry_run, log_to_slack, volume, vm, target_pool_name)
     else:
         logging.info(
             f"Migrating volume '{volume['name']}' of VM '{vm['name']}' to pool '{target_pool_name}'",
-            to_slack=log_to_slack)
+            log_to_slack=log_to_slack)
 
         if not volume.migrate(target_storage_pool, live_migrate=True, source_host=source_host,
                               vm=vm, vol=volume['path']):
-            logging.error(f"Failed to migrate volume '{volume['name']}'", to_slack=log_to_slack)
+            logging.error(f"Migration failed for volume '{volume['name']}' of VM '{vm['name']}'",
+                          log_to_slack=log_to_slack)
             return False
+        logging.info(
+            f"Migration completed of volume '{volume['name']}' of VM '{vm['name']}' to pool '{target_pool_name}'",
+            log_to_slack=log_to_slack)
     return True
 
 
