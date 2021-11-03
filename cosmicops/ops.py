@@ -252,7 +252,7 @@ class CosmicOps(object):
 
             time.sleep(1)
 
-        if domjobinfo and source_host and instancename:
+        if domjobinfo and source_host and instancename and int(job_status) == 0:
             print("100%         ")
         else:
             print()
@@ -282,9 +282,9 @@ class CosmicOps(object):
             time.sleep(1)
             logging.debug(f"Volume '{volume_id}' is in {volume['state']} state and not Ready. Sleeping.")
         # Return result of job
-        if blkjobinfo and source_host and vm and vol:
+        status = self.wait_for_job(job_id=job_id, retries=1)
+        if blkjobinfo and source_host and vm and vol and status:
             print("100%       ")
         else:
             print()
-        status = self.wait_for_job(job_id=job_id, retries=1)
         return status

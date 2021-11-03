@@ -163,6 +163,9 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
                     f"Volume '{volume['name']}' is in '{volume['state']}' state instead of 'Ready', sleeping...")
                 time.sleep(60)
 
+    logging.info(
+        f"Finished migration of volume '{volume['name']}' to storage pool '{storage_pool['name']}' ({storage_pool['id']})",
+        log_to_slack=log_to_slack)
     if not dry_run:
         host.set_iops_limit(vm, 0)
 
