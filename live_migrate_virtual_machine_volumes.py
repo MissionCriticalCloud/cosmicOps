@@ -55,9 +55,9 @@ def main(profile, max_iops, zwps_to_cwps, is_project_vm, dry_run, vm, storage_po
         sys.exit(1)
 
 
-def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_slack, max_iops, vm_name, zwps_to_cwps):
-    storage_pool = co.get_storage_pool(name=storage_pool)
-    if not storage_pool:
+def live_migrate_volumes(target_storage_pool, co, cs, dry_run, is_project_vm, log_to_slack, max_iops, vm_name, zwps_to_cwps):
+    target_storage_pool = co.get_storage_pool(name=target_storage_pool)
+    if not target_storage_pool:
         return False
 
     # disable setting max IOPS, if max_iops != 0
@@ -74,7 +74,7 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
     logging.zone_name = vm['zonename']
 
     logging.info(
-        f"Starting live migration of volumes of VM '{vm['name']}' to storage pool '{storage_pool['name']}' ({storage_pool['id']})",
+        f"Starting live migration of volumes of VM '{vm['name']}' to storage pool '{target_storage_pool['name']}' ({target_storage_pool['id']})",
         log_to_slack=log_to_slack)
 
     host = co.get_host(id=vm['hostid'])
@@ -128,33 +128,37 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
             f'Would have merged all backing files if any exist')
 
     for volume in vm.get_volumes():
-        if volume['storageid'] == storage_pool['id']:
+        if volume['storageid'] == target_storage_pool['id']:
             logging.warning(f"Skipping volume '{volume['name']}' as it's already on the specified storage pool",
                             log_to_slack=log_to_slack)
             continue
 
-        current_storage_pool = co.get_storage_pool(id=volume['storageid'])
-        if not current_storage_pool:
+        source_storage_pool = co.get_storage_pool(id=volume['storageid'])
+        if not source_storage_pool:
             continue
 
-        if current_storage_pool['scope'] == 'Host' or (current_storage_pool['scope'] == 'ZONE' and not zwps_to_cwps):
-            logging.warning(f"Skipping volume '{volume['name']}' as it's scope is '{current_storage_pool['scope']}'",
+        if source_storage_pool['scope'] == 'Host' or (source_storage_pool['scope'] == 'ZONE' and not zwps_to_cwps):
+            logging.warning(f"Skipping volume '{volume['name']}' as it's scope is '{source_storage_pool['scope']}'",
                             log_to_slack=log_to_slack)
             continue
 
+        if not co.clean_old_disk_file(host=host, dry_run=dry_run, volume=volume,
+                                      target_pool_name=target_storage_pool['name']):
+            logging.error(f"Cleaning volume '{volume['name']}' failed on zwps")
+            return False
         if dry_run:
             logging.info(
-                f"Would migrate volume '{volume['name']}' to storage pool '{storage_pool['name']}' ({storage_pool['id']})")
+                f"Would migrate volume '{volume['name']}' to storage pool '{target_storage_pool['name']}' ({target_storage_pool['id']})")
             continue
 
         logging.info(
-            f"Starting migration of volume '{volume['name']}' to storage pool '{storage_pool['name']}' ({storage_pool['id']})",
+            f"Starting migration of volume '{volume['name']}' from storage pool '{source_storage_pool['name']}' to storage pool '{target_storage_pool['name']}' ({target_storage_pool['id']})",
             log_to_slack=log_to_slack)
 
         # get the source host to read the blkjobinfo
         source_host = co.get_host(id=vm['hostid'])
 
-        if not volume.migrate(storage_pool, live_migrate=True, source_host=source_host, vm=vm, vol=volume['path']):
+        if not volume.migrate(target_storage_pool, live_migrate=True, source_host=source_host, vm=vm, vol=volume['path']):
             continue
 
         with click_spinner.spinner():
@@ -168,8 +172,12 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
                     f"Volume '{volume['name']}' is in '{volume['state']}' state instead of 'Ready', sleeping...")
                 time.sleep(60)
 
+        logging.info(
+            f"Finished migration of volume '{volume['name']}' from storage pool '{source_storage_pool['name']}' to storage pool '{target_storage_pool['name']}' ({target_storage_pool['id']})",
+            log_to_slack=log_to_slack)
+
     logging.info(
-        f"Finished live migration of volumes of VM '{vm['name']}' to storage pool '{storage_pool['name']}' ({storage_pool['id']})",
+        f"Finished live migration of volumes of VM '{vm['name']}' from storage pool '{source_storage_pool['name']}' to storage pool '{target_storage_pool['name']}' ({target_storage_pool['id']})",
         log_to_slack=log_to_slack)
     if not dry_run:
         host.set_iops_limit(vm, 0)

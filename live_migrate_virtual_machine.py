@@ -310,8 +310,8 @@ def temp_migrate_volume(co, dry_run, log_to_slack, volume, vm, target_pool_name)
     target_storage_pool = co.get_storage_pool(name=target_pool_name)
     if not target_storage_pool:
         return False
-    if not clean_old_disk_file(co=co, host=source_host, dry_run=dry_run, volume=volume,
-                               target_pool_name=target_pool_name):
+    if not co.clean_old_disk_file(host=source_host, dry_run=dry_run, volume=volume,
+                                  target_pool_name=target_pool_name):
         logging.error(f"Cleaning volume '{volume['name']}' failed on zwps")
         return False
     if dry_run:
@@ -330,28 +330,6 @@ def temp_migrate_volume(co, dry_run, log_to_slack, volume, vm, target_pool_name)
         logging.info(
             f"Migration completed of volume '{volume['name']}' of VM '{vm['name']}' to pool '{target_pool_name}'",
             log_to_slack=log_to_slack)
-    return True
-
-
-def clean_old_disk_file(co, host, dry_run, volume, target_pool_name):
-    target_storage_pool = co.get_storage_pool(name=target_pool_name)
-    if not target_storage_pool:
-        return False
-
-    volume_path = f"/mnt/{target_storage_pool['id']}/{volume['path']}"
-    file_details = host.file_exists(volume_path)
-    if file_details:
-        last_changed = f"{file_details[-4]} {file_details[-3]} {file_details[-2]}"
-        logging.info(
-            f"Can't migrate: disk '{volume['name']}' already exists on target pool as '{volume_path}', last changed: {last_changed}")
-
-        if dry_run:
-            logging.info(f"Would rename '{volume['name']}' ({volume_path})")
-        else:
-            logging.info(f"Renaming '{volume['name']}' ({volume_path})")
-            if not host.rename_existing_destination_file(volume_path):
-                logging.error(f"Failed to rename '{volume['name']}' ({volume_path})")
-                return False
     return True
 
 

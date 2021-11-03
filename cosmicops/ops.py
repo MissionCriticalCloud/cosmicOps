@@ -288,3 +288,24 @@ class CosmicOps(object):
         else:
             print()
         return status
+
+    def clean_old_disk_file(self, host, dry_run, volume, target_pool_name):
+        target_storage_pool = self.get_storage_pool(name=target_pool_name)
+        if not target_storage_pool:
+            return False
+
+        volume_path = f"/mnt/{target_storage_pool['id']}/{volume['path']}"
+        file_details = host.file_exists(volume_path)
+        if file_details:
+            last_changed = f"{file_details[-4]} {file_details[-3]} {file_details[-2]}"
+            logging.info(
+                f"Can't migrate: disk '{volume['name']}' already exists on target pool as '{volume_path}', last changed: {last_changed}")
+
+            if dry_run:
+                logging.info(f"Would rename '{volume['name']}' ({volume_path})")
+            else:
+                logging.info(f"Renaming '{volume['name']}' ({volume_path})")
+                if not host.rename_existing_destination_file(volume_path):
+                    logging.error(f"Failed to rename '{volume['name']}' ({volume_path})")
+                    return False
+        return True
