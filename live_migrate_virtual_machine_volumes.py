@@ -55,7 +55,7 @@ def main(profile, max_iops, zwps_to_cwps, is_project_vm, dry_run, vm, storage_po
         sys.exit(1)
 
 
-def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_slack, max_iops, vm, zwps_to_cwps):
+def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_slack, max_iops, vm_name, zwps_to_cwps):
     storage_pool = co.get_storage_pool(name=storage_pool)
     if not storage_pool:
         return False
@@ -63,14 +63,19 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
     # disable setting max IOPS, if max_iops != 0
     set_max_iops = max_iops != 0
 
-    vm = co.get_vm(name=vm, is_project_vm=is_project_vm)
+    vm = co.get_vm(name=vm_name, is_project_vm=is_project_vm)
     if not vm:
         return False
+
 
     logging.instance_name = vm['instancename']
     logging.slack_value = vm['domain']
     logging.vm_name = vm['name']
     logging.zone_name = vm['zonename']
+
+    logging.info(
+        f"Starting live migration of volumes of VM '{vm['name']}' to storage pool '{storage_pool['name']}' ({storage_pool['id']})",
+        log_to_slack=log_to_slack)
 
     host = co.get_host(id=vm['hostid'])
     if not host:
@@ -164,7 +169,7 @@ def live_migrate_volumes(storage_pool, co, cs, dry_run, is_project_vm, log_to_sl
                 time.sleep(60)
 
     logging.info(
-        f"Finished migration of volume '{volume['name']}' to storage pool '{storage_pool['name']}' ({storage_pool['id']})",
+        f"Finished live migration of volumes of VM '{vm['name']}' to storage pool '{storage_pool['name']}' ({storage_pool['id']})",
         log_to_slack=log_to_slack)
     if not dry_run:
         host.set_iops_limit(vm, 0)
