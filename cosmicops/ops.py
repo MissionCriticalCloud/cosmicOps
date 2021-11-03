@@ -214,7 +214,8 @@ class CosmicOps(object):
 
         return False
 
-    def wait_for_vm_migration_job(self, job_id, retries=10, domjobinfo=True, source_host=None, instancename=None):
+    def wait_for_vm_migration_job(self, job_id, retries=10, domjobinfo=True, source_host=None, instancename=None
+                                  , to_slack=False):
         status = False
         job_status = 0
         prev_percentage = 0.
@@ -257,7 +258,8 @@ class CosmicOps(object):
         print()
         return status
 
-    def wait_for_volume_migration_job(self, volume_id, job_id, blkjobinfo=True, source_host=None, vm=None, vol=None):
+    def wait_for_volume_migration_job(self, volume_id, job_id, blkjobinfo=True, source_host=None, vm=None, vol=None
+                                      , to_slack=False):
         prev_percentage = 0.
 
         # Hack to wait for job to start
@@ -273,7 +275,7 @@ class CosmicOps(object):
 
             volume = self.get_volume(id=volume_id, json=True)
             if volume is None:
-                logging.error(f"Error: Could not find volume '{volume_id}'")
+                logging.error(f"Error: Could not find volume '{volume_id}'", to_slack=to_slack)
                 return False
 
             if volume['state'] == "Ready":
