@@ -57,7 +57,7 @@ class CosmicOps(object):
     def _cs_get_single_result(self, list_function, kwargs, cosmic_object, cs_type, pretty_name=None, json=False):
         func = getattr(self.cs, list_function, None)
         if not func:  # pragma: no cover
-            logging.error(f"Unknown list function '{list_function}'")
+            logging.debug(f"Unknown list function '{list_function}'")
             return None
 
         if not pretty_name:
@@ -70,10 +70,10 @@ class CosmicOps(object):
         response = func(fetch_list=True, **kwargs)
 
         if not response:
-            logging.error(f"{pretty_name.capitalize()} with attributes {kwargs} not found")
+            logging.debug(f"{pretty_name.capitalize()} with attributes {kwargs} not found")
             return None
         elif len(response) != 1:
-            logging.error(f"Lookup for {pretty_name} with attributes {kwargs} returned multiple results")
+            logging.debug(f"Lookup for {pretty_name} with attributes {kwargs} returned multiple results")
             return None
 
         return response[0] if json else cosmic_object(self, response[0])
