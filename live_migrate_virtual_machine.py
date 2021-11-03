@@ -83,8 +83,8 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
     logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
 
 
-def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps, log_to_slack,
-                 dry_run):
+def live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
+                 log_to_slack, dry_run):
     if destination_dc and destination_dc not in DATACENTERS:
         logging.error(f"Unknown datacenter '{destination_dc}', should be one of {str(DATACENTERS)}")
         return False
@@ -93,16 +93,20 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     if not target_cluster:
         return False
 
-    vm = co.get_vm(name=vm, is_project_vm=is_project_vm)
+    vm = co.get_vm(name=vm_name, is_project_vm=is_project_vm)
     if not vm:
         return False
 
     if not vm['state'] == 'Running':
-        logging.error(f"Cannot migrate, VM has has state: '{vm['state']}'")
+        logging.error(f"Cannot migrate, VM has state: '{vm['state']}'")
         return False
 
     for vm_snapshot in vm.get_snapshots():
         logging.error(f"Cannot migrate, VM has VM snapshots: '{vm_snapshot['name']}'")
+        return False
+
+    if vm['maintenancepolicy'] == 'ShutdownAndStart':
+        logging.error(f"Cannot migrate, VM has maintenance policy: '{vm['maintenancepolicy']}'")
         return False
 
     logging.instance_name = vm['instancename']
@@ -240,8 +244,8 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     if migrate_with_volume:
         for volume in vm.get_volumes():
             for target_pool in co.get_all_storage_pools(clusterid=target_cluster['id']):
-                if not clean_old_disk_file(co=co, host=destination_host, dry_run=dry_run, volume=volume,
-                                           target_pool_name=target_pool['name']):
+                if not co.clean_old_disk_file(host=destination_host, dry_run=dry_run, volume=volume,
+                                              target_pool_name=target_pool['name']):
                     logging.error(f"Cleaning volume '{root_disk['name']}' failed")
                     return False
 

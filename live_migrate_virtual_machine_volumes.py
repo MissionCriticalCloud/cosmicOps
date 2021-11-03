@@ -177,7 +177,7 @@ def live_migrate_volumes(target_storage_pool, co, cs, dry_run, is_project_vm, lo
             log_to_slack=log_to_slack)
 
     logging.info(
-        f"Finished live migration of volumes of VM '{vm['name']}' from storage pool '{source_storage_pool['name']}' to storage pool '{target_storage_pool['name']}' ({target_storage_pool['id']})",
+        f"Finished live migration of volumes of VM '{vm['name']}' to storage pool '{target_storage_pool['name']}' ({target_storage_pool['id']})",
         log_to_slack=log_to_slack)
     if not dry_run:
         host.set_iops_limit(vm, 0)
