@@ -133,3 +133,9 @@ dmypy.json
 
 # cosmicOps config
 config
+
+# output files
+*.txt
+
+# shell scripts
+*.sh
