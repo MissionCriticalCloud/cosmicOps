@@ -51,8 +51,9 @@ def main(profile, destination_dc, dry_run, host, cluster):
         sys.exit(1)
 
     for vm in host.get_all_vms() + host.get_all_project_vms():
-        live_migrate(co=co, cs=cs, cluster=cluster, vm=vm, destination_dc=destination_dc, add_affinity_group=None,
-                     is_project_vm=None, zwps_to_cwps=None, log_to_slack=log_to_slack, dry_run=dry_run)
+        live_migrate(co=co, cs=cs, cluster=cluster, vm_name=vm['name'], destination_dc=destination_dc,
+                     add_affinity_group=None, is_project_vm=None, zwps_to_cwps=None, log_to_slack=log_to_slack,
+                     dry_run=dry_run)
 
 
 if __name__ == '__main__':

@@ -55,7 +55,8 @@ def main(profile, is_project_router, only_when_required, cleanup, dry_run, route
         sys.exit(1)
 
     cluster = co.get_cluster(id=host['clusterid'])
-    if not cluster: sys.exit(1)
+    if not cluster:
+        sys.exit(1)
 
     logging.cluster = cluster['name']
 

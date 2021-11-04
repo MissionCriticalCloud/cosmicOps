@@ -30,7 +30,7 @@ class CosmicSystemVM(CosmicVM):
 
         return True
 
-    def start(self):
+    def start(self, host=None):
         if self.dry_run:
             logging.info(f"Would start system VM '{self['name']}")
             return True

@@ -44,6 +44,7 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
             'domain': 'domain',
             'zonename': 'zone',
             'hostid': 'sh1',
+            'maintenancepolicy': 'LiveMigrate',
             'instancename': 'i-VM-1'
         })
         self.host = CosmicHost(Mock(), {
@@ -83,7 +84,7 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
         self.host.merge_backing_files = Mock(return_value=True)
         self.cs_instance.get_volume_size.return_value = ('name', 'path1', 'uuid', 'voltype', '1234')
         self.vm.get_volumes = Mock(return_value=[self.volume])
-        self.volume.migrate = Mock()
+        self.volume.migrate = Mock(return_value=True)
         self.volume.refresh = Mock()
 
         self.co_instance.get_storage_pool.reset_mock()
@@ -111,7 +112,7 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
         self.host.set_iops_limit.assert_has_calls([call(self.vm, 1000), call(self.vm, 0)])
         self.host.merge_backing_files.assert_called_with(self.vm)
         self.vm.get_volumes.assert_called()
-        self.volume.migrate.assert_called_with(self.target_storage_pool, live_migrate=True)
+        self.volume.migrate.assert_called_with(self.target_storage_pool, live_migrate=True, source_host=self.host, vm=self.vm)
         self.volume.refresh.assert_called()
 
     def test_main_dry_run(self):
@@ -172,10 +173,10 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
         self.host.merge_backing_files.assert_called()
 
     def test_continues(self):
-        self.volume['storage'] = self.target_storage_pool['id']
+        self.volume['storageid'] = self.target_storage_pool['id']
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
                                                ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
-        self.assertEqual(2, self.co_instance.get_storage_pool.call_count)
+        self.assertEqual(1, self.co_instance.get_storage_pool.call_count)
 
         self._setup_mocks()
         self.co_instance.get_storage_pool.side_effect = [self.target_storage_pool, None]
@@ -203,7 +204,7 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
                                                ['--exec', '-p', 'profile', '--zwps-to-cwps', 'vm',
                                                 'target_pool']).exit_code)
-        self.cs_instance.update_zwps_to_cwps.assert_called_with(self.vm['instancename'], 'MCC_v1.CWPS')
+        self.cs_instance.update_zwps_to_cwps.assert_called_with('MCC_v1.CWPS', instance_name=self.vm['instancename'])
 
         self._setup_mocks()
         self.cs_instance.update_zwps_to_cwps.return_value = False

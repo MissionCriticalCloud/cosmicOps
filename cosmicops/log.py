@@ -45,10 +45,10 @@ class CosmicLog(object):
             print(f"warning: No Slack connection details found in configuration file")
             return None
 
-    def _log(self, log_level, message, to_slack):
+    def _log(self, log_level, message, log_to_slack):
         logging_module.log(log_level, message)
 
-        if to_slack and self._slack:
+        if log_to_slack and self._slack:
             if log_level == ERROR:
                 color = 'danger'
             elif log_level == WARNING:
@@ -109,17 +109,17 @@ class CosmicLog(object):
     def getLogger():
         return logging_module.getLogger()
 
-    def info(self, message, to_slack=False):
-        self._log(INFO, message, to_slack)
+    def info(self, message, log_to_slack=False):
+        self._log(INFO, message, log_to_slack)
 
-    def debug(self, message, to_slack=False):
-        self._log(DEBUG, message, to_slack)
+    def debug(self, message, log_to_slack=False):
+        self._log(DEBUG, message, log_to_slack)
 
-    def warning(self, message, to_slack=False):
-        self._log(WARNING, message, to_slack)
+    def warning(self, message, log_to_slack=False):
+        self._log(WARNING, message, log_to_slack)
 
-    def error(self, message, to_slack=False):
-        self._log(ERROR, message, to_slack)
+    def error(self, message, log_to_slack=False):
+        self._log(ERROR, message, log_to_slack)
 
 
 logging = CosmicLog()

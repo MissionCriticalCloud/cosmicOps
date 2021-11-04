@@ -57,7 +57,7 @@ class CosmicOps(object):
     def _cs_get_single_result(self, list_function, kwargs, cosmic_object, cs_type, pretty_name=None, json=False):
         func = getattr(self.cs, list_function, None)
         if not func:  # pragma: no cover
-            logging.error(f"Unknown list function '{list_function}'")
+            logging.debug(f"Unknown list function '{list_function}'")
             return None
 
         if not pretty_name:
@@ -70,10 +70,10 @@ class CosmicOps(object):
         response = func(fetch_list=True, **kwargs)
 
         if not response:
-            logging.error(f"{pretty_name.capitalize()} with attributes {kwargs} not found")
+            logging.debug(f"{pretty_name.capitalize()} with attributes {kwargs} not found")
             return None
         elif len(response) != 1:
-            logging.error(f"Lookup for {pretty_name} with attributes {kwargs} returned multiple results")
+            logging.debug(f"Lookup for {pretty_name} with attributes {kwargs} returned multiple results")
             return None
 
         return response[0] if json else cosmic_object(self, response[0])
@@ -178,6 +178,9 @@ class CosmicOps(object):
         return self._cs_get_all_results('listVirtualMachines', kwargs, CosmicVM, 'virtualmachine')
 
     def get_all_storage_pools(self, list_all=True, **kwargs):
+        if 'listall' not in kwargs:
+            kwargs['listall'] = list_all
+
         return self._cs_get_all_results('listStoragePools', kwargs, CosmicStoragePool, 'storagepool')
 
     def get_all_project_vms(self, list_all=True, **kwargs):
@@ -252,27 +255,30 @@ class CosmicOps(object):
 
             time.sleep(1)
 
-        print()
+        if domjobinfo and source_host and instancename and int(job_status) == 0:
+            print("100%         ")
+        else:
+            print()
         return status
 
-    def wait_for_volume_migration_job(self, volume_id, job_id, blkjobinfo=True, source_host=None, vm=None, vol=None):
+    def wait_for_volume_migration_job(self, volume_id, job_id, blkjobinfo=True, source_host=None, vm=None):
         prev_percentage = 0.
 
         # Hack to wait for job to start
         time.sleep(60)
         while True:
-            if blkjobinfo and source_host and vm and vol:
-                blkjobinfo = source_host.get_blkjobinfo(vm, vol)
+            volume = self.get_volume(id=volume_id, json=True)
+            if volume is None:
+                logging.error(f"Error: Could not find volume '{volume_id}'")
+                return False
+
+            if blkjobinfo and source_host and vm:
+                blkjobinfo = source_host.get_blkjobinfo(vm, volume['path'])
                 cur_percentage = float(blkjobinfo.current / (blkjobinfo.end or 1) * 100)
                 if cur_percentage > prev_percentage:
                     prev_percentage = cur_percentage
                 print("%4.f%% " % prev_percentage, flush=True, end='')
             print("%s" % next(self.spinner), flush=True, end='\r')
-
-            volume = self.get_volume(id=volume_id, json=True)
-            if volume is None:
-                logging.error(f"Error: Could not find volume '{volume_id}'")
-                return False
 
             if volume['state'] == "Ready":
                 break
@@ -280,5 +286,29 @@ class CosmicOps(object):
             logging.debug(f"Volume '{volume_id}' is in {volume['state']} state and not Ready. Sleeping.")
         # Return result of job
         status = self.wait_for_job(job_id=job_id, retries=1)
-        print()
+        if blkjobinfo and source_host and vm and status:
+            print("100%       ")
+        else:
+            print()
         return status
+
+    def clean_old_disk_file(self, host, dry_run, volume, target_pool_name):
+        target_storage_pool = self.get_storage_pool(name=target_pool_name)
+        if not target_storage_pool:
+            return False
+
+        volume_path = f"/mnt/{target_storage_pool['id']}/{volume['path']}"
+        file_details = host.file_exists(volume_path)
+        if file_details:
+            last_changed = f"{file_details[-4]} {file_details[-3]} {file_details[-2]}"
+            logging.info(
+                f"Can't migrate: disk '{volume['name']}' already exists on target pool as '{volume_path}', last changed: {last_changed}")
+
+            if dry_run:
+                logging.info(f"Would rename '{volume['name']}' ({volume_path})")
+            else:
+                logging.info(f"Renaming '{volume['name']}' ({volume_path})")
+                if not host.rename_existing_destination_file(volume_path):
+                    logging.error(f"Failed to rename '{volume['name']}' ({volume_path})")
+                    return False
+        return True

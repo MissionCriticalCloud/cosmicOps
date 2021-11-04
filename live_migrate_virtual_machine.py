@@ -72,7 +72,7 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
     source_cluster = co.get_cluster(id=source_host['clusterid'])
     if not skip_within_cluster:
         if not vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster,
-                                       source_host=source_host, instancename=vm_instance):
+                                                  source_host=source_host, instancename=vm_instance):
             logging.info(f"VM Migration failed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
             sys.exit(1)
 
@@ -83,8 +83,8 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
     logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
 
 
-def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps, log_to_slack,
-                 dry_run):
+def live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
+                 log_to_slack, dry_run):
     if destination_dc and destination_dc not in DATACENTERS:
         logging.error(f"Unknown datacenter '{destination_dc}', should be one of {str(DATACENTERS)}")
         return False
@@ -93,16 +93,20 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     if not target_cluster:
         return False
 
-    vm = co.get_vm(name=vm, is_project_vm=is_project_vm)
+    vm = co.get_vm(name=vm_name, is_project_vm=is_project_vm)
     if not vm:
         return False
 
     if not vm['state'] == 'Running':
-        logging.error(f"Cannot migrate, VM has has state: '{vm['state']}'")
+        logging.error(f"Cannot migrate, VM has state: '{vm['state']}'")
         return False
 
     for vm_snapshot in vm.get_snapshots():
         logging.error(f"Cannot migrate, VM has VM snapshots: '{vm_snapshot['name']}'")
+        return False
+
+    if vm['maintenancepolicy'] == 'ShutdownAndStart':
+        logging.error(f"Cannot migrate, VM has maintenance policy: '{vm['maintenancepolicy']}'")
         return False
 
     logging.instance_name = vm['instancename']
@@ -136,9 +140,9 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     if zwps_to_cwps:
         if not dry_run:
             logging.info(f"Converting any ZWPS volume of VM '{vm['name']}' to CWPS before starting the migration",
-                         to_slack=log_to_slack)
-            if not cs.update_zwps_to_cwps(vm['instancename'], 'MCC_v1.CWPS'):
-                logging.error(f"Failed to apply CWPS disk offering to VM '{vm['name']}'", to_slack=log_to_slack)
+                         log_to_slack=log_to_slack)
+            if not cs.update_zwps_to_cwps('MCC_v1.CWPS', instance_name=vm['instancename']):
+                logging.error(f"Failed to apply CWPS disk offering to VM '{vm['name']}'", log_to_slack=log_to_slack)
                 return False
         else:
             logging.info('Would have changed the diskoffering from ZWPS to CWPS of all ZWPS volumes')
@@ -189,13 +193,13 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
 
     if hwps_found:
         logging.error(f"VM '{vm['name']} has HWPS data disks attached. This is currently not handled by this script.",
-                      to_slack=log_to_slack)
+                      log_to_slack=log_to_slack)
         return False
 
     if cwps_found and zwps_found:
         logging.info(
             f"VM '{vm['name']}' has both ZWPS and CWPS data disks attached. We are going to temporarily migrate all CWPS volumes to ZWPS.",
-            to_slack=log_to_slack)
+            log_to_slack=log_to_slack)
         for volume in data_disks_to_zwps:
             if not temp_migrate_volume(co=co, dry_run=dry_run, log_to_slack=log_to_slack, volume=volume,
                                        vm=vm, target_pool_name=zwps_name):
@@ -232,7 +236,7 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     root_storage_pool = co.get_storage_pool(name=root_disk['storage'])
     if not root_storage_pool:
         logging.error(f"Unable to fetch storage pool details foor ROOT disk '{root_disk['name']}'",
-                      to_slack=log_to_slack)
+                      log_to_slack=log_to_slack)
         return False
 
     migrate_with_volume = False if root_storage_pool['scope'] == 'ZONE' else True
@@ -240,8 +244,8 @@ def live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_pro
     if migrate_with_volume:
         for volume in vm.get_volumes():
             for target_pool in co.get_all_storage_pools(clusterid=target_cluster['id']):
-                if not clean_old_disk_file(co=co, host=destination_host, dry_run=dry_run, volume=volume,
-                                           target_pool_name=target_pool['name']):
+                if not co.clean_old_disk_file(host=destination_host, dry_run=dry_run, volume=volume,
+                                              target_pool_name=target_pool['name']):
                     logging.error(f"Cleaning volume '{root_disk['name']}' failed")
                     return False
 
@@ -310,8 +314,8 @@ def temp_migrate_volume(co, dry_run, log_to_slack, volume, vm, target_pool_name)
     target_storage_pool = co.get_storage_pool(name=target_pool_name)
     if not target_storage_pool:
         return False
-    if not clean_old_disk_file(co=co, host=source_host, dry_run=dry_run, volume=volume,
-                               target_pool_name=target_pool_name):
+    if not co.clean_old_disk_file(host=source_host, dry_run=dry_run, volume=volume,
+                                  target_pool_name=target_pool_name):
         logging.error(f"Cleaning volume '{volume['name']}' failed on zwps")
         return False
     if dry_run:
@@ -320,34 +324,15 @@ def temp_migrate_volume(co, dry_run, log_to_slack, volume, vm, target_pool_name)
     else:
         logging.info(
             f"Migrating volume '{volume['name']}' of VM '{vm['name']}' to pool '{target_pool_name}'",
-            to_slack=log_to_slack)
+            log_to_slack=log_to_slack)
 
-        if not volume.migrate(target_storage_pool, live_migrate=True, source_host=source_host,
-                              vm=vm, vol=volume['path']):
-            logging.error(f"Failed to migrate volume '{volume['name']}'", to_slack=log_to_slack)
+        if not volume.migrate(target_storage_pool, live_migrate=True, source_host=source_host, vm=vm):
+            logging.error(f"Migration failed for volume '{volume['name']}' of VM '{vm['name']}'",
+                          log_to_slack=log_to_slack)
             return False
-    return True
-
-
-def clean_old_disk_file(co, host, dry_run, volume, target_pool_name):
-    target_storage_pool = co.get_storage_pool(name=target_pool_name)
-    if not target_storage_pool:
-        return False
-
-    volume_path = f"/mnt/{target_storage_pool['id']}/{volume['path']}"
-    file_details = host.file_exists(volume_path)
-    if file_details:
-        last_changed = f"{file_details[-4]} {file_details[-3]} {file_details[-2]}"
         logging.info(
-            f"Can't migrate: disk '{volume['name']}' already exists on target pool as '{volume_path}', last changed: {last_changed}")
-
-        if dry_run:
-            logging.info(f"Would rename '{volume['name']}' ({volume_path})")
-        else:
-            logging.info(f"Renaming '{volume['name']}' ({volume_path})")
-            if not host.rename_existing_destination_file(volume_path):
-                logging.error(f"Failed to rename '{volume['name']}' ({volume_path})")
-                return False
+            f"Migration completed of volume '{volume['name']}' of VM '{vm['name']}' to pool '{target_pool_name}'",
+            log_to_slack=log_to_slack)
     return True
 
 

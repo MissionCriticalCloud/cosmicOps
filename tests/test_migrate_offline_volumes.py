@@ -24,12 +24,16 @@ from cosmicops.objects import CosmicCluster, CosmicStoragePool, CosmicVolume
 class TestMigrateOfflineVolumes(TestCase):
     def setUp(self):
         co_patcher = patch('migrate_offline_volumes.CosmicOps')
+        cs_patcher = patch('migrate_offline_volumes.CosmicSQL')
         sleep_patcher = patch('time.sleep', return_value=None)
         self.co = co_patcher.start()
+        self.cs = cs_patcher.start()
         sleep_patcher.start()
         self.addCleanup(co_patcher.stop)
+        self.addCleanup(cs_patcher.stop)
         self.addCleanup(sleep_patcher.stop)
         self.co_instance = self.co.return_value
+        self.cs_instance = self.cs.return_value
         self.runner = CliRunner()
 
         self._setup_mocks()
@@ -137,7 +141,7 @@ class TestMigrateOfflineVolumes(TestCase):
         self.co_instance.get_cluster.side_effect = [None, None]
         self.assertEqual(1, self.runner.invoke(migrate_offline_volumes.main,
                                                ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
-        self.co_instance.get_cluster.assert_called_with(name='source_cluster')
+        self.co_instance.get_cluster.assert_has_calls([call(name='source_cluster'), call(name='destination_cluster')])
 
         self._setup_mocks()
         self.co_instance.get_cluster.side_effect = [self.source_cluster, None]

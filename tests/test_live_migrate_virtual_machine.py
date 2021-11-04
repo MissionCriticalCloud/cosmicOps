@@ -36,10 +36,6 @@ class TestLiveMigrateVirtualMachine(TestCase):
         self.cs_instance = self.cs.return_value
         self.runner = CliRunner()
 
-        codf_patcher = patch('live_migrate_virtual_machine.clean_old_disk_file')
-        self.codf = codf_patcher.start()
-        self.addCleanup(codf_patcher.stop)
-
         self._setup_mocks()
 
     def _setup_mocks(self):
@@ -55,6 +51,7 @@ class TestLiveMigrateVirtualMachine(TestCase):
             'hostname': 'destination_host',
             'instancename': 'i-VM-1',
             'serviceofferingname': 'service_offering_EVO',
+            'maintenancepolicy': 'LiveMigrate',
             'state': 'Running'
         })
         self.source_host = CosmicHost(Mock(), {
@@ -169,8 +166,8 @@ class TestLiveMigrateVirtualMachine(TestCase):
         self.cs_instance.get_volume_size.assert_called_with('path1')
         self.cs_instance.update_volume_size.assert_not_called()
         self.vm.migrate_within_cluster.assert_called()
-        self.vm.migrate.assert_called_with(self.destination_host, with_volume=True,
-                      source_host=self.source_host, instancename=self.vm['instancename'])
+        self.vm.migrate.assert_called_with(self.destination_host, with_volume=True, source_host=self.source_host,
+                                           instancename=self.vm['instancename'])
         self.vm.refresh.assert_called()
         self.cs_instance.add_vm_to_affinity_group.assert_not_called()
 
@@ -293,7 +290,7 @@ class TestLiveMigrateVirtualMachine(TestCase):
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine.main,
                                                ['--exec', '-p', 'profile', '--zwps-to-cwps', 'vm',
                                                 'target_cluster']).exit_code)
-        self.cs_instance.update_zwps_to_cwps.assert_called_with(self.vm['instancename'], 'MCC_v1.CWPS')
+        self.cs_instance.update_zwps_to_cwps.assert_called_with('MCC_v1.CWPS', instance_name=self.vm['instancename'])
 
         self._setup_mocks()
         self.cs_instance.update_zwps_to_cwps.return_value = False
@@ -320,8 +317,8 @@ class TestLiveMigrateVirtualMachine(TestCase):
                                                ['--exec', '-p', 'profile', '--skip-within-cluster', 'vm',
                                                 'target_cluster']).exit_code)
         self.vm.migrate_within_cluster.assert_not_called()
-        self.vm.migrate.assert_called_with(self.destination_host, with_volume=True,
-                      source_host=self.source_host, instancename=self.vm['instancename'])
+        self.vm.migrate.assert_called_with(self.destination_host, with_volume=True, source_host=self.source_host,
+                                           instancename=self.vm['instancename'])
 
     def test_skip_within_cluster_dryrun(self):
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine.main,
@@ -353,8 +350,7 @@ class TestLiveMigrateVirtualMachine(TestCase):
 
         self.co_instance.get_storage_pool.assert_has_calls([call(name='zwps_pool'), call(name='root_pool')])
         self.root_volume.migrate.assert_called_with(self.zwps_storage_pool, live_migrate=True,
-                                                    source_host=self.source_host, vm=self.vm,
-                                                    vol=self.root_volume['path'])
+                                                    source_host=self.source_host, vm=self.vm)
 
     def test_root_migration_to_zwps_dry_run(self):
         self.vm.get_volumes.return_value = [self.zwps_volume, self.root_volume]
@@ -387,5 +383,4 @@ class TestLiveMigrateVirtualMachine(TestCase):
 
         self.co_instance.get_storage_pool.assert_called_with(name='zwps_pool')
         self.root_volume.migrate.assert_called_with(self.zwps_storage_pool, live_migrate=True,
-                                                    source_host=self.source_host, vm=self.vm,
-                                                    vol=self.root_volume['path'])
+                                                    source_host=self.source_host, vm=self.vm)

@@ -271,12 +271,15 @@ class CosmicSQL(object):
 
         return int(self._execute_select_query(query)[0][0])
 
-    def update_zwps_to_cwps(self, instance_name, disk_offering_name):
-        instance_id = self.get_instance_id_from_name(instance_name)
+    def update_zwps_to_cwps(self, disk_offering_name, instance_name=None, volume_id=None):
         disk_offering_id = self.get_disk_offering_id_from_name(disk_offering_name)
 
-        query = "UPDATE volumes SET disk_offering_id=%s WHERE volume_type='DATADISK' AND instance_id=%s"
+        if volume_id:
+            query = "UPDATE volumes SET disk_offering_id=%s WHERE volume_type='DATADISK' AND uuid=%s"
+            return self._execute_update_query(query, (disk_offering_id, volume_id))
 
+        instance_id = self.get_instance_id_from_name(instance_name)
+        query = "UPDATE volumes SET disk_offering_id=%s WHERE volume_type='DATADISK' AND instance_id=%s"
         return self._execute_update_query(query, (disk_offering_id, instance_id))
 
     def update_service_offering_of_vm(self, instance_name, service_offering_name):
