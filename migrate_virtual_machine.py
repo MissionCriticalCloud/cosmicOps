@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-DATACENTERS = ["SBP1", "EQXAMS2", "EVO"]
-
 import sys
 import time
 from random import choice
@@ -24,6 +22,8 @@ import click_log
 import click_spinner
 
 from cosmicops import CosmicOps, logging, CosmicSQL
+
+DATACENTERS = ["SBP1", "EQXAMS2", "EVO"]
 
 
 @click.command()

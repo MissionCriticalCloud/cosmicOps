@@ -72,7 +72,7 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
     source_cluster = co.get_cluster(id=source_host['clusterid'])
     if not skip_within_cluster:
         if not vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster,
-                                       source_host=source_host, instancename=vm_instance):
+                                                  source_host=source_host, instancename=vm_instance):
             logging.info(f"VM Migration failed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
             sys.exit(1)
 
@@ -326,8 +326,7 @@ def temp_migrate_volume(co, dry_run, log_to_slack, volume, vm, target_pool_name)
             f"Migrating volume '{volume['name']}' of VM '{vm['name']}' to pool '{target_pool_name}'",
             log_to_slack=log_to_slack)
 
-        if not volume.migrate(target_storage_pool, live_migrate=True, source_host=source_host,
-                              vm=vm, vol=volume['path']):
+        if not volume.migrate(target_storage_pool, live_migrate=True, source_host=source_host, vm=vm):
             logging.error(f"Migration failed for volume '{volume['name']}' of VM '{vm['name']}'",
                           log_to_slack=log_to_slack)
             return False

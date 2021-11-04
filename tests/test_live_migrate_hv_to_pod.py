@@ -87,7 +87,7 @@ class TestLiveMigrateHVToPod(TestCase):
         for vm in self.vms + self.project_vms:
             self.lm.assert_any_call(add_affinity_group=None, cluster='target_cluster', co=self.co_instance,
                                     cs=self.cs_instance, destination_dc=None, dry_run=False, is_project_vm=None,
-                                    log_to_slack=True, vm=vm, zwps_to_cwps=None)
+                                    log_to_slack=True, vm_name=vm['name'], zwps_to_cwps=None)
 
     def test_main_dry_run(self):
         self.assertEqual(0, self.runner.invoke(live_migrate_hv_to_pod.main,
@@ -103,7 +103,7 @@ class TestLiveMigrateHVToPod(TestCase):
         for vm in self.vms + self.project_vms:
             self.lm.assert_any_call(add_affinity_group=None, cluster='target_cluster', co=self.co_instance,
                                     cs=self.cs_instance, destination_dc=None, dry_run=True, is_project_vm=None,
-                                    log_to_slack=False, vm=vm, zwps_to_cwps=None)
+                                    log_to_slack=False, vm_name=vm['name'], zwps_to_cwps=None)
 
     def test_host_not_found(self):
         self.co_instance.get_host.return_value = None

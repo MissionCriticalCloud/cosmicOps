@@ -178,6 +178,9 @@ class CosmicOps(object):
         return self._cs_get_all_results('listVirtualMachines', kwargs, CosmicVM, 'virtualmachine')
 
     def get_all_storage_pools(self, list_all=True, **kwargs):
+        if 'listall' not in kwargs:
+            kwargs['listall'] = list_all
+
         return self._cs_get_all_results('listStoragePools', kwargs, CosmicStoragePool, 'storagepool')
 
     def get_all_project_vms(self, list_all=True, **kwargs):
@@ -258,24 +261,24 @@ class CosmicOps(object):
             print()
         return status
 
-    def wait_for_volume_migration_job(self, volume_id, job_id, blkjobinfo=True, source_host=None, vm=None, vol=None):
+    def wait_for_volume_migration_job(self, volume_id, job_id, blkjobinfo=True, source_host=None, vm=None):
         prev_percentage = 0.
 
         # Hack to wait for job to start
         time.sleep(60)
         while True:
-            if blkjobinfo and source_host and vm and vol:
-                blkjobinfo = source_host.get_blkjobinfo(vm, vol)
+            volume = self.get_volume(id=volume_id, json=True)
+            if volume is None:
+                logging.error(f"Error: Could not find volume '{volume_id}'")
+                return False
+
+            if blkjobinfo and source_host and vm:
+                blkjobinfo = source_host.get_blkjobinfo(vm, volume['path'])
                 cur_percentage = float(blkjobinfo.current / (blkjobinfo.end or 1) * 100)
                 if cur_percentage > prev_percentage:
                     prev_percentage = cur_percentage
                 print("%4.f%% " % prev_percentage, flush=True, end='')
             print("%s" % next(self.spinner), flush=True, end='\r')
-
-            volume = self.get_volume(id=volume_id, json=True)
-            if volume is None:
-                logging.error(f"Error: Could not find volume '{volume_id}'")
-                return False
 
             if volume['state'] == "Ready":
                 break
@@ -283,7 +286,7 @@ class CosmicOps(object):
             logging.debug(f"Volume '{volume_id}' is in {volume['state']} state and not Ready. Sleeping.")
         # Return result of job
         status = self.wait_for_job(job_id=job_id, retries=1)
-        if blkjobinfo and source_host and vm and vol and status:
+        if blkjobinfo and source_host and vm and status:
             print("100%       ")
         else:
             print()

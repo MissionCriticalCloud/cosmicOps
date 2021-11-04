@@ -55,8 +55,8 @@ def main(profile, max_iops, zwps_to_cwps, is_project_vm, dry_run, vm, storage_po
         sys.exit(1)
 
 
-def live_migrate_volumes(target_storage_pool, co, cs, dry_run, is_project_vm, log_to_slack, max_iops, vm_name, zwps_to_cwps):
-    target_storage_pool = co.get_storage_pool(name=target_storage_pool)
+def live_migrate_volumes(target_storage_pool_name, co, cs, dry_run, is_project_vm, log_to_slack, max_iops, vm_name, zwps_to_cwps):
+    target_storage_pool = co.get_storage_pool(name=target_storage_pool_name)
     if not target_storage_pool:
         return False
 
@@ -66,7 +66,6 @@ def live_migrate_volumes(target_storage_pool, co, cs, dry_run, is_project_vm, lo
     vm = co.get_vm(name=vm_name, is_project_vm=is_project_vm)
     if not vm:
         return False
-
 
     logging.instance_name = vm['instancename']
     logging.slack_value = vm['domain']
@@ -158,7 +157,7 @@ def live_migrate_volumes(target_storage_pool, co, cs, dry_run, is_project_vm, lo
         # get the source host to read the blkjobinfo
         source_host = co.get_host(id=vm['hostid'])
 
-        if not volume.migrate(target_storage_pool, live_migrate=True, source_host=source_host, vm=vm, vol=volume['path']):
+        if not volume.migrate(target_storage_pool, live_migrate=True, source_host=source_host, vm=vm):
             continue
 
         with click_spinner.spinner():
