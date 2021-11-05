@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import datetime
+import pytz
 import re
 import sys
 import random
@@ -31,12 +32,24 @@ from live_migrate_virtual_machine_volumes import live_migrate_volumes
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.option('--virtual-machines', '-m', required=True, multiple=True,
               help='name of a virtualmachine, regex supported (e.g.: tla[td].*) (multiple are allowed)')
+@click.option('--force-end-hour', '-t',
+              help='End hour after which we do not start new migrations. Example: 23 for 23:00 or 14 for 14:00')
 @click.argument('zwps_cluster')
 @click.argument('destination_cluster')
-def main(dry_run, zwps_cluster, destination_cluster, virtual_machines):
+def main(dry_run, zwps_cluster, destination_cluster, virtual_machines, force_end_hour):
     """Empty ZWPS by migrating VMs and/or it's volumes to the destination cluster."""
 
     click_log.basic_config()
+
+    if force_end_hour:
+        try:
+            force_end_hour = int(force_end_hour)
+        except ValueError as e:
+            logging.error(f"Specified time:'{force_end_hour}' is not a valid integer due to: '{e}'")
+            sys.exit(1)
+        if force_end_hour >= 24:
+            logging.error(f"Specified time:'{force_end_hour}' should be < 24")
+            sys.exit(1)
 
     profile = 'nl2'
 
@@ -108,6 +121,15 @@ def main(dry_run, zwps_cluster, destination_cluster, virtual_machines):
         f"Starting live migration of volumes and/or virtualmachines from the ZWPS storage pools to storage pool '{target_cluster['name']}'")
 
     for vm in vms:
+        """ Can we start a new migration? """
+        if force_end_hour:
+            now = datetime.datetime.now(pytz.timezone('CET'))
+            if now.hour >= force_end_hour:
+                logging.info(
+                    f"Stopping migration batch. We are not starting new migrations after '{force_end_hour}':00",
+                    log_to_slack=log_to_slack)
+                sys.exit(0)
+
         source_host = co.get_host(id=vm['hostid'])
         source_cluster = co.get_cluster(zone='nl2',id=source_host['clusterid'])
         if source_cluster['name'] == target_cluster['name']:
