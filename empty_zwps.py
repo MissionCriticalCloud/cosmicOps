@@ -98,6 +98,11 @@ def main(dry_run, zwps_cluster, destination_cluster, virtual_machines):
     vms = []
     for vm_id in vm_ids:
         vm = co.get_vm(id=vm_id)
+        if vm['affinitygroup']:
+            for affinitygroup in vm['affinitygroup']:
+                if 'DedicatedGrp' in affinitygroup['name']:
+                    logging.warning(f"Skipping VM '{vm['name']}' because of 'DedicatedGrp' affinity group")
+                    continue
         vms.append(vm)
 
     logging.info('Virtualmachines found:')
@@ -109,7 +114,7 @@ def main(dry_run, zwps_cluster, destination_cluster, virtual_machines):
 
     for vm in vms:
         source_host = co.get_host(id=vm['hostid'])
-        source_cluster = co.get_cluster(zone='nl2',id=source_host['clusterid'])
+        source_cluster = co.get_cluster(zone='nl2', id=source_host['clusterid'])
         if source_cluster['name'] == target_cluster['name']:
             """ VM is already on the destination cluster, so we only need to migrate the volumes to this storage pool """
             logging.info(
