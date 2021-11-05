@@ -177,6 +177,12 @@ class CosmicOps(object):
 
         return self._cs_get_all_results('listVirtualMachines', kwargs, CosmicVM, 'virtualmachine')
 
+    def get_all_volumes(self, list_all=True, **kwargs):
+        if 'listall' not in kwargs:
+            kwargs['listall'] = list_all
+
+        return self._cs_get_all_results('listVolumes', kwargs, CosmicVolume, 'volume')
+
     def get_all_storage_pools(self, list_all=True, **kwargs):
         if 'listall' not in kwargs:
             kwargs['listall'] = list_all
