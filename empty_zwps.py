@@ -146,7 +146,7 @@ def main(dry_run, zwps_cluster, destination_cluster, virtual_machines, force_end
         else:
             """ VM needs to be migrated live to the destination cluster, including volumes """
             live_migrate(co=co, cs=cs, cluster=target_cluster['name'], vm_name=vm['name'], destination_dc=None,
-                         add_affinity_group=None, is_project_vm=None, zwps_to_cwps=None, log_to_slack=log_to_slack,
+                         add_affinity_group=None, is_project_vm=None, zwps_to_cwps=True, log_to_slack=log_to_slack,
                          dry_run=dry_run)
 
 
