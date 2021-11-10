@@ -130,7 +130,7 @@ class CosmicVM(CosmicObject):
         return self.migrate(target_host=migration_host, **kwargs)
 
     def migrate(self, target_host, with_volume=False, **kwargs):
-        if self['maintenancepolicy'] == 'ShutdownAndStart':
+        if 'maintenancepolicy' in self and self['maintenancepolicy'] == 'ShutdownAndStart':
             logging.error(f"Cannot migrate, VM has maintenance policy: '{self['maintenancepolicy']}'")
             return False
 
