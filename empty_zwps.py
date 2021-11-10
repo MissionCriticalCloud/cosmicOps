@@ -103,7 +103,7 @@ def main(dry_run, zwps_cluster, destination_cluster, virtual_machines, force_end
     logging.info('Volumes found:')
     for volume in volumes:
         for virtual_machine in virtual_machines:
-            if re.search(virtual_machine, volume['vmname']):
+            if re.search(virtual_machine, volume['vmname'], re.IGNORECASE):
                 logging.info(f" - '{volume['name']}' on VM '{volume['vmname']}'")
                 if volume['virtualmachineid'] not in vm_ids:
                     vm_ids.append(volume['virtualmachineid'])
