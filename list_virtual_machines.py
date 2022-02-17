@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# Copyright 2020, Schuberg Philis B.V
+#!/usr/bin/env python3# Copyright 2020, Schuberg Philis B.V
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,7 +44,7 @@ storage_pool_table_headers = [
 
 
 @click.command()
-@click.option('--profile', '-p', metavar='<name>', default='config',
+@click.option('--profile', '-p', metavar='<name>', required=True,
               help='Name of the CloudMonkey profile containing the credentials')
 @click.option('--domain', '-d', 'domain_name', metavar='<domain>', help='List VMs in this domain')
 @click.option('--cluster', '-t', 'cluster_name', metavar='<cluster>', help='List VMs on this cluster')
@@ -142,34 +141,42 @@ def main(profile, domain_name, cluster_name, pod_name, zone_name, keyword_filter
 
     if domain_name:
         domain = co.get_domain(name=domain_name)
-        if not domain:
+        if domain is None or domain == []:
+            logging.error(f"The domain '{str(domain_name)}' could not be found!")
             sys.exit(1)
     else:
         domain = None
 
     if project_name:
         project = co.get_project(name=project_name)
-        if not project:
+        if project is None or project == []:
+            logging.error(f"The project '{str(project_name)}' could not be found!")
             sys.exit(1)
     else:
         project = None
 
     if pod_name:
         pod = co.get_pod(name=pod_name)
-        if not pod:
+        if pod is None or pod == []:
+            logging.error(f"The pod '{str(pod_name)}' could not be found!")
             sys.exit(1)
     else:
         pod = None
 
     if zone_name:
         zone = co.get_zone(name=zone_name)
-        if not zone:
+        if zone is None or zone == []:
+            logging.error(f"The zone '{str(zone_name)}' could not be found!")
             sys.exit(1)
     else:
         zone = None
 
     if cluster_name:
         clusters = [co.get_cluster(name=cluster_name)]
+        if clusters[0]:
+            logging.error(f"The cluster '{str(cluster_name)}' could not be found!")
+            sys.exit(1)
+
     elif pod:
         clusters = co.get_all_clusters(pod=pod)
     elif zone:
