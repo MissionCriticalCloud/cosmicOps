@@ -173,7 +173,7 @@ def main(profile, domain_name, cluster_name, pod_name, zone_name, keyword_filter
 
     if cluster_name:
         clusters = [co.get_cluster(name=cluster_name)]
-        if clusters[0]:
+        if clusters[0] is None:
             logging.error(f"The cluster '{str(cluster_name)}' could not be found!")
             sys.exit(1)
 
