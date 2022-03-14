@@ -18,7 +18,7 @@ from unittest.mock import Mock, patch
 from click.testing import CliRunner
 
 import list_orphaned_disks
-from cosmicops.objects import CosmicStoragePool, CosmicCluster
+from cosmicops.objects import CosmicStoragePool, CosmicCluster, CosmicZone
 
 
 class TestListOrphanedDisks(TestCase):
@@ -43,29 +43,31 @@ class TestListOrphanedDisks(TestCase):
         self.storage_pool = CosmicStoragePool(Mock(), {'name': 'storage_pool1'})
         self.storage_pool.get_file_list = Mock(return_value={'orphan1_path': '1'})
         self.storage_pool.get_orphaned_volumes = Mock(return_value=orphans)
-        cluster = CosmicCluster(Mock(), {'name': 'cluster1'})
-        cluster.get_storage_pools = Mock(return_value=[self.storage_pool])
-        cluster.get_all_hosts = Mock(return_value=[self.host])
-        self.co_instance.get_all_clusters.return_value = [cluster]
-        self.co_instance.get_cluster.return_value = cluster
+        self.cluster = CosmicCluster(Mock(), {'name': 'cluster1'})
+        self.cluster.get_storage_pools = Mock(return_value=[self.storage_pool])
+        self.cluster.get_all_hosts = Mock(return_value=[self.host])
+        self.zone = CosmicZone(Mock(), {'id': 'z1', 'name': 'zone1'})
+        self.co_instance.get_all_clusters.return_value = [self.cluster]
+        self.co_instance.get_cluster.return_value = self.cluster
+        self.co_instance.get_zone.return_value = self.zone
 
     def test_main(self):
         self._setup_mocks()
-        result = self.runner.invoke(list_orphaned_disks.main, ['zone1'])
+        result = self.runner.invoke(list_orphaned_disks.main, ['--profile', 'profile', 'zone1'])
 
-        self.co.assert_called_with(profile='config', dry_run=False)
-        self.co_instance.get_all_clusters.assert_called_with('zone1')
+        self.co.assert_called_with(profile='profile', dry_run=False)
+        self.co_instance.get_all_clusters.assert_called_with(self.zone)
         self.storage_pool.get_file_list.assert_called_with(self.host)
         self.storage_pool.get_orphaned_volumes.assert_called_once()
         self.assertEqual(0, result.exit_code)
 
     def test_main_with_cluster(self):
         self._setup_mocks()
-        result = self.runner.invoke(list_orphaned_disks.main, ['--cluster', 'cluster1', 'zone1'])
-        self.co_instance.get_cluster.assert_called_with(name='cluster1', zone='zone1')
+        result = self.runner.invoke(list_orphaned_disks.main, ['--profile', 'profile', '--cluster', 'cluster1', 'zone1'])
+        self.co_instance.get_cluster.assert_called_with(name='cluster1', zone=self.zone)
         self.assertEqual(0, result.exit_code)
 
     def test_main_without_cluster_data(self):
         self.co_instance.get_all_clusters.return_value = []
-        result = self.runner.invoke(list_orphaned_disks.main, ['zone1'])
+        result = self.runner.invoke(list_orphaned_disks.main, ['--profile', 'profile', 'zone1'])
         self.assertEqual(0, result.exit_code)

@@ -21,17 +21,17 @@ from cosmicops.list_orphaned_disks import list_orphaned_disks
 
 
 @click.command()
-@click.option('--profile', '-p', metavar='<name>', default='config',
+@click.option('--profile', '-p', metavar='<name>', required=True,
               help='Name of the CloudMonkey profile containing the credentials')
 @click.option('--cluster', '-t', metavar='<cluster>', help='Show only results for this cluster')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
-@click.argument('zone')
-def main(profile, cluster, zone):
+@click.argument('zone_name')
+def main(profile, cluster, zone_name):
     """Search primary storage pools in ZONE for orphaned disks."""
 
     click_log.basic_config()
 
-    logging.info(list_orphaned_disks(profile, cluster, zone))
+    logging.info(list_orphaned_disks(profile, cluster, zone_name))
 
 
 if __name__ == '__main__':

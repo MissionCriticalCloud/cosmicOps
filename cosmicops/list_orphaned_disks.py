@@ -13,17 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import humanfriendly
 from tabulate import tabulate
 
-from cosmicops import CosmicOps
+from cosmicops import CosmicOps, logging
 
 
-def list_orphaned_disks(profile, cluster, zone):
+def list_orphaned_disks(profile, cluster, zone_name):
     """Search primary storage pools in ZONE for orphaned disks."""
 
     # Disable dry run so we can connect to hosts to fetch additional data
     co = CosmicOps(profile=profile, dry_run=False)
+
+    zone = co.get_zone(name=zone_name)
+    if zone is None or zone == []:
+        logging.error(f"The zone '{str(zone_name)}' could not be found!")
+        sys.exit(1)
 
     if cluster:
         clusters = [co.get_cluster(name=cluster, zone=zone)]
@@ -77,10 +83,13 @@ def list_orphaned_disks(profile, cluster, zone):
                      humanfriendly.format_size(orphan['size'], binary=True),
                      humanfriendly.format_size(real_size, binary=True), is_orphaned])
 
-            orphaned_disks_output += tabulate(orphan_table, headers=orphan_table_headers, tablefmt='pretty')
+            if len(orphan_table) > 0:
+                orphaned_disks_output += '\n'
+                orphaned_disks_output += tabulate(orphan_table, headers=orphan_table_headers, tablefmt='pretty')
             storage_pool_table.append([cluster['name'], storage_pool['name'], len(orphans),
                                        humanfriendly.format_size(used_space, binary=True)])
 
+    orphaned_disks_output += '\n'
     orphaned_disks_output += tabulate(storage_pool_table, headers=storage_pool_table_headers, tablefmt='pretty')
 
     return orphaned_disks_output
