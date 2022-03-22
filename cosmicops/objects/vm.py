@@ -122,6 +122,10 @@ class CosmicVM(CosmicObject):
             if available_host['clusterid'] != source_cluster['id']:
                 logging.debug(f"Skipping '{available_host['name']}' because it's not part of the current cluster")
                 continue
+            if available_host['resourcestate'] != 'Enabled':
+                continue
+            if available_host['state'] != 'Up':
+                continue
             migration_host = available_host
             break
         if migration_host is None:
