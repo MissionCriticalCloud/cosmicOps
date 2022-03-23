@@ -265,6 +265,11 @@ class TestLiveMigrateVirtualMachine(TestCase):
                                                ['--exec', '-p', 'profile', 'vm', 'target_cluster']).exit_code)
         self.vm.migrate.assert_called()
 
+        self._setup_mocks()
+        self.vm['maintenancepolicy'] = 'ShutdownAndStart'
+        self.assertEqual(1, self.runner.invoke(live_migrate_virtual_machine.main,
+                                               ['--exec', '-p', 'profile', 'vm', 'target_cluster']).exit_code)
+
     def test_destination_dc(self):
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine.main,
                                                ['--exec', '-p', 'profile', '--destination-dc', 'EQXAMS2', 'vm',

@@ -105,7 +105,7 @@ def live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, i
         logging.error(f"Cannot migrate, VM has VM snapshots: '{vm_snapshot['name']}'")
         return False
 
-    if vm['maintenancepolicy'] == 'ShutdownAndStart':
+    if 'maintenancepolicy' in vm and vm['maintenancepolicy'] == 'ShutdownAndStart':
         logging.error(f"Cannot migrate, VM has maintenance policy: '{vm['maintenancepolicy']}'")
         return False
 
