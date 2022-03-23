@@ -30,15 +30,15 @@ from cosmicops import CosmicOps, logging, CosmicSQL
 @click.option('--zwps-to-cwps', is_flag=True, help='Migrate from ZWPS to CWPS')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
-@click.argument('source_cluster')
-@click.argument('destination_cluster')
-def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, only_project, source_cluster, destination_cluster):
+@click.argument('source_cluster_name')
+@click.argument('destination_cluster_name')
+def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, only_project, source_cluster_name, destination_cluster_name):
     """Migrate offline volumes from SOURCE_CLUSTER to DESTINATION_CLUSTER"""
 
     click_log.basic_config()
 
-    if source_cluster == destination_cluster:
-        logging.error('Destination cluster cannot be the same source cluster!')
+    if source_cluster_name == destination_cluster_name:
+        logging.error('Destination cluster cannot be the source cluster!')
         sys.exit(1)
 
     if dry_run:
@@ -47,15 +47,15 @@ def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, on
     co = CosmicOps(profile=profile, dry_run=dry_run)
     cs = CosmicSQL(server=profile, dry_run=dry_run)
 
-    source_cluster = co.get_cluster(name=source_cluster)
-    source_storage_pools = co.get_all_storage_pools(name=source_cluster)
+    source_cluster = co.get_cluster(name=source_cluster_name)
+    source_storage_pools = co.get_all_storage_pools(name=source_cluster_name)
     if not source_cluster and not source_storage_pools:
-        logging.error(f"Source cluster not found:'{source_cluster}'!")
+        logging.error(f"Source cluster not found:'{source_cluster_name}'!")
         sys.exit(1)
 
-    destination_cluster = co.get_cluster(name=destination_cluster)
+    destination_cluster = co.get_cluster(name=destination_cluster_name)
     if not destination_cluster:
-        logging.error(f"Destination cluster not found:'{destination_cluster['name']}'!")
+        logging.error(f"Destination cluster not found:'{destination_cluster_name}'!")
         sys.exit(1)
 
     if source_cluster:
