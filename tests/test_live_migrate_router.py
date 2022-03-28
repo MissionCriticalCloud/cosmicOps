@@ -34,7 +34,8 @@ class TestLiveMigrateRouter(TestCase):
     def _setup_mocks(self):
         self.router = CosmicSystemVM(Mock(), {
             'name': 'router',
-            'hostid': 'sh1'
+            'hostid': 'sh1',
+            'hostname': 'kvm1'
         })
         self.host = CosmicHost(Mock(), {
             'id': 'sh1',
