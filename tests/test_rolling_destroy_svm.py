@@ -39,7 +39,8 @@ class TestRollingDestroySVM(TestCase):
             'id': 's1',
             'name': 's-1-VM',
             'zonename': 'zone1',
-            'zoneid': 'ECC106A3-49EF-41E6-8A49-4C7ADF329A05'
+            'zoneid': 'ECC106A3-49EF-41E6-8A49-4C7ADF329A05',
+            'hostname': 'kvm1'
         })
         self.svm1_host = CosmicHost(Mock(), {
             'id': 'sh1',
@@ -54,7 +55,8 @@ class TestRollingDestroySVM(TestCase):
             'id': 's2',
             'name': 'v-2-VM',
             'zonename': 'zone2',
-            'zoneid': 'BD687FC1-F138-4B3D-929D-4695F9B6EC98'
+            'zoneid': 'BD687FC1-F138-4B3D-929D-4695F9B6EC98',
+            'hostname': 'kvm2'
         })
         self.svm2_host = CosmicHost(Mock(), {
             'id': 'sh2',
@@ -69,7 +71,8 @@ class TestRollingDestroySVM(TestCase):
             'id': 's3',
             'name': 'r-3-VM',
             'zonename': 'zone1',
-            'zoneid': 'ECC106A3-49EF-41E6-8A49-4C7ADF329A05'
+            'zoneid': 'ECC106A3-49EF-41E6-8A49-4C7ADF329A05',
+            'hostname': 'kvm3'
         })
         self.svm3_host = CosmicHost(Mock(), {
             'id': 'sh3',
