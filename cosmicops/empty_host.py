@@ -17,7 +17,10 @@ from cosmicops import CosmicOps, RebootAction
 
 
 def empty_host(profile, shutdown, skip_disable, dry_run, host):
-    co = CosmicOps(profile=profile, dry_run=dry_run)
+    log_to_slack = True
+    if dry_run:
+        log_to_slack = False
+    co = CosmicOps(profile=profile, dry_run=dry_run, log_to_slack=log_to_slack)
 
     host = co.get_host(name=host)
     if not host:
