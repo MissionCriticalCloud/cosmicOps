@@ -46,7 +46,7 @@ class TestEmptyHost(TestCase):
 
     def test_main(self):
         self.assertEqual(0, self.runner.invoke(empty_host.main, ['--exec', 'host1']).exit_code)
-        self.co.assert_called_with(profile='config', dry_run=False)
+        self.co.assert_called_with(profile='config', dry_run=False, log_to_slack=True)
         self.co_instance.get_host.assert_called_with(name='host1')
         self.host.disable.assert_called()
         self.host.empty.assert_called()
@@ -89,4 +89,4 @@ class TestEmptyHost(TestCase):
 
     def test_dry_run(self):
         self.assertEqual(0, self.runner.invoke(empty_host.main, ['host1']).exit_code)
-        self.co.assert_called_with(profile='config', dry_run=True)
+        self.co.assert_called_with(profile='config', dry_run=True, log_to_slack=False)
