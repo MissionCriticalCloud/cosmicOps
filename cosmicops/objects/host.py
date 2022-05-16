@@ -155,6 +155,8 @@ class CosmicHost(CosmicObject):
 
     def empty(self, target=None):
         total = success = failed = 0
+        logging.cluster = self['name']
+        logging.zone_name = self['zonename']
 
         all_vms = self.get_all_vms() + self.get_all_project_vms() + self.get_all_routers() + self.get_all_project_routers() + self.get_all_system_vms()
         if not all_vms:
@@ -170,6 +172,10 @@ class CosmicHost(CosmicObject):
             logging.info(f"Migrating VMs away from host '{self['name']}'" + target_message)
 
         for vm in all_vms:
+            logging.instance_name = vm.get('name', 'N/A')
+            logging.vm_name = vm.get('instancename', 'N/A')
+            logging.slack_value = vm.get('domain', 'N/A')
+
             if vm.get('maintenancepolicy') == 'ShutdownAndStart':
                 if not vm.stop():
                     failed += 1
