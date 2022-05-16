@@ -12,12 +12,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import click_log
 
-from cosmicops import CosmicOps, RebootAction
+from cosmicops import CosmicOps, RebootAction, logging
 
 
 def empty_host(profile, shutdown, skip_disable, dry_run, host):
+    click_log.basic_config()
+
     log_to_slack = True
+    logging.task = 'Live Migrate VM'
+    logging.slack_title = 'Domain'
     if dry_run:
         log_to_slack = False
     co = CosmicOps(profile=profile, dry_run=dry_run, log_to_slack=log_to_slack)

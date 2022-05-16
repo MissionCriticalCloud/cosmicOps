@@ -63,7 +63,9 @@ class TestCosmicHost(TestCase):
             'instancename': 'i-1-VM',
             'hostname': 'host1',
             'maintenancepolicy': 'LiveMigrate',
-            'isoid': 'iso1'
+            'isoid': 'iso1',
+            'zonename': 'zone',
+            'domain': 'domain'
         })
         self.project_vm = CosmicVM(self.ops, {
             'id': 'pv1',
@@ -71,17 +73,23 @@ class TestCosmicHost(TestCase):
             'instancename': 'i-1-PROJECT-VM',
             'hostname': 'host1',
             'project': 'project1',
-            'projectid': 'p1'
+            'projectid': 'p1',
+            'zonename': 'zone',
+            'domain': 'domain'
         })
         self.router_vm = CosmicRouter(self.ops, {
             'id': 'r1',
             'name': 'r-1-VM',
-            'hostname': 'host1'
+            'hostname': 'host1',
+            'zonename': 'zone',
+            'domain': 'domain'
         })
         self.project_router_vm = CosmicRouter(self.ops, {
             'id': 'pr1',
             'name': 'r-1-PROJECT-VM',
-            'hostname': 'host1'
+            'hostname': 'host1',
+            'zonename': 'zone',
+            'domain': 'domain'
         })
         self.secondary_storage_vm = CosmicVM(self.ops, {
             'id': 's1',
@@ -106,7 +114,8 @@ class TestCosmicHost(TestCase):
             'id': 'h1',
             'name': 'host1',
             'clusterid': '1',
-            'resourcestate': 'Enabled'
+            'resourcestate': 'Enabled',
+            'zonename': 'zone'
         })
 
     def _mock_hosts_and_vms(self):
