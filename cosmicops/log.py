@@ -32,6 +32,7 @@ class CosmicLog(object):
         self.vm_name = 'Undefined'
         self.cluster = 'Undefined'
         self.zone_name = 'Undefined'
+        self.timestamp_format = self._configure_log()
 
     @staticmethod
     def _configure_slack():
@@ -45,8 +46,25 @@ class CosmicLog(object):
             print(f"warning: No Slack connection details found in configuration file")
             return None
 
+    @staticmethod
+    def _configure_log():
+        config = get_config()
+
+        timestamp = config.get('logging', 'timestamp', fallback=None)
+        formats = {
+            'short': '%H:%M:%S: ',
+            'long': '%Y-%m-%d %H:%M:%S: '
+        }
+        if timestamp and timestamp in formats.keys():
+            return formats[timestamp]
+
+        return None
+
     def _log(self, log_level, message, log_to_slack):
-        logging_module.log(log_level, message)
+        prefix = ''
+        if self.timestamp_format:
+            prefix = datetime.now().strftime(self.timestamp_format)
+        logging_module.log(log_level, "%s%s" % (prefix, message))
 
         if log_to_slack and self._slack:
             if log_level == ERROR:
