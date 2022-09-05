@@ -31,15 +31,15 @@ from cosmicops import CosmicOps, logging, RebootAction
 @click.option('--only-hosts', metavar='<list>',
               help='Comma separated list of hosts to work on (--only-host="host1, host2")')
 @click.option('--skip-os-version', metavar='<version>', help='Skips hosts matching the specified OS version')
-@click.option('--reboot', 'reboot_action', flag_value=RebootAction.REBOOT, default=True,
+@click.option('--reboot', 'reboot_action', flag_value=RebootAction.REBOOT, type=RebootAction, default=True,
               help='Reboot the host [default]')
-@click.option('--halt', 'reboot_action', flag_value=RebootAction.HALT, help='Instead of rebooting, halt the host')
-@click.option('--force-reset', 'reboot_action', flag_value=RebootAction.FORCE_RESET,
+@click.option('--halt', 'reboot_action', flag_value=RebootAction.HALT, type=RebootAction, help='Instead of rebooting, halt the host')
+@click.option('--force-reset', 'reboot_action', flag_value=RebootAction.FORCE_RESET, type=RebootAction,
               help='Instead of reboot, force-reset the host')
-@click.option('--pxe', 'reboot_action', flag_value=RebootAction.PXE_REBOOT,
+@click.option('--pxe', 'reboot_action', flag_value=RebootAction.PXE_REBOOT, type=RebootAction,
               help='Reboot the host in pxe mode')
-@click.option('--skip-reboot', 'reboot_action', flag_value=RebootAction.SKIP, help='Skip rebooting the host')
-@click.option('--upgrade-firmware', 'reboot_action', flag_value=RebootAction.UPGRADE_FIRMWARE,
+@click.option('--skip-reboot', 'reboot_action', flag_value=RebootAction.SKIP, type=RebootAction, help='Skip rebooting the host')
+@click.option('--upgrade-firmware', 'reboot_action', flag_value=RebootAction.UPGRADE_FIRMWARE, type=RebootAction,
               help='Update the HP firmware and reboot')
 @click.option('--pre-empty-script', metavar='<script>', help='Script to run on host before starting live migrations')
 @click.option('--post-empty-script', metavar='<script>',
