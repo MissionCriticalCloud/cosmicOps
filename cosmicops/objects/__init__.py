@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .account import CosmicAccount
 from .cluster import CosmicCluster
 from .domain import CosmicDomain
 from .host import CosmicHost
 from .network import CosmicNetwork
 from .pod import CosmicPod
 from .project import CosmicProject
+from .resourcetype import CosmicResourceType
 from .router import CosmicRouter
 from .serviceoffering import CosmicServiceOffering
 from .storagepool import CosmicStoragePool
@@ -28,12 +30,14 @@ from .vpc import CosmicVPC
 from .zone import CosmicZone
 
 __all__ = [
+    CosmicAccount,
     CosmicCluster,
     CosmicDomain,
     CosmicHost,
     CosmicNetwork,
     CosmicPod,
     CosmicProject,
+    CosmicResourceType,
     CosmicRouter,
     CosmicServiceOffering,
     CosmicStoragePool,

@@ -22,7 +22,7 @@ from requests.exceptions import ConnectionError
 
 from cosmicops.objects import CosmicCluster, CosmicDomain, CosmicHost, CosmicNetwork, CosmicPod, CosmicProject, \
     CosmicRouter, CosmicServiceOffering, CosmicStoragePool, CosmicSystemVM, CosmicVM, CosmicVolume, CosmicVPC, \
-    CosmicZone
+    CosmicZone, CosmicAccount
 from .log import logging
 
 
@@ -109,6 +109,9 @@ class CosmicOps(object):
     def get_domain(self, **kwargs):  # pragma: no cover
         return self._cs_get_single_result('listDomains', kwargs, CosmicDomain, 'domain')
 
+    def get_account(self, **kwargs):  # pragma: no cover
+        return self._cs_get_single_result('listAccounts', kwargs, CosmicAccount, 'account')
+
     def get_network(self, **kwargs):  # pragma: no cover
         return self._cs_get_single_result('listNetworks', kwargs, CosmicNetwork, 'network')
 
@@ -192,6 +195,10 @@ class CosmicOps(object):
     def get_all_project_vms(self, list_all=True, **kwargs):
         kwargs['projectid'] = '-1'
         return self.get_all_vms(list_all=list_all, **kwargs)
+
+    def get_all_accounts(self, list_all=True, **kwargs):
+        kwargs['listall'] = list_all
+        return self._cs_get_all_results('listAccounts', kwargs, CosmicAccount, 'account')
 
     def wait_for_job(self, job_id, retries=10):
         job_status = 0
