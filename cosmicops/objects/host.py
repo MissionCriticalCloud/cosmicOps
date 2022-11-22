@@ -113,6 +113,37 @@ class CosmicHost(CosmicObject):
     def refresh(self):
         self._data = self._ops.get_host(id=self['id'], json=True)
 
+    def update_tags(self, hosttags="", add=True):
+        changed = False
+        current_tags = self['hosttags'].split(',') if 'hosttags' in self else []
+        tags = {x: x for x in current_tags}
+
+        for h in hosttags:
+            if add and h not in current_tags:
+                tags[h] = h
+                changed = True
+            elif not add and h in current_tags:
+                tags.pop(h)
+                changed = True
+
+        if changed:
+            tags = ','.join([x for x in tags])
+            if not tags:
+                tags = " "
+
+            t = 'adding' if add else 'deleting'
+            if self.dry_run:
+                logging.info(f"Would update host '{self['name']}', {t} tags '{hosttags}'")
+                return True
+            else:
+                logging.info(f"Updating host '{self['name']}', {t} tags '{hosttags}'")
+                if not self._ops.cs.updateHost(id=self['id'], hosttags=tags).get('host'):
+                    logging.error(f"Failed to update tags on host '{self['name']}'")
+                    return False
+        else:
+            logging.info(f"Nothing to update on host '{self['name']}'")
+        return True
+
     def disable(self):
         if self.dry_run:
             logging.info(f"Would disable host '{self['name']}'")
