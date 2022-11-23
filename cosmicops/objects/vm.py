@@ -118,6 +118,10 @@ class CosmicVM(CosmicObject):
         migration_host = None
 
         for available_host in available_hosts:
+            # Only suitable
+            if not available_host['suitableformigration']:
+                logging.debug(f"Skipping '{available_host['name']}' because it is not suitable")
+                continue
             # Only hosts in the same cluster
             if available_host['clusterid'] != source_cluster['id']:
                 logging.debug(f"Skipping '{available_host['name']}' because it's not part of the current cluster")
