@@ -25,6 +25,10 @@ class CosmicVM(CosmicObject):
         self._data = self._ops.get_vm(id=self['id'], json=True)
 
     def stop(self):
+        logging.instance_name = self['instancename']
+        logging.slack_value = self['domain']
+        logging.vm_name = self['name']
+        logging.zone_name = self['zonename']
         if self.dry_run:
             logging.info(f"Would stop VM '{self['name']} on host '{self['hostname']}'")
             return True
