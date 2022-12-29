@@ -42,7 +42,9 @@ class TestCosmicVM(TestCase):
             'instancename': 'i-1-VM',
             'hostname': 'host1',
             'maintenancepolicy': 'LiveMigrate',
-            'isoid': 'iso1'
+            'isoid': 'iso1',
+            'domain': 'domain',
+            'zonename': 'zone'
         }
 
         self.ops = CosmicOps(endpoint='https://localhost', key='key', secret='secret', dry_run=False)
