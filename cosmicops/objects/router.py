@@ -18,7 +18,7 @@ from .vm import CosmicVM
 class CosmicRouter(CosmicVM):
     def reboot(self):
         if self.dry_run:
-            logging.info(f"Would reboot router '{self['name']}")
+            logging.info(f"Would reboot router '{self['name']}'")
             return True
 
         logging.info(f"Rebooting router '{self['name']}'", self.log_to_slack)
@@ -26,6 +26,24 @@ class CosmicRouter(CosmicVM):
         response = self._ops.cs.rebootRouter(id=self['id'])
         if not self._ops.wait_for_job(response['jobid']):
             logging.error(f"Failed to reboot router '{self['name']}'")
+            return False
+
+        return True
+
+    def destroy(self):
+        logging.instance_name = self['name']
+        logging.slack_value = self['domain']
+        logging.vm_name = self['name']
+        logging.zone_name = self['zonename']
+        if self.dry_run:
+            logging.info(f"Would destroy router '{self['name']}'")
+            return True
+
+        logging.info(f"Destroying router '{self['name']}'", self.log_to_slack)
+
+        response = self._ops.cs.destroyRouter(id=self['id'])
+        if not self._ops.wait_for_job(response['jobid']):
+            logging.error(f"Failed to destroy router '{self['name']}'")
             return False
 
         return True
