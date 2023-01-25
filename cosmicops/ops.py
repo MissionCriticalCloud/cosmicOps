@@ -22,7 +22,7 @@ from requests.exceptions import ConnectionError
 
 from cosmicops.objects import CosmicCluster, CosmicDomain, CosmicHost, CosmicNetwork, CosmicPod, CosmicProject, \
     CosmicRouter, CosmicServiceOffering, CosmicStoragePool, CosmicSystemVM, CosmicVM, CosmicVolume, CosmicVPC, \
-    CosmicZone, CosmicAccount
+    CosmicZone, CosmicAccount, CosmicTemplate
 from .log import logging
 
 
@@ -173,6 +173,15 @@ class CosmicOps(object):
             kwargs['podid'] = pod['id']
 
         return self._cs_get_all_results('listClusters', kwargs, CosmicCluster, 'cluster')
+
+    def get_all_templates(self, template_filter='all', list_all=True, **kwargs):
+        if 'listall' not in kwargs:
+            kwargs['listall'] = list_all
+
+        if 'templatefilter' not in kwargs:
+            kwargs['templatefilter'] = template_filter
+
+        return self._cs_get_all_results('listTemplates', kwargs, CosmicTemplate, 'template')
 
     def get_all_vms(self, list_all=True, **kwargs):
         if 'listall' not in kwargs:

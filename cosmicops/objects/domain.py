@@ -25,7 +25,7 @@ class CosmicDomain(CosmicObject):
             logging.info(f"Deleting domain '{self['name']}'")
         delete_response = self._ops.cs.deleteDomain(id=self['id'], cleanup=cleanup)
         if not self._ops.wait_for_job(delete_response['jobid']):
-            logging.error(f"Failed to disable account '{self['name']}'")
+            logging.error(f"Failed to delete domain '{self['name']}'")
             return False
         return True
 
