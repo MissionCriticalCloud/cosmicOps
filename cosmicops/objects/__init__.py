@@ -21,6 +21,7 @@ from .pod import CosmicPod
 from .project import CosmicProject
 from .resourcetype import CosmicResourceType
 from .router import CosmicRouter
+from .template import CosmicTemplate
 from .serviceoffering import CosmicServiceOffering
 from .storagepool import CosmicStoragePool
 from .systemvm import CosmicSystemVM
@@ -39,6 +40,7 @@ __all__ = [
     CosmicProject,
     CosmicResourceType,
     CosmicRouter,
+    CosmicTemplate,
     CosmicServiceOffering,
     CosmicStoragePool,
     CosmicSystemVM,
