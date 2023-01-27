@@ -76,11 +76,12 @@ class TestMigrateOfflineVolumes(TestCase):
 
     def test_main(self):
         self.assertEqual(0, self.runner.invoke(migrate_offline_volumes.main,
-                                               ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
+                                               ['--exec', 'source_cluster', '--destination-cluster-name',
+                                                'destination_cluster']).exit_code)
 
         self.co.assert_called_with(profile='config', dry_run=False)
 
-        self.co_instance.get_cluster.assert_has_calls([call(name='source_cluster'), call(name='destination_cluster')],
+        self.co_instance.get_cluster.assert_has_calls([call(name='source_cluster')],
                                                       True)
         self.source_cluster.get_storage_pools.assert_called()
         self.destination_cluster.get_storage_pools.assert_called()
@@ -89,7 +90,8 @@ class TestMigrateOfflineVolumes(TestCase):
 
     def test_main_dry_run(self):
         self.assertEqual(0, self.runner.invoke(migrate_offline_volumes.main,
-                                               ['source_cluster', 'destination_cluster']).exit_code)
+                                               ['source_cluster', '--destination-cluster-name',
+                                                'destination_cluster']).exit_code)
 
         self.co.assert_called_with(profile='config', dry_run=True)
 
@@ -105,7 +107,7 @@ class TestMigrateOfflineVolumes(TestCase):
 
         self.assertEqual(0, self.runner.invoke(migrate_offline_volumes.main,
                                                ['--exec', '--ignore-volumes', 'iv', 'source_cluster',
-                                                'destination_cluster']).exit_code)
+                                                '--destination-cluster-name', 'destination_cluster']).exit_code)
 
         ignore_volume.migrate.assert_not_called()
         self.volume.migrate.assert_called()
@@ -124,7 +126,7 @@ class TestMigrateOfflineVolumes(TestCase):
 
         self.assertEqual(0, self.runner.invoke(migrate_offline_volumes.main,
                                                ['--exec', '--skip-disk-offerings', 'SKIP_ME', 'source_cluster',
-                                                'destination_cluster']).exit_code)
+                                                '--destination-cluster-name', 'destination_cluster']).exit_code)
 
         skip_volume.migrate.assert_not_called()
         self.volume.migrate.assert_called()
@@ -135,59 +137,69 @@ class TestMigrateOfflineVolumes(TestCase):
 
         self.volume.refresh.side_effect = refresh_effect
         self.assertEqual(0, self.runner.invoke(migrate_offline_volumes.main,
-                                               ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
+                                               ['--exec', 'source_cluster', '--destination-cluster-name',
+                                                'destination_cluster']).exit_code)
 
     def test_failures(self):
         self.co_instance.get_cluster.side_effect = [None, None]
         self.assertEqual(1, self.runner.invoke(migrate_offline_volumes.main,
-                                               ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
-        self.co_instance.get_cluster.assert_has_calls([call(name='source_cluster'), call(name='destination_cluster')])
+                                               ['--exec', 'source_cluster', '--destination-cluster-name',
+                                                'destination_cluster']).exit_code)
+        self.co_instance.get_cluster.assert_has_calls([call(name='source_cluster')])
 
         self._setup_mocks()
         self.co_instance.get_cluster.side_effect = [self.source_cluster, None]
         self.assertEqual(1, self.runner.invoke(migrate_offline_volumes.main,
-                                               ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
+                                               ['--exec', 'source_cluster', '--destination-cluster-name',
+                                                'destination_cluster']).exit_code)
         self.co_instance.get_cluster.assert_called_with(name='destination_cluster')
 
         self._setup_mocks()
         self.source_cluster.get_storage_pools.side_effect = IndexError
         self.assertEqual(1, self.runner.invoke(migrate_offline_volumes.main,
-                                               ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
+                                               ['--exec', 'source_cluster', '--destination-cluster-name',
+                                                'destination_cluster']).exit_code)
         self.source_cluster.get_storage_pools.assert_called()
 
         self._setup_mocks()
         self.destination_cluster.get_storage_pools.side_effect = IndexError
         self.assertEqual(1, self.runner.invoke(migrate_offline_volumes.main,
-                                               ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
+                                               ['--exec', 'source_cluster', '--destination-cluster-name',
+                                                'destination_cluster']).exit_code)
         self.destination_cluster.get_storage_pools.assert_called()
 
     def test_continues(self):
         del self.volume['storage']
         self.assertEqual(0, self.runner.invoke(migrate_offline_volumes.main,
-                                               ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
+                                               ['--exec', 'source_cluster', '--destination-cluster-name',
+                                                'destination_cluster']).exit_code)
         self.volume.migrate.assert_not_called()
 
         self._setup_mocks()
         self.volume['storage'] = self.destination_storage_pool['name']
         self.assertEqual(0, self.runner.invoke(migrate_offline_volumes.main,
-                                               ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
+                                               ['--exec', 'source_cluster', '--destination-cluster-name',
+                                                'destination_cluster']).exit_code)
         self.volume.migrate.assert_not_called()
 
         self._setup_mocks()
         self.volume['state'] = 'Error'
         self.assertEqual(0, self.runner.invoke(migrate_offline_volumes.main,
-                                               ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
+                                               ['--exec', 'source_cluster', '--destination-cluster-name',
+                                                'destination_cluster']).exit_code)
         self.volume.migrate.assert_not_called()
 
         self._setup_mocks()
         self.volume['vmname'] = 'Mock VM'
         self.volume['vmstate'] = 'Running'
         self.assertEqual(0, self.runner.invoke(migrate_offline_volumes.main,
-                                               ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
+                                               ['--exec', 'source_cluster', '--destination-cluster-name',
+                                                'destination_cluster']).exit_code)
         self.volume.migrate.assert_not_called()
 
         self._setup_mocks()
         self.volume.migrate.return_value = False
         self.assertEqual(0, self.runner.invoke(migrate_offline_volumes.main,
-                                               ['--exec', 'source_cluster', 'destination_cluster']).exit_code)
+                                               ['--exec', 'source_cluster', '--destination-cluster-name',
+                                                'destination_cluster']).exit_code)
         self.volume.migrate.assert_called()
