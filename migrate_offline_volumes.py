@@ -29,13 +29,23 @@ from cosmicops import CosmicOps, logging, CosmicSQL
 @click.option('--only-project', is_flag=True, help='Only migrate volumes belonging to project VMs')
 @click.option('--zwps-to-cwps', is_flag=True, help='Migrate from ZWPS to CWPS')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
+@click.option('--destination-cluster-name', help='Name of the destination cluster')
+@click.option('--destination-pool-name', help='Name of the destination pool')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('source_cluster_name')
-@click.argument('destination_cluster_name')
-def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, only_project, source_cluster_name, destination_cluster_name):
+def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, only_project, source_cluster_name,
+         destination_cluster_name, destination_pool_name):
     """Migrate offline volumes from SOURCE_CLUSTER to DESTINATION_CLUSTER"""
 
     click_log.basic_config()
+
+    if destination_cluster_name is not None and destination_pool_name is not None:
+        logging.error('Specify either destination_cluster_name or destination_pool_name, not both!')
+        sys.exit(1)
+
+    if destination_cluster_name is None and destination_pool_name is None:
+        logging.error('Specify either destination_cluster_name or destination_pool_name, at least one of them!')
+        sys.exit(1)
 
     if source_cluster_name == destination_cluster_name:
         logging.error('Destination cluster cannot be the source cluster!')
@@ -53,10 +63,12 @@ def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, on
         logging.error(f"Source cluster not found:'{source_cluster_name}'!")
         sys.exit(1)
 
-    destination_cluster = co.get_cluster(name=destination_cluster_name)
-    if not destination_cluster:
-        logging.error(f"Destination cluster not found:'{destination_cluster_name}'!")
-        sys.exit(1)
+    destination_cluster = None
+    if destination_cluster_name:
+        destination_cluster = co.get_cluster(name=destination_cluster_name)
+        if not destination_cluster:
+            logging.error(f"Destination cluster not found:'{destination_cluster_name}'!")
+            sys.exit(1)
 
     if source_cluster:
         try:
@@ -69,14 +81,16 @@ def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, on
     for source_storage_pool in source_storage_pools:
         logging.info(f" - '{source_storage_pool['name']}'")
 
-    try:
-        destination_storage_pools = destination_cluster.get_storage_pools(scope='CLUSTER')
-    except IndexError:
-        logging.error(f"No storage pools  found for cluster '{destination_cluster['name']}'")
-        sys.exit(1)
-    logging.info('Destination storage pools found:')
-    for destination_storage_pool in destination_storage_pools:
-        logging.info(f" - '{destination_storage_pool['name']}'")
+    destination_storage_pools = None
+    if destination_cluster:
+        try:
+            destination_storage_pools = destination_cluster.get_storage_pools(scope='CLUSTER')
+        except IndexError:
+            logging.error(f"No storage pools found for cluster '{destination_cluster['name']}'")
+            sys.exit(1)
+        logging.info('Destination storage pools found:')
+        for destination_storage_pool in destination_storage_pools:
+            logging.info(f" - '{destination_storage_pool['name']}'")
 
     if ignore_volumes:
         ignore_volumes = ignore_volumes.replace(' ', '').split(',')
@@ -87,7 +101,11 @@ def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, on
         logging.info(f"Skipping disk offerings: {str(skip_disk_offerings)}")
 
     for source_storage_pool in source_storage_pools:
-        destination_storage_pool = choice(destination_storage_pools)
+        if destination_storage_pools is not None:
+            destination_storage_pool = choice(destination_storage_pools)
+        else:
+            destination_storage_pool = co.get_storage_pool(name=destination_pool_name)
+
         volumes = source_storage_pool.get_volumes(only_project)
 
         for volume in volumes:
@@ -104,7 +122,7 @@ def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, on
 
             if volume['storage'] == destination_storage_pool['name']:
                 logging.warning(
-                    f"Volume '{volume['name']}' ({volume['id']}) already on cluster '{destination_cluster['name']}', skipping...")
+                    f"Volume '{volume['name']}' ({volume['id']}) already on cluster '{destination_storage_pool['name']}', skipping...")
                 continue
 
             if volume['state'] != 'Ready':
@@ -129,10 +147,10 @@ def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, on
 
             if source_cluster:
                 logging.info(
-                    f"Volume '{volume['name']}' will be migrated from cluster '{source_cluster['name']}' to '{destination_cluster['name']}'")
+                    f"Volume '{volume['name']}' will be migrated from cluster '{source_storage_pool['name']}' to '{destination_storage_pool['name']}'")
             else:
                 logging.info(
-                    f"Volume '{volume['name']}' will be migrated from storage pool '{source_storage_pool['name']}' to '{destination_cluster['name']}'")
+                    f"Volume '{volume['name']}' will be migrated from storage pool '{source_storage_pool['name']}' to '{destination_storage_pool['name']}'")
 
             if not volume.migrate(destination_storage_pool):
                 continue
