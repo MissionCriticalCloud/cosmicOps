@@ -346,6 +346,8 @@ class CosmicHost(CosmicObject):
             logging.info(f"Would execute '{command}' on '{self['name']}")
             return
 
+        logging.info(f"Executing '{command}' on '{self['name']}")
+
         if sudo:
             runner = self._connection.sudo
         else:
@@ -573,11 +575,10 @@ class CosmicHost(CosmicObject):
 
     def merge_backing_files(self, vm):
         command = f"""
-        for i in $(/usr/bin/virsh domblklist --details '{vm['name']}' | grep disk | grep file | /usr/bin/awk '{{print $3}}'); do
-            echo /usr/bin/virsh blockpull '{vm['name']}' $i --wait --verbose
+        for i in $(/usr/bin/virsh domblklist --details '{vm['instancename']}' | grep disk | grep file | /usr/bin/awk '{{print $3}}'); do
+            /usr/bin/virsh blockpull '{vm['instancename']}' $i --wait --verbose
         done
         """
-
         if not self.execute(command, sudo=True).return_code == 0:
             logging.error(f"Failed to merge backing volumes for '{vm['name']}'")
             return False

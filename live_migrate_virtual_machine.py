@@ -15,6 +15,7 @@
 
 import sys
 import time
+from operator import itemgetter
 from random import choice
 
 import click
@@ -30,23 +31,29 @@ DATACENTERS = ["SBP1", "EQXAMS2", "EVO"]
 @click.command()
 @click.option('--profile', '-p', default='config', help='Name of the CloudMonkey profile containing the credentials')
 @click.option('--zwps-to-cwps', is_flag=True, help='Migrate from ZWPS to CWPS')
+@click.option('--migrate-offline-with-rsync', is_flag=True, help='Migrate offline using rsync. Use for large disks.')
+@click.option('--rsync-target-host', help='Name of the rsync target server')
 @click.option('--add-affinity-group', metavar='<group name>', help='Add this affinity group after migration')
 @click.option('--destination-dc', '-d', metavar='<DC name>', help='Migrate to this datacenter')
 @click.option('--is-project-vm', is_flag=True, help='The specified VM is a project VM')
+@click.option('--skip-backingfile-merge', is_flag=True, help='Do not attempt merge backing file')
 @click.option('--skip-within-cluster', is_flag=True, default=False, show_default=True,
               help='Enable/disable migration within cluster')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('vm')
 @click.argument('cluster')
-def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_vm,
-         skip_within_cluster, dry_run, vm, cluster):
+def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, add_affinity_group, destination_dc, is_project_vm,
+         skip_backingfile_merge, skip_within_cluster, dry_run, vm, cluster):
     """Live migrate VM to CLUSTER"""
+    """Unless --migrate-offline-with-rsync is passed, then we migrate offline"""
 
     click_log.basic_config()
 
     log_to_slack = True
     logging.task = 'Live Migrate VM'
+    if migrate_offline_with_rsync:
+        logging.task = 'Offline Migrate VM using rsync'
     logging.slack_title = 'Domain'
 
     if dry_run:
@@ -64,23 +71,193 @@ def main(profile, zwps_to_cwps, add_affinity_group, destination_dc, is_project_v
         logging.error(f"Cannot migrate, VM '{vm}' not found!")
         sys.exit(1)
 
-    if not vm_instance['state'] == 'Running':
-        logging.error(f"Cannot migrate, VM has has state: '{vm_instance['state']}'")
-        sys.exit(1)
-
-    source_host = co.get_host(id=vm_instance['hostid'])
-    source_cluster = co.get_cluster(id=source_host['clusterid'])
-    if not skip_within_cluster:
-        if not vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster,
-                                                  source_host=source_host, instancename=vm_instance):
-            logging.info(f"VM Migration failed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
+    # Live migrate requires running VM. Unless migrate_offline_with_rsync==True, then we stop the VM as this is offline
+    if not migrate_offline_with_rsync:
+        if not vm_instance['state'] == 'Running':
+            logging.error(f"Cannot migrate, VM has has state: '{vm_instance['state']}'")
             sys.exit(1)
 
-    if not live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
-                        log_to_slack, dry_run):
-        logging.info(f"VM Migration failed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
+        source_host = co.get_host(id=vm_instance['hostid'])
+        source_cluster = co.get_cluster(id=source_host['clusterid'])
+        if not skip_within_cluster:
+            if not vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster,
+                                                      source_host=source_host, instancename=vm_instance):
+                logging.info(f"VM Migration failed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
+                sys.exit(1)
+
+        if not live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
+                            log_to_slack, dry_run):
+            logging.info(f"VM Migration failed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
+            sys.exit(1)
+        logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
+
+    if migrate_offline_with_rsync:
+        logging.info(f"VM Migration using rsync method starting for vm {vm_instance['name']}")
+
+        if not vm_instance['state'] == 'Running' and not skip_backingfile_merge:
+            logging.error(f"Cannot migrate, VM has has state: '{vm_instance['state']}'. In order to merge backing"
+                          f" files, we need to have a Running VM. We will stop the VM later! You can also skip"
+                          f" backing file merging by providing flag --skip-backingfile-merge")
+            sys.exit(1)
+
+        # Make sure backing file is merged into disk. VM needs to be Running for this to work
+        if skip_backingfile_merge:
+            logging.info(
+                f"Skipping backing file merging due to --skip-backingfile-merge")
+        else:
+            running_host = co.get_host(name=vm_instance['hostname'])
+
+            if not dry_run:
+                if not running_host.merge_backing_files(vm_instance):
+                    return False
+            else:
+                logging.info(
+                    f"Would have merged all backing files if any exist on {running_host['name']}")
+
+        if not vm_instance['state'] == 'Stopped':
+            if not vm_instance.stop():
+                logging.error(f"Stopping failed for VM '{vm_instance['state']}'")
+                sys.exit(1)
+
+        # Here our VM is stopped
+
+        target_storage_pool = None
+        target_cluster = co.get_cluster(name=cluster)
+
+        target_hosts = target_cluster.get_all_hosts()
+        target_hosts.sort(key=itemgetter('name'))
+
+        target_host = target_hosts[0]
+
+        for host in target_hosts:
+            if rsync_target_host in host['name']:
+                target_host = co.get_host(name=rsync_target_host)
+                break
+
+        if not target_host:
+            logging.error(f"Cannot find host by name: {rsync_target_host}")
+            sys.exit(1)
+
+        logging.debug(f"Found target hosts: {target_host}")
+
+        volumes = vm_instance.get_volumes()
+        volume_id = 0
+
+        for volume in volumes:
+            # Check if VM is still stopped
+            vm_instance = co.get_vm(name=vm, is_project_vm=is_project_vm)
+            if not dry_run and vm_instance['state'] != 'Stopped':
+                logging.error(f"Cannot migrate, VM has state: '{vm_instance['state']}'")
+                sys.exit(1)
+
+            # TODO check if source/destination pool sizes are the same
+
+            target_storage_pool_name = get_target_pool(
+                target_cluster=target_cluster,
+                target_storage_pool=target_storage_pool,
+                volume=volume
+            )
+            target_storage_pool = co.get_storage_pool(
+                name=target_storage_pool_name
+            )
+
+            if volume['storage'] == target_storage_pool['name']:
+                logging.warning(
+                    f"Volume '{volume['name']}' ({volume['id']}) already on cluster '{target_cluster['name']}', skipping..")
+                volumes.pop(volume_id)
+                continue
+
+            source_storage_pool = co.get_storage_pool(name=volume['storage'])
+            if not source_storage_pool:
+                sys.exit(1)
+
+            if source_storage_pool['scope'] == 'ZONE':
+                logging.warning(f"Scope of volume '{volume['name']}' ({volume['id']}) is ZONE, skipping..")
+                continue
+
+            # Current hostname and cluster
+            source_cluster = co.get_cluster(id=source_storage_pool['clusterid'])
+            source_hosts = source_cluster.get_all_hosts()
+            source_hosts.sort(key=itemgetter('name'))
+            source_host = source_hosts[0]
+
+            # make sure staging folder exists
+            logging.info(f"Making sure staging folder /mnt/{target_storage_pool['id']}/staging/ exists on '{target_storage_pool['name']}'..")
+            target_host.execute(f"mkdir -p /mnt/{target_storage_pool['id']}/staging/", sudo=True, hide_stdout=False, pty=True)
+
+            # rsync volume naar staging
+            logging.info(f"Rsync'ing volume '{volume['name']}' to pool '{target_storage_pool['name']}'..")
+            source_host.execute(f"rsync -avP --sparse --whole-file --block-size=4096 /mnt/{source_storage_pool['id']}/{volume['path']} rsync://{target_host['ipaddress']}/{target_storage_pool['id']}",
+                                sudo=True, hide_stdout=False, pty=True)
+
+            volume_id += 1
+
+        # Here all the disks are rsync'ed
+        # We could implement something that can do this again to copy changed blocks
+
+        # Finally, move volumes in place and update the db
+        for volume in volumes:
+            # Check if VM is still stopped
+            vm_instance = co.get_vm(name=vm, is_project_vm=is_project_vm)
+            if not dry_run and vm_instance['state'] != 'Stopped':
+                logging.error(f"Cannot migrate, VM has state: '{vm_instance['state']}'")
+                sys.exit(1)
+
+            target_storage_pool_name = get_target_pool(
+                target_cluster=target_cluster,
+                target_storage_pool=target_storage_pool,
+                volume=volume
+            )
+            target_storage_pool = co.get_storage_pool(
+                name=target_storage_pool_name
+            )
+
+            # move volume from staging to live
+            target_host.execute(f"mv /mnt/{target_storage_pool['id']}/staging/{volume['path']} /mnt/{target_storage_pool['id']}/{volume['path']}",
+                                sudo=True, hide_stdout=False, pty=True)
+            # Update db
+            cs = CosmicSQL(server=profile, dry_run=dry_run)
+            volume_db_id = cs.get_volume_db_id(path=volume['path'])
+            current_pool_db_id = cs.get_storage_pool_id_from_name(storage_pool_name=volume['storage'])
+            target_pool_db_id = cs.get_storage_pool_id_from_name(storage_pool_name=target_storage_pool['name'])
+            cs.update_storage_pool_id(volume_db_id=volume_db_id, current_pool_db_id=current_pool_db_id, new_pool_db_id=target_pool_db_id)
+
+            # Add safety check via API: is volume on the expected storage pool now?
+            if not dry_run:
+                update_volume = co.get_volume(id=volume['id'])
+                if update_volume['storageid'] != target_storage_pool['id']:
+                    logging.error(f"Update volume '{volume['name']}' failed, investigate!")
+                    sys.exit(1)
+                logging.info(f"Updating volume '{volume['name']}' successfully set to pool '{target_storage_pool['name']}'!")
+
+    # Start vm again
+    if not vm_instance.start():
         sys.exit(1)
-    logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
+
+
+def get_target_pool(target_cluster, target_storage_pool, volume):
+    try:
+        # Get CLUSTER scoped volume (no NVMe or ZONE-wide)
+        while target_storage_pool is None or target_storage_pool['scope'] != 'CLUSTER':
+            target_storage_pool = choice(target_cluster.get_storage_pools())
+    except IndexError:
+        logging.error(f"No storage pools found for cluster '{target_cluster['name']}")
+        sys.exit(1)
+    # Find storage pool on destination that has same "name" as current one (looking at last part).
+    # So xxx_CS01 ==> yyy_CS01
+    current_pool_name_extension = volume['storage'].split('_')[-1]
+    target_storage_pool_prefix_parts = target_storage_pool['name'].split('_')[:-1]
+    target_storage_pool_prefix = ""
+    parts = 0
+    for part in target_storage_pool_prefix_parts:
+        if parts == 0:
+            target_storage_pool_prefix += '%s' % part
+        else:
+            target_storage_pool_prefix += '_%s' % part
+        parts += 1
+    target_storage_pool_name = "%s_%s" % (target_storage_pool_prefix, current_pool_name_extension)
+    logging.info(f"New storage pool name is {target_storage_pool_name}")
+    return target_storage_pool_name
 
 
 def live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,

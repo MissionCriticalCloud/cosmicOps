@@ -55,7 +55,7 @@ class CosmicVM(CosmicObject):
             on_host_msg = ''
 
         if self.dry_run:
-            logging.info(f"Would start VM '{self['name']}{on_host_msg}")
+            logging.info(f"Would start VM '{self['name']}'{on_host_msg}")
             return True
 
         logging.info(f"Starting VM '{self['name']}'{on_host_msg}", self.log_to_slack)
