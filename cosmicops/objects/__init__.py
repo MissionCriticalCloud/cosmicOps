@@ -25,6 +25,7 @@ from .template import CosmicTemplate
 from .serviceoffering import CosmicServiceOffering
 from .storagepool import CosmicStoragePool
 from .systemvm import CosmicSystemVM
+from .user import CosmicUser
 from .vm import CosmicVM
 from .volume import CosmicVolume
 from .vpc import CosmicVPC
@@ -44,6 +45,7 @@ __all__ = [
     CosmicServiceOffering,
     CosmicStoragePool,
     CosmicSystemVM,
+    CosmicUser,
     CosmicVM,
     CosmicVolume,
     CosmicVPC,

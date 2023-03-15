@@ -11,3 +11,4 @@ slack-webhook~=1.0.7
 testfixtures~=7.0.0
 tabulate~=0.8.10
 libvirt-python
+jinja2

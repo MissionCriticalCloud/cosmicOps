@@ -22,7 +22,7 @@ from requests.exceptions import ConnectionError
 
 from cosmicops.objects import CosmicCluster, CosmicDomain, CosmicHost, CosmicNetwork, CosmicPod, CosmicProject, \
     CosmicRouter, CosmicServiceOffering, CosmicStoragePool, CosmicSystemVM, CosmicVM, CosmicVolume, CosmicVPC, \
-    CosmicZone, CosmicAccount, CosmicTemplate
+    CosmicZone, CosmicAccount, CosmicTemplate, CosmicUser
 from .log import logging
 
 
@@ -111,6 +111,9 @@ class CosmicOps(object):
 
     def get_account(self, **kwargs):  # pragma: no cover
         return self._cs_get_single_result('listAccounts', kwargs, CosmicAccount, 'account')
+
+    def get_user(self, **kwargs):  # pragma: no cover
+        return self._cs_get_single_result('listUsers', kwargs, CosmicUsers, 'user')
 
     def get_network(self, **kwargs):  # pragma: no cover
         return self._cs_get_single_result('listNetworks', kwargs, CosmicNetwork, 'network')
@@ -208,6 +211,10 @@ class CosmicOps(object):
     def get_all_accounts(self, list_all=True, **kwargs):
         kwargs['listall'] = list_all
         return self._cs_get_all_results('listAccounts', kwargs, CosmicAccount, 'account')
+
+    def get_all_users(self, list_all=True, **kwargs):
+        kwargs['listall'] = list_all
+        return self._cs_get_all_results('listUsers', kwargs, CosmicUser, 'user')
 
     def wait_for_job(self, job_id, retries=10):
         job_status = 0
