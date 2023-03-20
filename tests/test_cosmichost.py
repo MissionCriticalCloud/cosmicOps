@@ -697,13 +697,14 @@ class TestCosmicHost(TestCase):
         self.host.execute = Mock(return_value=Mock(return_code=0))
         vm = CosmicVM(Mock(), {
             'id': 'v1',
-            'name': 'vm1'
+            'name': 'vm1',
+            'instancename': 'i-1-VM'
         })
 
         self.assertTrue(self.host.merge_backing_files(vm))
         command = self.host.execute.call_args[0][0]
-        self.assertIn("--details 'vm1'", command)
-        self.assertIn("blockpull 'vm1'", command)
+        self.assertIn("--details 'i-1-VM'", command)
+        self.assertIn("blockpull 'i-1-VM'", command)
 
         self.host.execute.return_value.return_code = 1
         self.assertFalse(self.host.merge_backing_files(vm))

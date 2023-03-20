@@ -323,3 +323,30 @@ class CosmicSQL(object):
         """
 
         return self._execute_update_query(query, (instance_id, affinity_group_id))
+
+    def get_volume_db_id(self, path):
+        query = f"""
+        SELECT id
+        FROM volumes
+        WHERE removed IS NULL
+          AND state = 'Ready'
+          AND path = '{path}'
+        """
+
+        return self._execute_select_query(query)[0][0]
+
+    def get_storage_pool_id_from_name(self, storage_pool_name):
+        query = f"""
+        SELECT id
+        FROM storage_pool
+        WHERE removed IS NULL
+          AND name = '{storage_pool_name}'
+        """
+
+        return self._execute_select_query(query)[0][0]
+
+    def update_storage_pool_id(self, volume_db_id, current_pool_db_id, new_pool_db_id):
+
+        query = "UPDATE volumes SET pool_id=%s, last_pool_id=%s WHERE id=%s"
+
+        return self._execute_update_query(query, (new_pool_db_id, current_pool_db_id, volume_db_id))
