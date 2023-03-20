@@ -99,7 +99,7 @@ def main(profile, skip_name, employee_only, dry_run):
                 email['From'] = 'mcc@schubergphilis.com'
                 # email['To'] = users[0]['email'].lower()
                 email['To'] = users[0]['email'].lower()
-                email['Subject'] = f"Your recourses in MCC { profile.upper() }"
+                email['Subject'] = f"Your resources in MCC { profile.upper() }"
                 email.attach(MIMEText(email_text, 'html'))
 
                 # # Send email
