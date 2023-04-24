@@ -350,3 +350,9 @@ class CosmicSQL(object):
         query = "UPDATE volumes SET pool_id=%s, last_pool_id=%s WHERE id=%s"
 
         return self._execute_update_query(query, (new_pool_db_id, current_pool_db_id, volume_db_id))
+
+    def set_vm_state(self, instance_name, status_name):
+
+        query = "UPDATE vm_instance SET status=%s WHERE instance_name=%s"
+
+        return self._execute_update_query(query, (status_name, instance_name))

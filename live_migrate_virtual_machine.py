@@ -92,6 +92,16 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
         logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
 
     if migrate_offline_with_rsync:
+        if vm['state'] == 'Running':
+            need_to_stop = True
+            auto_start_vm = True
+        elif vm['state'] == 'Stopped':
+            need_to_stop = False
+            auto_start_vm = False
+        else:
+            logging.error(f"Cannot migrate, VM '{vm}' should be in Running or Stopped state!", log_to_slack=True)
+            sys.exit(1)
+
         logging.info(f"VM Migration using rsync method starting for vm {vm_instance['name']}")
 
         if not vm_instance['state'] == 'Running' and not skip_backingfile_merge:
@@ -114,10 +124,15 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                 logging.info(
                     f"Would have merged all backing files if any exist on {running_host['name']}")
 
-        if not vm_instance['state'] == 'Stopped':
+        if need_to_stop:
             if not vm_instance.stop():
-                logging.error(f"Stopping failed for VM '{vm_instance['state']}'")
+                logging.error(f"Stopping failed for VM '{vm_instance['state']}'", log_to_slack=True)
                 sys.exit(1)
+
+        # Manually set migrating state to prevent unwanted VM starts
+        if not cs.set_vm_state(instance_name=vm_instance['instancename'], status_name='Migrating'):
+            logging.error(f"Cannot set status to Migrating for VM '{vm}'!", log_to_slack=True)
+            sys.exit(1)
 
         # Here our VM is stopped
 
@@ -230,9 +245,16 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                     sys.exit(1)
                 logging.info(f"Updating volume '{volume['name']}' successfully set to pool '{target_storage_pool['name']}'!")
 
-    # Start vm again
-    if not vm_instance.start():
-        sys.exit(1)
+        # Reset custom state back to Stopped
+        if not cs.set_vm_state(instance_name=vm_instance['instancename'], status_name='Stopped'):
+            logging.error(f"Cannot set status to Stopped for VM '{vm}'!", log_to_slack=True)
+            sys.exit(1)
+
+        # Start vm again
+        if auto_start_vm:
+            if not vm_instance.start():
+                logging.error(f"Starting failed for VM '{vm_instance['state']}'", log_to_slack=True)
+                sys.exit(1)
 
 
 def get_target_pool(target_cluster, target_storage_pool, volume):
