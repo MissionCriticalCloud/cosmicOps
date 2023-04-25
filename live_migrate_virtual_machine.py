@@ -158,19 +158,25 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
         volumes = vm_instance.get_volumes()
         volume_id = 0
         volume_counter = 0
+        volume_destination_map = {}
 
         for volume in volumes:
             volume_counter += 1
-            # TODO check if source/destination pool sizes are the same
 
-            target_storage_pool_name = get_target_pool(
-                target_cluster=target_cluster,
-                target_storage_pool=target_storage_pool,
-                volume=volume
-            )
-            target_storage_pool = co.get_storage_pool(
-                name=target_storage_pool_name
-            )
+            storage_pools = sorted(target_cluster.get_storage_pools(), key=lambda h: h['disksizeused'])
+            for storage_pool in storage_pools:
+                free_space_bytes = int(storage_pool['disksizetotal']) - int(storage_pool['disksizeused'])
+                needed_bytes = volume['size'] * 1.5
+                if needed_bytes >= free_space_bytes:
+                    continue
+                target_storage_pool = storage_pool
+                volume_destination_map[volume['name']] = storage_pool
+                break
+
+            if target_storage_pool is None:
+                logging.warning(f"Unable to find storage pool for volume '{volume['name']}'"
+                                f" ({round(volume['size']/1024/1024/1024,1)}GB)")
+                sys.exit(1)
 
             if volume['storage'] == target_storage_pool['name']:
                 logging.warning(
@@ -196,9 +202,10 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
             logging.info(f"Making sure staging folder /mnt/{target_storage_pool['id']}/staging/ exists on '{target_storage_pool['name']}'..")
             target_host.execute(f"mkdir -p /mnt/{target_storage_pool['id']}/staging/", sudo=True, hide_stdout=False, pty=True)
 
-            logging.info(
-                f"Migrating volume {volume['name']} ({round(volume['size']/1024/1024/1024, 1)}GB) to storage pool {target_storage_pool['name']}"
-                f" ({ volume_counter }/{ len(volumes) })", log_to_slack=True)
+            if not dry_run:
+                logging.info(
+                    f"Migrating volume {volume['name']} ({round(volume['size']/1024/1024/1024, 1)}GB) to storage pool {target_storage_pool['name']}"
+                    f" ({ volume_counter }/{ len(volumes) })", log_to_slack=True)
 
             # rsync volume naar staging
             logging.info(f"Rsync'ing volume '{volume['name']}' to pool '{target_storage_pool['name']}'..")
@@ -210,8 +217,9 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
         # Here all the disks are rsync'ed
         # We could implement something that can do this again to copy changed blocks
 
-        logging.info(
-            f"Finished migrating { volume_counter } volumes", log_to_slack=True)
+        if not dry_run:
+            logging.info(
+                f"Finished migrating { volume_counter } volumes", log_to_slack=True)
 
         # Finally, move volumes in place and update the db
         for volume in volumes:
@@ -221,14 +229,7 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                 logging.error(f"Cannot migrate, VM has state: '{vm_instance['state']}'")
                 sys.exit(1)
 
-            target_storage_pool_name = get_target_pool(
-                target_cluster=target_cluster,
-                target_storage_pool=target_storage_pool,
-                volume=volume
-            )
-            target_storage_pool = co.get_storage_pool(
-                name=target_storage_pool_name
-            )
+            target_storage_pool = volume_destination_map[volume['name']]
 
             # move volume from staging to live
             target_host.execute(f"mv /mnt/{target_storage_pool['id']}/staging/{volume['path']} /mnt/{target_storage_pool['id']}/{volume['path']}",
@@ -258,31 +259,6 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
             if not vm_instance.start():
                 logging.error(f"Starting failed for VM '{vm_instance['state']}'", log_to_slack=True)
                 sys.exit(1)
-
-
-def get_target_pool(target_cluster, target_storage_pool, volume):
-    try:
-        # Get CLUSTER scoped volume (no NVMe or ZONE-wide)
-        while target_storage_pool is None or target_storage_pool['scope'] != 'CLUSTER':
-            target_storage_pool = choice(target_cluster.get_storage_pools())
-    except IndexError:
-        logging.error(f"No storage pools found for cluster '{target_cluster['name']}")
-        sys.exit(1)
-    # Find storage pool on destination that has same "name" as current one (looking at last part).
-    # So xxx_CS01 ==> yyy_CS01
-    current_pool_name_extension = volume['storage'].split('_')[-1]
-    target_storage_pool_prefix_parts = target_storage_pool['name'].split('_')[:-1]
-    target_storage_pool_prefix = ""
-    parts = 0
-    for part in target_storage_pool_prefix_parts:
-        if parts == 0:
-            target_storage_pool_prefix += '%s' % part
-        else:
-            target_storage_pool_prefix += '_%s' % part
-        parts += 1
-    target_storage_pool_name = "%s_%s" % (target_storage_pool_prefix, current_pool_name_extension)
-    logging.info(f"New storage pool name is {target_storage_pool_name}")
-    return target_storage_pool_name
 
 
 def live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
