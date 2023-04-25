@@ -157,8 +157,10 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
 
         volumes = vm_instance.get_volumes()
         volume_id = 0
+        volume_counter = 0
 
         for volume in volumes:
+            volume_counter += 1
             # TODO check if source/destination pool sizes are the same
 
             target_storage_pool_name = get_target_pool(
@@ -194,6 +196,10 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
             logging.info(f"Making sure staging folder /mnt/{target_storage_pool['id']}/staging/ exists on '{target_storage_pool['name']}'..")
             target_host.execute(f"mkdir -p /mnt/{target_storage_pool['id']}/staging/", sudo=True, hide_stdout=False, pty=True)
 
+            logging.info(
+                f"Migrating volume ${volume['name']} ({round(volume['size']/1024/1024/1024, 1)}GB) to storage pool {target_storage_pool['name']}"
+                f" ({ volume_counter }/{ len(volumes) })", log_to_slack=True)
+
             # rsync volume naar staging
             logging.info(f"Rsync'ing volume '{volume['name']}' to pool '{target_storage_pool['name']}'..")
             source_host.execute(f"rsync -avP --sparse --whole-file --block-size=4096 /mnt/{source_storage_pool['id']}/{volume['path']} rsync://{target_host['ipaddress']}/{target_storage_pool['id']}",
@@ -203,6 +209,9 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
 
         # Here all the disks are rsync'ed
         # We could implement something that can do this again to copy changed blocks
+
+        logging.info(
+            f"Finished migrating ${ volume_counter } volumes", log_to_slack=True)
 
         # Finally, move volumes in place and update the db
         for volume in volumes:
