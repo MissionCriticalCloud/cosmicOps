@@ -159,12 +159,6 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
         volume_id = 0
 
         for volume in volumes:
-            # Check if VM is still stopped
-            vm_instance = co.get_vm(name=vm, is_project_vm=is_project_vm)
-            if not dry_run and vm_instance['state'] != 'Stopped':
-                logging.error(f"Cannot migrate, VM has state: '{vm_instance['state']}'")
-                sys.exit(1)
-
             # TODO check if source/destination pool sizes are the same
 
             target_storage_pool_name = get_target_pool(
