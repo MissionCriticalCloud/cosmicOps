@@ -353,6 +353,6 @@ class CosmicSQL(object):
 
     def set_vm_state(self, instance_name, status_name):
 
-        query = "UPDATE vm_instance SET status=%s WHERE instance_name=%s"
+        query = "UPDATE vm_instance SET state=%s WHERE instance_name=%s"
 
         return self._execute_update_query(query, (status_name, instance_name))

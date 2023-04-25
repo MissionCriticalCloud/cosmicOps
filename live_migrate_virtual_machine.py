@@ -92,10 +92,10 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
         logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
 
     if migrate_offline_with_rsync:
-        if vm['state'] == 'Running':
+        if vm_instance['state'] == 'Running':
             need_to_stop = True
             auto_start_vm = True
-        elif vm['state'] == 'Stopped':
+        elif vm_instance['state'] == 'Stopped':
             need_to_stop = False
             auto_start_vm = False
         else:
