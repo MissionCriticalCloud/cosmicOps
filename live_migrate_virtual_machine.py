@@ -170,7 +170,7 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                 if needed_bytes >= free_space_bytes:
                     continue
                 target_storage_pool = storage_pool
-                volume_destination_map[volume['name']] = storage_pool
+                volume_destination_map[volume['id']] = storage_pool
                 break
 
             if target_storage_pool is None:
@@ -229,7 +229,7 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                 logging.error(f"Cannot migrate, VM has state: '{vm_instance['state']}'")
                 sys.exit(1)
 
-            target_storage_pool = volume_destination_map[volume['name']]
+            target_storage_pool = volume_destination_map[volume['id']]
 
             # move volume from staging to live
             target_host.execute(f"mv /mnt/{target_storage_pool['id']}/staging/{volume['path']} /mnt/{target_storage_pool['id']}/{volume['path']}",
