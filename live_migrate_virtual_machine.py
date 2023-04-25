@@ -211,7 +211,7 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
         # We could implement something that can do this again to copy changed blocks
 
         logging.info(
-            f"Finished migrating ${ volume_counter } volumes", log_to_slack=True)
+            f"Finished migrating { volume_counter } volumes", log_to_slack=True)
 
         # Finally, move volumes in place and update the db
         for volume in volumes:
