@@ -260,7 +260,8 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                 logging.info(f"Updating volume '{volume['name']}' successfully set to pool '{target_storage_pool['name']}'!")
 
             # Rename old volumes to prevent unwanted start on old location
-            source_host.execute(f"mv /mnt/{source_storage_pool['id']}/{volume['path']} /mnt/{source_storage_pool['id']}/{volume['path']}.rsync-migrated",
+            timestamp = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
+            source_host.execute(f"mv /mnt/{source_storage_pool['id']}/{volume['path']} /mnt/{source_storage_pool['id']}/{volume['path']}.rsync-migrated-{timestamp}",
                                 sudo=True, hide_stdout=False, pty=True)
 
         # Reset custom state back to Stopped
@@ -277,6 +278,7 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
         if not vm_instance.start(destination_host):
             logging.error(f"Starting failed for VM '{vm_instance['state']}'", log_to_slack=True)
             sys.exit(1)
+        logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
 
 
 def live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
