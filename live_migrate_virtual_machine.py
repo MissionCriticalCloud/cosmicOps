@@ -176,7 +176,6 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                 if needed_bytes >= free_space_bytes:
                     continue
                 target_storage_pool = storage_pool
-                volume_destination_map[volume['id']] = storage_pool
                 break
 
             if target_storage_pool is None:
@@ -203,6 +202,12 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
             source_hosts = source_cluster.get_all_hosts()
             source_hosts.sort(key=itemgetter('name'))
             source_host = source_hosts[0]
+
+            volume_destination_map[volume['id']] = {
+                'target_storage_pool': target_storage_pool,
+                'source_storage_pool': source_storage_pool,
+                'source_host': source_host
+            }
 
             # make sure staging folder exists
             logging.info(f"Making sure staging folder /mnt/{target_storage_pool['id']}/staging/ exists on '{target_storage_pool['name']}'..")
@@ -232,7 +237,9 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                 logging.error(f"Cannot migrate, VM has state: '{vm_instance['state']}'")
                 sys.exit(1)
 
-            target_storage_pool = volume_destination_map[volume['id']]
+            target_storage_pool = volume_destination_map[volume['id']]['target_storage_pool']
+            source_storage_pool = volume_destination_map[volume['id']]['source_storage_pool']
+            source_host = volume_destination_map[volume['id']]['source_host']
 
             # move volume from staging to live
             target_host.execute(f"mv /mnt/{target_storage_pool['id']}/staging/{volume['path']} /mnt/{target_storage_pool['id']}/{volume['path']}",
@@ -251,6 +258,10 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                     logging.error(f"Update volume '{volume['name']}' failed, investigate!")
                     sys.exit(1)
                 logging.info(f"Updating volume '{volume['name']}' successfully set to pool '{target_storage_pool['name']}'!")
+
+            # Rename old volumes to prevent unwanted start on old location
+            source_host.execute(f"mv /mnt/{source_storage_pool['id']}/{volume['path']} /mnt/{source_storage_pool['id']}/{volume['path']}.rsync-migrated",
+                                sudo=True, hide_stdout=False, pty=True)
 
         # Reset custom state back to Stopped
         if not cs.set_vm_state(instance_name=vm_instance['instancename'], status_name='Stopped'):
