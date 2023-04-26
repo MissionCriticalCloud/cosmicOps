@@ -209,7 +209,7 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
             target_host.execute(f"mkdir -p /mnt/{target_storage_pool['id']}/staging/", sudo=True, hide_stdout=False, pty=True)
 
             logging.info(
-                f"Rsync'ing volume {volume['name']} ({round(volume['size']/1024/1024/1024, 1)}GB) to storage pool {target_storage_pool['name']}"
+                f"Rsyncing volume {volume['name']} ({round(volume['size']/1024/1024/1024, 1)}GB) to storage pool {target_storage_pool['name']}"
                 f" ({ volume_counter }/{ len(volumes) })", log_to_slack=not dry_run)
 
             # rsync volume naar staging
