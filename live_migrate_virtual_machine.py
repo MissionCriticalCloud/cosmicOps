@@ -92,6 +92,12 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
         logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
 
     if migrate_offline_with_rsync:
+        if rsync_target_host is None:
+            example_target = "%s-hv01" % cluster.split('-')[0]
+            logging.error(f"Invalid options! Please specify --rsync-target-host."
+                          f" Example: --rsync-target-host {example_target}")
+            sys.exit(1)
+
         if vm_instance['state'] == 'Running':
             need_to_stop = True
             auto_start_vm = True
@@ -202,10 +208,9 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
             logging.info(f"Making sure staging folder /mnt/{target_storage_pool['id']}/staging/ exists on '{target_storage_pool['name']}'..")
             target_host.execute(f"mkdir -p /mnt/{target_storage_pool['id']}/staging/", sudo=True, hide_stdout=False, pty=True)
 
-            if not dry_run:
-                logging.info(
-                    f"Migrating volume {volume['name']} ({round(volume['size']/1024/1024/1024, 1)}GB) to storage pool {target_storage_pool['name']}"
-                    f" ({ volume_counter }/{ len(volumes) })", log_to_slack=True)
+            logging.info(
+                f"Migrating volume {volume['name']} ({round(volume['size']/1024/1024/1024, 1)}GB) to storage pool {target_storage_pool['name']}"
+                f" ({ volume_counter }/{ len(volumes) })", log_to_slack=not dry_run)
 
             # rsync volume naar staging
             logging.info(f"Rsync'ing volume '{volume['name']}' to pool '{target_storage_pool['name']}'..")
@@ -217,9 +222,8 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
         # Here all the disks are rsync'ed
         # We could implement something that can do this again to copy changed blocks
 
-        if not dry_run:
-            logging.info(
-                f"Finished migrating { volume_counter } volumes", log_to_slack=True)
+        logging.info(
+            f"Finished migrating { volume_counter } volumes", log_to_slack=not dry_run)
 
         # Finally, move volumes in place and update the db
         for volume in volumes:
