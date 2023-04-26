@@ -209,11 +209,10 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
             target_host.execute(f"mkdir -p /mnt/{target_storage_pool['id']}/staging/", sudo=True, hide_stdout=False, pty=True)
 
             logging.info(
-                f"Migrating volume {volume['name']} ({round(volume['size']/1024/1024/1024, 1)}GB) to storage pool {target_storage_pool['name']}"
+                f"Rsync'ing volume {volume['name']} ({round(volume['size']/1024/1024/1024, 1)}GB) to storage pool {target_storage_pool['name']}"
                 f" ({ volume_counter }/{ len(volumes) })", log_to_slack=not dry_run)
 
             # rsync volume naar staging
-            logging.info(f"Rsync'ing volume '{volume['name']}' to pool '{target_storage_pool['name']}'..")
             source_host.execute(f"rsync -avP --sparse --whole-file --block-size=4096 /mnt/{source_storage_pool['id']}/{volume['path']} rsync://{target_host['ipaddress']}/{target_storage_pool['id']}",
                                 sudo=True, hide_stdout=False, pty=True)
 
@@ -259,10 +258,14 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
             sys.exit(1)
 
         # Start vm again
-        if auto_start_vm:
-            if not vm_instance.start():
-                logging.error(f"Starting failed for VM '{vm_instance['state']}'", log_to_slack=True)
-                sys.exit(1)
+        destination_host = target_cluster.find_migration_host(vm_instance)
+        if not destination_host:
+            logging.error(f"Starting failed for VM '{vm_instance['state']}': no destination host found", log_to_slack=True)
+            sys.exit(1)
+        # Start on a specific host to prevent unwanted migrations back to source
+        if not vm_instance.start(destination_host):
+            logging.error(f"Starting failed for VM '{vm_instance['state']}'", log_to_slack=True)
+            sys.exit(1)
 
 
 def live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
