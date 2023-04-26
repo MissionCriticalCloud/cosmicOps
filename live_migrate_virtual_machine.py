@@ -92,6 +92,12 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
         logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
 
     if migrate_offline_with_rsync:
+        if rsync_target_host is None:
+            example_target = "%s-hv01" % cluster.split('-')[0]
+            logging.error(f"Invalid options! Please specify --rsync-target-host."
+                          f" Example: --rsync-target-host {example_target}")
+            sys.exit(1)
+
         if vm_instance['state'] == 'Running':
             need_to_stop = True
             auto_start_vm = True
