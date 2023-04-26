@@ -206,7 +206,7 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
             volume_destination_map[volume['id']] = {
                 'target_storage_pool': target_storage_pool,
                 'source_storage_pool': source_storage_pool,
-                'source_host': source_host
+                'source_host_id': source_host['id']
             }
 
             # make sure staging folder exists
@@ -239,7 +239,8 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
 
             target_storage_pool = volume_destination_map[volume['id']]['target_storage_pool']
             source_storage_pool = volume_destination_map[volume['id']]['source_storage_pool']
-            source_host = volume_destination_map[volume['id']]['source_host']
+            source_host_id = volume_destination_map[volume['id']]['source_host_id']
+            source_host = co.get_host(id=source_host_id)
 
             # move volume from staging to live
             target_host.execute(f"mv /mnt/{target_storage_pool['id']}/staging/{volume['path']} /mnt/{target_storage_pool['id']}/{volume['path']}",
