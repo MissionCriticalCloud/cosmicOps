@@ -40,8 +40,12 @@ class CosmicCluster(CosmicObject):
         migration_host = None
 
         for host in hosts:
-            if host['name'] == vm['hostname']:
-                continue
+            try:
+                if host['name'] == vm['hostname']:
+                    continue
+            except Exception as e:
+                # Not available when vm is stopped
+                pass
 
             if host['resourcestate'] != 'Enabled':
                 continue

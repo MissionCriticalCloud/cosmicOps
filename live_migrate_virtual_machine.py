@@ -176,7 +176,6 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                 if needed_bytes >= free_space_bytes:
                     continue
                 target_storage_pool = storage_pool
-                volume_destination_map[volume['id']] = storage_pool
                 break
 
             if target_storage_pool is None:
@@ -204,16 +203,22 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
             source_hosts.sort(key=itemgetter('name'))
             source_host = source_hosts[0]
 
+            volume_destination_map[volume['id']] = {
+                'target_storage_pool': target_storage_pool,
+                'source_storage_pool': source_storage_pool,
+                'source_host_id': source_host['id'],
+                'target_host_id': target_host['id']
+            }
+
             # make sure staging folder exists
             logging.info(f"Making sure staging folder /mnt/{target_storage_pool['id']}/staging/ exists on '{target_storage_pool['name']}'..")
             target_host.execute(f"mkdir -p /mnt/{target_storage_pool['id']}/staging/", sudo=True, hide_stdout=False, pty=True)
 
             logging.info(
-                f"Migrating volume {volume['name']} ({round(volume['size']/1024/1024/1024, 1)}GB) to storage pool {target_storage_pool['name']}"
+                f"Rsyncing volume {volume['name']} ({round(volume['size']/1024/1024/1024, 1)}GB) to storage pool {target_storage_pool['name']}"
                 f" ({ volume_counter }/{ len(volumes) })", log_to_slack=not dry_run)
 
             # rsync volume naar staging
-            logging.info(f"Rsync'ing volume '{volume['name']}' to pool '{target_storage_pool['name']}'..")
             source_host.execute(f"rsync -avP --sparse --whole-file --block-size=4096 /mnt/{source_storage_pool['id']}/{volume['path']} rsync://{target_host['ipaddress']}/{target_storage_pool['id']}",
                                 sudo=True, hide_stdout=False, pty=True)
 
@@ -233,7 +238,12 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                 logging.error(f"Cannot migrate, VM has state: '{vm_instance['state']}'")
                 sys.exit(1)
 
-            target_storage_pool = volume_destination_map[volume['id']]
+            target_storage_pool = volume_destination_map[volume['id']]['target_storage_pool']
+            source_storage_pool = volume_destination_map[volume['id']]['source_storage_pool']
+            source_host_id = volume_destination_map[volume['id']]['source_host_id']
+            source_host = co.get_host(id=source_host_id)
+            target_host_id = volume_destination_map[volume['id']]['target_host_id']
+            target_host = co.get_host(id=target_host_id)
 
             # move volume from staging to live
             target_host.execute(f"mv /mnt/{target_storage_pool['id']}/staging/{volume['path']} /mnt/{target_storage_pool['id']}/{volume['path']}",
@@ -253,16 +263,26 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                     sys.exit(1)
                 logging.info(f"Updating volume '{volume['name']}' successfully set to pool '{target_storage_pool['name']}'!")
 
+            # Rename old volumes to prevent unwanted start on old location
+            timestamp = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
+            source_host.execute(f"mv /mnt/{source_storage_pool['id']}/{volume['path']} /mnt/{source_storage_pool['id']}/{volume['path']}.rsync-migrated-{timestamp}",
+                                sudo=True, hide_stdout=False, pty=True)
+
         # Reset custom state back to Stopped
         if not cs.set_vm_state(instance_name=vm_instance['instancename'], status_name='Stopped'):
             logging.error(f"Cannot set status to Stopped for VM '{vm}'!", log_to_slack=True)
             sys.exit(1)
 
         # Start vm again
-        if auto_start_vm:
-            if not vm_instance.start():
-                logging.error(f"Starting failed for VM '{vm_instance['state']}'", log_to_slack=True)
-                sys.exit(1)
+        destination_host = target_cluster.find_migration_host(vm_instance)
+        if not destination_host:
+            logging.error(f"Starting failed for VM '{vm_instance['state']}': no destination host found", log_to_slack=True)
+            sys.exit(1)
+        # Start on a specific host to prevent unwanted migrations back to source
+        if not vm_instance.start(destination_host):
+            logging.error(f"Starting failed for VM '{vm_instance['state']}'", log_to_slack=True)
+            sys.exit(1)
+        logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
 
 
 def live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
