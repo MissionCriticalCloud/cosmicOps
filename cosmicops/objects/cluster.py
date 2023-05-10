@@ -35,6 +35,13 @@ class CosmicCluster(CosmicObject):
     def find_migration_host(self, vm):
         hosts = self.get_all_hosts()
 
+        vm_on_dedicated_hv = False
+        dedicated_affinity_id = None
+        for affinity_group in vm.get_affinity_groups():
+            if affinity_group['type'] == 'ExplicitDedication':
+                vm_on_dedicated_hv = True
+                dedicated_affinity_id = affinity_group['id']
+
         hosts.sort(key=itemgetter('memoryallocated'))
 
         migration_host = None
@@ -51,6 +58,9 @@ class CosmicCluster(CosmicObject):
                 continue
 
             if host['state'] != 'Up':
+                continue
+
+            if vm_on_dedicated_hv and host['affinitygroupid'] != dedicated_affinity_id:
                 continue
 
             available_memory = host['memorytotal'] - host['memoryallocated']
