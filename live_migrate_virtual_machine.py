@@ -425,6 +425,8 @@ def live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, i
 
     destination_host = target_cluster.find_migration_host(vm)
     if not destination_host:
+        logging.info(
+            f"No hypervisor found to migrate to for VM '{vm['name']}'. Dedication?")
         return False
 
     if dry_run:
