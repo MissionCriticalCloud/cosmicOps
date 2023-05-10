@@ -66,28 +66,41 @@ class TestCosmicCluster(TestCase):
                 'resourcestate': 'Enabled',
                 'state': 'Up',
                 'memorytotal': 1073741824,
-                'memoryallocated': 0
+                'memoryallocated': 0,
+                'dedicated': False
             }, {
                 'id': 'h2',
                 'name': 'disabled_host',
                 'resourcestate': 'Disabled',
                 'state': 'Up',
                 'memorytotal': 1073741824,
-                'memoryallocated': 0
+                'memoryallocated': 0,
+                'dedicated': False
             }, {
                 'id': 'h3',
                 'name': 'disconnected_host',
                 'resourcestate': 'Enabled',
                 'state': 'Disconnected',
                 'memorytotal': 1073741824,
-                'memoryallocated': 0
+                'memoryallocated': 0,
+                'dedicated': False
             }, {
                 'id': 'h4',
                 'name': 'migration_host',
                 'resourcestate': 'Enabled',
                 'state': 'Up',
                 'memorytotal': 1073741824,
-                'memoryallocated': 0
+                'memoryallocated': 0,
+                'dedicated': False
+            }, {
+                'id': 'h_d',
+                'name': 'migration_host_dedicated',
+                'resourcestate': 'Enabled',
+                'state': 'Up',
+                'memorytotal': 1073741824,
+                'memoryallocated': 0,
+                'affinitygroupid': 123,
+                'dedicated': True
             }
         ]
 
@@ -97,8 +110,22 @@ class TestCosmicCluster(TestCase):
             'hostname': 'same_host',
             'instancename': 'i-VM-1'
         })
+        vm.get_affinity_groups = Mock(return_value=[])
 
+        # Test generic VM
         self.assertEqual(self.cluster.find_migration_host(vm)['name'], 'migration_host')
+
+        # Test generic VM with non-ExplicitDedication type affinity group
+        vm.get_affinity_groups.return_value = [{'type': 'test'}]
+        self.assertEqual(self.cluster.find_migration_host(vm)['name'], 'migration_host')
+
+        # Test dedicated vm and matching hypervisor
+        vm.get_affinity_groups.return_value = [{'type': 'ExplicitDedication', 'id': 123}]
+        self.assertEqual(self.cluster.find_migration_host(vm)['name'], 'migration_host_dedicated')
+
+        # Test dedicated vm and non-matching hypervisor
+        vm.get_affinity_groups.return_value = [{'type': 'ExplicitDedication', 'id': 999}]
+        self.assertIsNone(self.cluster.find_migration_host(vm))
 
         # System VM without 'memory' attribute
         system_vm = CosmicSystemVM(Mock(), {
@@ -106,6 +133,7 @@ class TestCosmicCluster(TestCase):
             'hostname': 'same_host',
             'serviceofferingid': 'so1'
         })
+        system_vm.get_affinity_groups = Mock(return_value=[])
 
         self.ops.get_service_offering = Mock(return_value=CosmicServiceOffering(Mock(), {'memory': 512}))
         self.assertEqual(self.cluster.find_migration_host(system_vm)['name'], 'migration_host')
@@ -124,7 +152,8 @@ class TestCosmicCluster(TestCase):
                 'resourcestate': 'Enabled',
                 'state': 'Up',
                 'memorytotal': 1073741824,
-                'memoryallocated': 805306368
+                'memoryallocated': 805306368,
+                'dedicated': False
             }
         ]
 

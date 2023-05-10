@@ -60,6 +60,9 @@ class CosmicCluster(CosmicObject):
             if host['state'] != 'Up':
                 continue
 
+            if vm_on_dedicated_hv and not host['dedicated']:
+                continue
+
             if vm_on_dedicated_hv and host['affinitygroupid'] != dedicated_affinity_id:
                 continue
 
