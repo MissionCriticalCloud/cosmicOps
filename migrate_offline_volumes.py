@@ -26,6 +26,7 @@ from cosmicops import CosmicOps, logging, CosmicSQL
 @click.option('--profile', '-p', default='config', help='Name of the CloudMonkey profile containing the credentials')
 @click.option('--ignore-volumes', metavar='<list>', default=[], help='Comma separated list of volume IDs to skip')
 @click.option('--skip-disk-offerings', metavar='<list>', help='Comma separated list of disk offerings to skip')
+@click.option('--skip-domains', metavar='<list>', help='Comma separated list of domains to skip')
 @click.option('--only-project', is_flag=True, help='Only migrate volumes belonging to project VMs')
 @click.option('--zwps-to-cwps', is_flag=True, help='Migrate from ZWPS to CWPS')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
@@ -33,8 +34,8 @@ from cosmicops import CosmicOps, logging, CosmicSQL
 @click.option('--destination-pool-name', help='Name of the destination pool')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('source_cluster_name')
-def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, only_project, source_cluster_name,
-         destination_cluster_name, destination_pool_name):
+def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, skip_domains, only_project,
+         source_cluster_name, destination_cluster_name, destination_pool_name):
     """Migrate offline volumes from SOURCE_CLUSTER to DESTINATION_CLUSTER"""
 
     click_log.basic_config()
@@ -100,6 +101,10 @@ def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, on
         skip_disk_offerings = skip_disk_offerings.replace(' ', '').split(',')
         logging.info(f"Skipping disk offerings: {str(skip_disk_offerings)}")
 
+    if skip_domains:
+        skip_domains = skip_domains.replace(' ', '').split(',')
+        logging.info(f"Skipping domains: {str(skip_domains)}")
+
     for source_storage_pool in source_storage_pools:
         if destination_storage_pools is not None:
             destination_storage_pool = choice(destination_storage_pools)
@@ -110,6 +115,10 @@ def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, on
 
         for volume in volumes:
             if volume['id'] in ignore_volumes:
+                continue
+
+            if skip_domains and volume.get('domain') in skip_domains:
+                logging.warning(f"Volume '{volume['name']}' has domain '{volume['domain']}', skipping...")
                 continue
 
             if skip_disk_offerings and volume.get('diskofferingname') in skip_disk_offerings:
