@@ -66,6 +66,9 @@ class CosmicCluster(CosmicObject):
             if vm_on_dedicated_hv and host['affinitygroupid'] != dedicated_affinity_id:
                 continue
 
+            if not vm_on_dedicated_hv and 'affinitygroupid' in host:
+                continue
+
             available_memory = host['memorytotal'] - host['memoryallocated']
             available_memory /= 1048576
 
