@@ -275,6 +275,17 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
 
         # Start vm again if needed
         if auto_start_vm:
+            # Make sure status is stopped
+            if not dry_run:
+                retry_count = 0
+                while vm_instance['state'] != 'Stopped':
+                    logging.info(f"VM '{vm}' has state '{vm_instance['state']}': waiting for status 'Stopped'")
+                    vm_instance = co.get_vm(name=vm, is_project_vm=is_project_vm)
+                    time.sleep(15)
+                    retry_count += 1
+                    if retry_count > 6:
+                        break
+
             destination_host = target_cluster.find_migration_host(vm_instance)
             if not destination_host:
                 logging.error(f"Starting failed for VM '{vm_instance['state']}': no destination host found", log_to_slack=True)
