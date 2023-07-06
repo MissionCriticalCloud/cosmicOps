@@ -74,9 +74,8 @@ def main(profile, skip_name, employee_only, dry_run):
                     if item.name == 'VMS' and resources[item.name] > 0:
                         vms = co.get_all_vms(account=account['name'], domainid=account['domainid'])
                         for vm in vms:
-                            if vm['state'] == 'Stopped':
-                                resource_text += f"<tr><td></td><td>VM '{vm['name']}' is stopped</td></tr>\n"
-                                mail_needed = True
+                            resource_text += f"<tr><td></td><td>VM '{vm['name']}' is '{vm['state']}'</td></tr>\n"
+                            mail_needed = True
 
                     if item.name == 'PRI_STORAGE' and resources[item.name] > 0:
                         volumes = co.get_all_volumes(account=account['name'], domainid=account['domainid'])
