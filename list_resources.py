@@ -53,6 +53,8 @@ def main(profile, skip_name, employee_only, dry_run):
     # Disable accounts with no VM's
     print(f"=== Resources per account in {profile} ===\n")
     for account in accounts:
+        if account['domain'] != 'ddegoede':
+            continue
         if account['domain'] == 'ROOT' or (regex and regex.match(account['name'])):
             continue
         domain = co.get_domain(id=account['domainid'])
