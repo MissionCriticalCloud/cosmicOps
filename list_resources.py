@@ -53,8 +53,6 @@ def main(profile, skip_name, employee_only, dry_run):
     # Disable accounts with no VM's
     print(f"=== Resources per account in {profile} ===\n")
     for account in accounts:
-        if account['domain'] != 'ddegoede':
-            continue
         if account['domain'] == 'ROOT' or (regex and regex.match(account['name'])):
             continue
         domain = co.get_domain(id=account['domainid'])
@@ -91,7 +89,8 @@ def main(profile, skip_name, employee_only, dry_run):
                     resource_text=resource_text,
                     zone=profile.upper()
                 )
-                print(email_text)
+                # print(email_text)
+                print(f"Mailing '{account['domain']}'")
                 if dry_run:
                     continue
 
