@@ -171,6 +171,10 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
 
             storage_pools = sorted(target_cluster.get_storage_pools(), key=lambda h: h['disksizeused'])
             for storage_pool in storage_pools:
+                if storage_pool['scope'] == 'HOST':
+                    continue
+                if storage_pool['state'] == 'Maintenance':
+                    continue
                 free_space_bytes = int(storage_pool['disksizetotal']) - int(storage_pool['disksizeused'])
                 needed_bytes = volume['size'] * 1.5
                 if needed_bytes >= free_space_bytes:
