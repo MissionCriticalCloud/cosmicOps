@@ -36,6 +36,7 @@ DATACENTERS = ["SBP1", "EQXAMS2", "EVO"]
 @click.option('--add-affinity-group', metavar='<group name>', help='Add this affinity group after migration')
 @click.option('--destination-dc', '-d', metavar='<DC name>', help='Migrate to this datacenter')
 @click.option('--is-project-vm', is_flag=True, help='The specified VM is a project VM')
+@click.option('--avoid-storage-pool', default=None, help='Do not attempt migrate to this storage pool')
 @click.option('--skip-backingfile-merge', is_flag=True, help='Do not attempt merge backing file')
 @click.option('--skip-within-cluster', is_flag=True, default=False, show_default=True,
               help='Enable/disable migration within cluster')
@@ -44,7 +45,7 @@ DATACENTERS = ["SBP1", "EQXAMS2", "EVO"]
 @click.argument('vm')
 @click.argument('cluster')
 def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, add_affinity_group, destination_dc, is_project_vm,
-         skip_backingfile_merge, skip_within_cluster, dry_run, vm, cluster):
+         avoid_storage_pool, skip_backingfile_merge, skip_within_cluster, dry_run, vm, cluster):
     """Live migrate VM to CLUSTER"""
     """Unless --migrate-offline-with-rsync is passed, then we migrate offline"""
 
@@ -174,6 +175,8 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                 if storage_pool['scope'] == 'HOST':
                     continue
                 if storage_pool['state'] == 'Maintenance':
+                    continue
+                if storage_pool['name'] == avoid_storage_pool:
                     continue
                 free_space_bytes = int(storage_pool['disksizetotal']) - int(storage_pool['disksizeused'])
                 needed_bytes = volume['size'] * 1.5
