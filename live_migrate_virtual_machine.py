@@ -189,7 +189,7 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
 
             if volume['storage'] == target_storage_pool['name']:
                 logging.warning(
-                    f"Volume '{volume['name']}' ({volume['id']}) already on cluster '{target_cluster['name']}', skipping..")
+                    f"Volume '{volume['name']}' ({volume['id']}) already on cluster '{target_cluster['name']}/{target_storage_pool['name']}', skipping..")
                 volumes.pop(volume_id)
                 continue
 
@@ -242,6 +242,9 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                 logging.error(f"Cannot migrate, VM has state: '{vm_instance['state']}'")
                 sys.exit(1)
 
+            # skip if we did not rsync the volume
+            if volume['id'] not in volume_destination_map:
+                continue
             target_storage_pool = volume_destination_map[volume['id']]['target_storage_pool']
             source_storage_pool = volume_destination_map[volume['id']]['source_storage_pool']
             source_host_id = volume_destination_map[volume['id']]['source_host_id']
