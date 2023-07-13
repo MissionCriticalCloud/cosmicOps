@@ -299,11 +299,11 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
 
             destination_host = target_cluster.find_migration_host(vm_instance)
             if not destination_host:
-                logging.error(f"Starting failed for VM '{vm_instance['state']}': no destination host found", log_to_slack=True)
+                logging.error(f"Starting failed for VM '{vm_instance['name']}': no destination host found", log_to_slack=True)
                 sys.exit(1)
             # Start on a specific host to prevent unwanted migrations back to source
             if not vm_instance.start(destination_host):
-                logging.error(f"Starting failed for VM '{vm_instance['state']}'", log_to_slack=True)
+                logging.error(f"Starting failed for VM '{vm_instance['name']}'", log_to_slack=True)
                 sys.exit(1)
         logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
 
