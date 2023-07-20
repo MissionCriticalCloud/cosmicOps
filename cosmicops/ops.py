@@ -283,7 +283,7 @@ class CosmicOps(object):
             print()
         return status
 
-    def wait_for_volume_migration_job(self, volume_id, job_id, blkjobinfo=True, source_host=None, vm=None):
+    def wait_for_volume_migration_job(self, volume_id, job_id, blkjobinfo=True, source_host=None, vm_instance=None):
         prev_percentage = 0.
 
         # Hack to wait for job to start
@@ -294,8 +294,8 @@ class CosmicOps(object):
                 logging.error(f"Error: Could not find volume '{volume_id}'")
                 return False
 
-            if blkjobinfo and source_host and vm:
-                blkjobinfo = source_host.get_blkjobinfo(vm, volume['path'])
+            if blkjobinfo and source_host and vm_instance:
+                blkjobinfo = source_host.get_blkjobinfo(vm_instance, volume['path'])
                 cur_percentage = float(blkjobinfo.current / (blkjobinfo.end or 1) * 100)
                 if cur_percentage > prev_percentage:
                     prev_percentage = cur_percentage
@@ -308,7 +308,7 @@ class CosmicOps(object):
             logging.debug(f"Volume '{volume_id}' is in {volume['state']} state and not Ready. Sleeping.")
         # Return result of job
         status = self.wait_for_job(job_id=job_id, retries=1)
-        if blkjobinfo and source_host and vm and status:
+        if blkjobinfo and source_host and vm_instance and status:
             print("100%       ")
         else:
             print()
