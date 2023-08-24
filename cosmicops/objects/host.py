@@ -487,6 +487,9 @@ class CosmicHost(CosmicObject):
 
             dev = disk.find('target').get('dev')
             full_path = disk.find('source').get('file')
+            if full_path is None:
+                logging.info(f"Skipping disk without a file (NVMe?)")
+                continue
             _, _, pool, path = full_path.split('/')
 
             size, _, _ = domain.blockInfo(dev)
