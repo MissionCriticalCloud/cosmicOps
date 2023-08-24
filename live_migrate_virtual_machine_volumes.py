@@ -153,7 +153,7 @@ def live_migrate_volumes(target_storage_pool_name, co, cs, dry_run, is_router, i
         if not source_storage_pool:
             continue
 
-        if source_storage_pool['scope'] == 'Host' or (source_storage_pool['scope'] == 'ZONE' and not zwps_to_cwps):
+        if source_storage_pool['scope'] == 'HOST' or (source_storage_pool['scope'] == 'ZONE' and not zwps_to_cwps):
             logging.warning(f"Skipping volume '{volume['name']}' as it's scope is '{source_storage_pool['scope']}'",
                             log_to_slack=log_to_slack)
             continue
