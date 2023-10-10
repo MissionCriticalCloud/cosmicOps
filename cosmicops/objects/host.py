@@ -421,6 +421,8 @@ class CosmicHost(CosmicObject):
         else:
             logging.info(f"Waiting for '{self['name']}' to come back online", self.log_to_slack)
             with click_spinner.spinner():
+                # adding retry tests, so we need to be able to connect to SSH three times in one minute
+                # before we consider the host up
                 tests = 0
                 while tests < 3:
                     while True:
