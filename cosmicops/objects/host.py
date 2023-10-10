@@ -423,8 +423,9 @@ class CosmicHost(CosmicObject):
             with click_spinner.spinner():
                 # adding retry tests, so we need to be able to connect to SSH three times in one minute
                 # before we consider the host up
-                tests = 0
-                while tests < 3:
+                tests = 1
+                logging.info(f"Waiting for SSH connection, attempt {tests} of 3", False)
+                while tests <= 3:
                     while True:
                         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                             s.settimeout(5)
