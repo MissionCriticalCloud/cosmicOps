@@ -421,13 +421,17 @@ class CosmicHost(CosmicObject):
         else:
             logging.info(f"Waiting for '{self['name']}' to come back online", self.log_to_slack)
             with click_spinner.spinner():
-                while True:
-                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                        s.settimeout(5)
-                        result = s.connect_ex((self['name'], 22))
+                tests = 0
+                while tests < 3:
+                    while True:
+                        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                            s.settimeout(5)
+                            result = s.connect_ex((self['name'], 22))
 
-                    if result == 0:
-                        break
+                        if result == 0:
+                            break
+                    time.sleep(20)
+                    tests += 1
 
         if self.dry_run:
             logging.info(f"Would wait for libvirt on '{self['name']}'")
