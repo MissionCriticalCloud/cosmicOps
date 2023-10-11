@@ -17,7 +17,7 @@ import click_log
 from cosmicops import CosmicOps, RebootAction, logging
 
 
-def empty_host(profile, shutdown, skip_disable, dry_run, host):
+def empty_host(profile, shutdown, skip_disable, dry_run, host, target_host):
     click_log.basic_config()
 
     log_to_slack = True
@@ -35,7 +35,10 @@ def empty_host(profile, shutdown, skip_disable, dry_run, host):
         if not host.disable():
             raise RuntimeError(f"Failed to disable host '{host['name']}'")
 
-    (total, success, failed) = host.empty()
+    if target_host:
+        target_host = co.get_host(name=target_host)
+
+    (total, success, failed) = host.empty(target=target_host)
     result_message = f"Result: {success} successful, {failed} failed out of {total} total VMs"
 
     if not failed and shutdown:

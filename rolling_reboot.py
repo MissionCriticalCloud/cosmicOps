@@ -48,8 +48,9 @@ from cosmicops import CosmicOps, logging, RebootAction
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('cluster')
+@click.argument('target_host')
 def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_empty_script, post_empty_script,
-         post_reboot_script, dry_run, cluster):
+         post_reboot_script, dry_run, cluster, target_host):
     """Perform rolling reboot of hosts in CLUSTER"""
 
     click_log.basic_config()
@@ -90,7 +91,8 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
 
     hosts.sort(key=itemgetter('name'))
 
-    target_host = None
+    if target_host:
+        target_host = co.get_host(name=target_host)
     for host in hosts:
         logging.slack_value = host['name']
         logging.zone_name = host['zonename']
