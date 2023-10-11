@@ -556,8 +556,8 @@ class TestCosmicHost(TestCase):
 
     def test_wait_until_online(self):
         self.host.execute = Mock()
-        self.host.execute.side_effect = [Mock(return_code=1), Mock(return_code=0)]
-        self.socket_context.connect_ex.side_effect = [1, 0]
+        self.host.execute.side_effect = [Mock(return_code=1), Mock(return_code=0), Mock(return_code=1), Mock(return_code=0), Mock(return_code=1), Mock(return_code=0)]
+        self.socket_context.connect_ex.side_effect = [1, 0, 1, 0, 1, 0]
 
         self.host.wait_until_online()
         self.socket_context.connect_ex.assert_called_with(('host1', 22))
@@ -568,7 +568,7 @@ class TestCosmicHost(TestCase):
         self.host.execute.side_effect = [Mock(return_code=1), ConnectionResetError,
                                          UnexpectedExit('mock unexpected exit'),
                                          CommandTimedOut('mock command timeout', 10), Mock(return_code=0)]
-        self.socket_context.connect_ex.side_effect = [1, 0]
+        self.socket_context.connect_ex.side_effect = [1, 0, 1, 0, 1, 0]
 
         self.host.wait_until_online()
         self.socket_context.connect_ex.assert_called_with(('host1', 22))
@@ -626,7 +626,7 @@ class TestCosmicHost(TestCase):
         vm = CosmicVM(Mock(), {
             'id': 'vm1',
             'name': 'vm',
-            'instancename': 'vm'
+            'instancename': 'i-1-vm'
         })
 
         xml_desc = """
@@ -672,22 +672,23 @@ class TestCosmicHost(TestCase):
             domain.XMLDesc.return_value = xml_desc
             domain.blockInfo.return_value = (10737418240, 567148544, 567148544)
 
-            self.assertDictEqual(disk_data, self.host.get_disks(vm))
+            self.assertDictEqual(disk_data, self.host.get_disks(vm['instancename']))
 
             mock_libvirt.assert_called_with('qemu+tcp://host1/system')
-            mock_libvirt.return_value.lookupByName.assert_called_with(vm['name'])
+            mock_libvirt.return_value.lookupByName.assert_called_with(vm['instancename'])
             mock_libvirt.return_value.close.assert_called()
 
     def test_set_iops_limit(self):
         self.host.execute = Mock(return_value=Mock(return_code=0))
         vm = CosmicVM(Mock(), {
             'id': 'v1',
-            'name': 'vm1'
+            'name': 'vm1',
+            'instancename': 'i-1-vm'
         })
 
-        self.assertTrue(self.host.set_iops_limit(vm, 100))
+        self.assertTrue(self.host.set_iops_limit(vm['instancename'], 100))
         command = self.host.execute.call_args[0][0]
-        self.assertIn("--details 'vm1'", command)
+        self.assertIn("--details 'i-1-vm'", command)
         self.assertIn('--total-iops-sec 100', command)
 
         self.host.execute.return_value.return_code = 1
@@ -701,7 +702,7 @@ class TestCosmicHost(TestCase):
             'instancename': 'i-1-VM'
         })
 
-        self.assertTrue(self.host.merge_backing_files(vm))
+        self.assertTrue(self.host.merge_backing_files(vm['instancename']))
         command = self.host.execute.call_args[0][0]
         self.assertIn("--details 'i-1-VM'", command)
         self.assertIn("blockpull 'i-1-VM'", command)

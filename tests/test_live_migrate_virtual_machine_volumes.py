@@ -45,7 +45,8 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
             'zonename': 'zone',
             'hostid': 'sh1',
             'maintenancepolicy': 'LiveMigrate',
-            'instancename': 'i-VM-1'
+            'instancename': 'i-VM-1',
+            'state': 'Running'
         })
         self.host = CosmicHost(Mock(), {
             'id': 'sh1',
@@ -106,13 +107,13 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
         self.co_instance.get_host.assert_called_with(id=self.vm['hostid'])
         self.co_instance.get_cluster.assert_called_with(id=self.host['clusterid'])
         self.cs_instance.update_zwps_to_cwps.assert_not_called()
-        self.host.get_disks.assert_called_with(self.vm)
+        self.host.get_disks.assert_called_with(self.vm['instancename'])
         self.cs_instance.get_volume_size.assert_called_with('path1')
         self.cs_instance.update_volume_size.assert_not_called()
-        self.host.set_iops_limit.assert_has_calls([call(self.vm, 1000), call(self.vm, 0)])
-        self.host.merge_backing_files.assert_called_with(self.vm)
+        self.host.set_iops_limit.assert_has_calls([call(self.vm['instancename'], 1000), call(self.vm['instancename'], 0)])
+        self.host.merge_backing_files.assert_called_with(self.vm['instancename'])
         self.vm.get_volumes.assert_called()
-        self.volume.migrate.assert_called_with(self.target_storage_pool, live_migrate=True, source_host=self.host, vm=self.vm)
+        self.volume.migrate.assert_called_with(self.target_storage_pool, live_migrate=True, source_host=self.host, vm_instance=self.vm['instancename'])
         self.volume.refresh.assert_called()
 
     def test_main_dry_run(self):
@@ -186,7 +187,7 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
         self.volume.migrate.assert_not_called()
 
         self._setup_mocks()
-        self.source_storage_pool['scope'] = 'Host'
+        self.source_storage_pool['scope'] = 'HOST'
         self.assertEqual(0, self.runner.invoke(live_migrate_virtual_machine_volumes.main,
                                                ['--exec', '-p', 'profile', 'vm', 'target_pool']).exit_code)
         self.assertEqual(2, self.co_instance.get_storage_pool.call_count)

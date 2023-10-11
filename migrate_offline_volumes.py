@@ -53,10 +53,6 @@ def main(profile, dry_run, ignore_volumes, zwps_to_cwps, skip_disk_offerings, sk
         logging.error('Destination cluster cannot be the source cluster!')
         sys.exit(1)
 
-    if source_pool_name == destination_pool_name:
-        logging.error('Destination cluster cannot be the source cluster!')
-        sys.exit(1)
-
     if dry_run:
         logging.warning('Running in dry-run mode, will only show changes')
 

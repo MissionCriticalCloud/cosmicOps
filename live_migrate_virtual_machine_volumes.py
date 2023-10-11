@@ -32,9 +32,9 @@ from cosmicops import CosmicOps, logging, CosmicSQL
 @click.option('--is-project-vm', is_flag=True, help='The specified VM is a project VM')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
-@click.argument('vm')
+@click.argument('vm-name')
 @click.argument('storage_pool')
-def main(profile, max_iops, zwps_to_cwps, is_router, is_project_vm, dry_run, vm, storage_pool):
+def main(profile, max_iops, zwps_to_cwps, is_router, is_project_vm, dry_run, vm_name, storage_pool):
     """Live migrate VM volumes to STORAGE_POOL"""
 
     click_log.basic_config()
@@ -51,7 +51,7 @@ def main(profile, max_iops, zwps_to_cwps, is_router, is_project_vm, dry_run, vm,
 
     cs = CosmicSQL(server=profile, dry_run=dry_run)
 
-    if not live_migrate_volumes(storage_pool, co, cs, dry_run, is_router, is_project_vm, log_to_slack, max_iops, vm,
+    if not live_migrate_volumes(storage_pool, co, cs, dry_run, is_router, is_project_vm, log_to_slack, max_iops, vm_name,
                                 zwps_to_cwps):
         sys.exit(1)
 
