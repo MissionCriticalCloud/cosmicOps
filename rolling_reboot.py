@@ -46,11 +46,11 @@ from cosmicops import CosmicOps, logging, RebootAction
               help='Script to run on host after live migrations have completed')
 @click.option('--post-reboot-script', metavar='<script>', help='Script to run after host has rebooted')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
+@click.option('--target-host', help='Target hypervisor the migrate VMS to', required=False)
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('cluster')
-@click.argument('target_host')
 def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_empty_script, post_empty_script,
-         post_reboot_script, dry_run, cluster, target_host):
+         post_reboot_script, dry_run, target_host, cluster):
     """Perform rolling reboot of hosts in CLUSTER"""
 
     click_log.basic_config()

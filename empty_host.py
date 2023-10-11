@@ -28,10 +28,10 @@ from cosmicops.empty_host import empty_host
 @click.option('--shutdown', is_flag=True, help='Shutdown host when all VMs have been migrated')
 @click.option('--skip-disable', is_flag=True, help='Do not disable host before emptying it')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
+@click.option('--target-host', help='Target hypervisor the migrate VMS to', required=False)
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('host')
-@click.option('--target-host', help='Target hypervisor the migrate VMS to', required=False)
-def main(profile, shutdown, skip_disable, dry_run, host, target_host):
+def main(profile, shutdown, skip_disable, dry_run, target_host, host):
     """Empty HOST by migrating VMs to another host in the same cluster."""
 
     click_log.basic_config()
