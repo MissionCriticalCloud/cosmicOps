@@ -421,13 +421,20 @@ class CosmicHost(CosmicObject):
         else:
             logging.info(f"Waiting for '{self['name']}' to come back online", self.log_to_slack)
             with click_spinner.spinner():
-                while True:
-                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                        s.settimeout(5)
-                        result = s.connect_ex((self['name'], 22))
+                # adding retry tests, so we need to be able to connect to SSH three times in one minute
+                # before we consider the host up
+                tests = 1
+                logging.info(f"Waiting for SSH connection, attempt {tests} of 3", False)
+                while tests <= 3:
+                    while True:
+                        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                            s.settimeout(5)
+                            result = s.connect_ex((self['name'], 22))
 
-                    if result == 0:
-                        break
+                        if result == 0:
+                            break
+                    time.sleep(20)
+                    tests += 1
 
         if self.dry_run:
             logging.info(f"Would wait for libvirt on '{self['name']}'")
@@ -467,10 +474,10 @@ class CosmicHost(CosmicObject):
 
                 time.sleep(5)
 
-    def get_disks(self, vm):
+    def get_disks(self, vm_instancename):
         lv = libvirt.openReadOnly(f"qemu+tcp://{self['name']}/system")
 
-        domain = lv.lookupByName(vm['instancename'])
+        domain = lv.lookupByName(vm_instancename)
 
         tree = ElementTree.fromstring(domain.XMLDesc())
         block_devs = tree.findall('devices/disk')
@@ -483,6 +490,9 @@ class CosmicHost(CosmicObject):
 
             dev = disk.find('target').get('dev')
             full_path = disk.find('source').get('file')
+            if full_path is None:
+                logging.info(f"Skipping disk without a file (NVMe?)")
+                continue
             _, _, pool, path = full_path.split('/')
 
             size, _, _ = domain.blockInfo(dev)
@@ -498,24 +508,24 @@ class CosmicHost(CosmicObject):
 
         return disk_data
 
-    def get_domjobinfo(self, vm):
+    def get_domjobinfo(self, vm_instancename):
         try:
             lv = libvirt.openReadOnly(f"qemu+tcp://{self['name']}/system")
             all_domains = lv.listAllDomains()
-            if any([x for x in all_domains if x.name() == vm]):
-                domain = lv.lookupByName(vm)
+            if any([x for x in all_domains if x.name() == vm_instancename]):
+                domain = lv.lookupByName(vm_instancename)
                 domjobinfo = domain.jobInfo()
                 return DomJobInfo.from_list(domjobinfo)
         except libvirt.libvirtError as _:
             pass  # Ignore exception
         return DomJobInfo()
 
-    def get_domjobstats(self, vm, correction=True):
+    def get_domjobstats(self, vm_instancename, correction=True):
         try:
             lv = libvirt.openReadOnly(f"qemu+tcp://{self['name']}/system")
             all_domains = lv.listAllDomains()
-            if any([x for x in all_domains if x.name() == vm]):
-                domain = lv.lookupByName(vm)
+            if any([x for x in all_domains if x.name() == vm_instancename]):
+                domain = lv.lookupByName(vm_instancename)
                 domjobstats = domain.jobStats()
                 memory_total = domjobstats.get('memory_total', 0)
                 if correction:
@@ -541,14 +551,14 @@ class CosmicHost(CosmicObject):
             pass  # Ignore exception
         return DomJobInfo()
 
-    def get_blkjobinfo(self, vm, volume):
+    def get_blkjobinfo(self, vm_instancename, volume):
         try:
-            disks = self.get_disks(vm)
+            disks = self.get_disks(vm_instancename)
             disk = dict(filter(lambda x: x[0] == volume, disks.items()))
             lv = libvirt.openReadOnly(f"qemu+tcp://{self['name']}/system")
             all_domains = lv.listAllDomains()
-            if any([x for x in all_domains if x.name() == vm['instancename']]):
-                domain = lv.lookupByName(vm['instancename'])
+            if any([x for x in all_domains if x.name() == vm_instancename]):
+                domain = lv.lookupByName(vm_instancename)
                 blkjobinfo = domain.blockJobInfo(disk[volume]['dev'], 0)
                 return BlkJobInfo(
                     jobType=blkjobinfo.get('type', 0),
@@ -560,27 +570,27 @@ class CosmicHost(CosmicObject):
             pass  # Ignore exception
         return BlkJobInfo()
 
-    def set_iops_limit(self, vm, max_iops):
+    def set_iops_limit(self, vm_instancename, max_iops):
         command = f"""
-        for i in $(/usr/bin/virsh domblklist --details '{vm['name']}' | grep disk | grep file | /usr/bin/awk '{{print $3}}'); do
-            /usr/bin/virsh blkdeviotune '{vm['name']}' $i --total-iops-sec {max_iops} --live
+        for i in $(/usr/bin/virsh domblklist --details '{vm_instancename}' | grep disk | grep file | /usr/bin/awk '{{print $3}}'); do
+            /usr/bin/virsh blkdeviotune '{vm_instancename}' $i --total-iops-sec {max_iops} --live
         done
         """
 
         if not self.execute(command, sudo=True).return_code == 0:
-            logging.error(f"Failed to set IOPS limit for '{vm['name']}'")
+            logging.error(f"Failed to set IOPS limit for '{vm_instancename}'")
             return False
         else:
             return True
 
-    def merge_backing_files(self, vm):
+    def merge_backing_files(self, vm_instancename):
         command = f"""
-        for i in $(/usr/bin/virsh domblklist --details '{vm['instancename']}' | grep disk | grep file | /usr/bin/awk '{{print $3}}'); do
-            /usr/bin/virsh blockpull '{vm['instancename']}' $i --wait --verbose
+        for i in $(/usr/bin/virsh domblklist --details '{vm_instancename}' | grep disk | grep file | /usr/bin/awk '{{print $3}}'); do
+            /usr/bin/virsh blockpull '{vm_instancename}' $i --wait --verbose
         done
         """
         if not self.execute(command, sudo=True).return_code == 0:
-            logging.error(f"Failed to merge backing volumes for '{vm['name']}'")
+            logging.error(f"Failed to merge backing volumes for '{vm_instancename}'")
             return False
         else:
             return True
