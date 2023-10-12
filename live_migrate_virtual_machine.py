@@ -42,10 +42,10 @@ DATACENTERS = ["SBP1", "EQXAMS2", "EVO"]
               help='Enable/disable migration within cluster')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
-@click.argument('vm')
+@click.argument('vm-name')
 @click.argument('cluster')
 def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, add_affinity_group, destination_dc, is_project_vm,
-         avoid_storage_pool, skip_backingfile_merge, skip_within_cluster, dry_run, vm, cluster):
+         avoid_storage_pool, skip_backingfile_merge, skip_within_cluster, dry_run, vm_name, cluster):
     """Live migrate VM to CLUSTER"""
     """Unless --migrate-offline-with-rsync is passed, then we migrate offline"""
 
@@ -66,27 +66,27 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
     cs = CosmicSQL(server=profile, dry_run=dry_run)
 
     # Work around migration issue: first in the same pod to limit possible hiccup
-    vm_instance = co.get_vm(name=vm, is_project_vm=is_project_vm)
+    vm = co.get_vm(name=vm_name, is_project_vm=is_project_vm)
 
-    if not vm_instance:
-        logging.error(f"Cannot migrate, VM '{vm}' not found!")
+    if not vm:
+        logging.error(f"Cannot migrate, VM '{vm_name}' not found!")
         sys.exit(1)
 
     # Live migrate requires running VM. Unless migrate_offline_with_rsync==True, then we stop the VM as this is offline
     if not migrate_offline_with_rsync:
-        if not vm_instance['state'] == 'Running':
-            logging.error(f"Cannot migrate, VM has has state: '{vm_instance['state']}'")
+        if not vm['state'] == 'Running':
+            logging.error(f"Cannot migrate, VM has has state: '{vm['state']}'")
             sys.exit(1)
 
-        source_host = co.get_host(id=vm_instance['hostid'])
+        source_host = co.get_host(id=vm['hostid'])
         source_cluster = co.get_cluster(id=source_host['clusterid'])
         if not skip_within_cluster:
-            if not vm_instance.migrate_within_cluster(vm=vm_instance, source_cluster=source_cluster,
-                                                      source_host=source_host, instancename=vm_instance):
+            if not vm.migrate_within_cluster(vm=vm, source_cluster=source_cluster,
+                                                      source_host=source_host):
                 logging.info(f"VM Migration failed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
                 sys.exit(1)
 
-        if not live_migrate(co, cs, cluster, vm, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
+        if not live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
                             log_to_slack, dry_run):
             logging.info(f"VM Migration failed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
             sys.exit(1)
@@ -99,20 +99,20 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                           f" Example: --rsync-target-host {example_target}")
             sys.exit(1)
 
-        if vm_instance['state'] == 'Running':
+        if vm['state'] == 'Running':
             need_to_stop = True
             auto_start_vm = True
-        elif vm_instance['state'] == 'Stopped':
+        elif vm['state'] == 'Stopped':
             need_to_stop = False
             auto_start_vm = False
         else:
-            logging.error(f"Cannot migrate, VM '{vm}' should be in Running or Stopped state!", log_to_slack=True)
+            logging.error(f"Cannot migrate, VM '{vm_name}' should be in Running or Stopped state!", log_to_slack=True)
             sys.exit(1)
 
-        logging.info(f"VM Migration using rsync method starting for vm {vm_instance['name']}")
+        logging.info(f"VM Migration using rsync method starting for vm {vm['name']}")
 
-        if not vm_instance['state'] == 'Running' and not skip_backingfile_merge:
-            logging.error(f"Cannot migrate, VM has has state: '{vm_instance['state']}'. In order to merge backing"
+        if not vm['state'] == 'Running' and not skip_backingfile_merge:
+            logging.error(f"Cannot migrate, VM has has state: '{vm['state']}'. In order to merge backing"
                           f" files, we need to have a Running VM. We will stop the VM later! You can also skip"
                           f" backing file merging by providing flag --skip-backingfile-merge")
             sys.exit(1)
@@ -122,23 +122,23 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
             logging.info(
                 f"Skipping backing file merging due to --skip-backingfile-merge")
         else:
-            running_host = co.get_host(name=vm_instance['hostname'])
+            running_host = co.get_host(name=vm['hostname'])
 
             if not dry_run:
-                if not running_host.merge_backing_files(vm_instance):
+                if not running_host.merge_backing_files(vm):
                     return False
             else:
                 logging.info(
                     f"Would have merged all backing files if any exist on {running_host['name']}")
 
         if need_to_stop:
-            if not vm_instance.stop():
-                logging.error(f"Stopping failed for VM '{vm_instance['state']}'", log_to_slack=True)
+            if not vm.stop():
+                logging.error(f"Stopping failed for VM '{vm['state']}'", log_to_slack=True)
                 sys.exit(1)
 
         # Manually set migrating state to prevent unwanted VM starts
-        if not cs.set_vm_state(instance_name=vm_instance['instancename'], status_name='Migrating'):
-            logging.error(f"Cannot set status to Migrating for VM '{vm}'!", log_to_slack=True)
+        if not cs.set_vm_state(instance_name=vm['instancename'], status_name='Migrating'):
+            logging.error(f"Cannot set status to Migrating for VM '{vm_name}'!", log_to_slack=True)
             sys.exit(1)
 
         # Here our VM is stopped
@@ -162,7 +162,7 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
 
         logging.debug(f"Found target hosts: {target_host}")
 
-        volumes = vm_instance.get_volumes()
+        volumes = vm.get_volumes()
         volume_id = 0
         volume_counter = 0
         volume_destination_map = {}
@@ -240,9 +240,9 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
         # Finally, move volumes in place and update the db
         for volume in volumes:
             # Check if VM is still stopped
-            vm_instance = co.get_vm(name=vm, is_project_vm=is_project_vm)
-            if not dry_run and vm_instance['state'] != 'Migrating':
-                logging.error(f"Cannot migrate, VM has state: '{vm_instance['state']}'")
+            vm = co.get_vm(name=vm_name, is_project_vm=is_project_vm)
+            if not dry_run and vm['state'] != 'Migrating':
+                logging.error(f"Cannot migrate, VM has state: '{vm['state']}'")
                 sys.exit(1)
 
             # skip if we did not rsync the volume
@@ -279,31 +279,31 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                                 sudo=True, hide_stdout=False, pty=True)
 
         # Reset custom state back to Stopped
-        if not cs.set_vm_state(instance_name=vm_instance['instancename'], status_name='Stopped'):
-            logging.error(f"Cannot set status to Stopped for VM '{vm}'!", log_to_slack=True)
+        if not cs.set_vm_state(instance_name=vm['instancename'], status_name='Stopped'):
+            logging.error(f"Cannot set status to Stopped for VM '{vm_name}'!", log_to_slack=True)
             sys.exit(1)
 
         # Start vm again if needed
         if auto_start_vm:
-            vm_instance = co.get_vm(name=vm, is_project_vm=is_project_vm)
+            vm = co.get_vm(name=vm_name, is_project_vm=is_project_vm)
             # Make sure status is stopped
             if not dry_run:
                 retry_count = 0
-                while vm_instance['state'] != 'Stopped':
-                    logging.info(f"VM '{vm}' has state '{vm_instance['state']}': waiting for status 'Stopped'")
-                    vm_instance.refresh()
+                while vm['state'] != 'Stopped':
+                    logging.info(f"VM '{vm_name}' has state '{vm['state']}': waiting for status 'Stopped'")
+                    vm.refresh()
                     time.sleep(15)
                     retry_count += 1
                     if retry_count > 6:
                         break
 
-            destination_host = target_cluster.find_migration_host(vm_instance)
+            destination_host = target_cluster.find_migration_host(vm)
             if not destination_host:
-                logging.error(f"Starting failed for VM '{vm_instance['name']}': no destination host found", log_to_slack=True)
+                logging.error(f"Starting failed for VM '{vm['name']}': no destination host found", log_to_slack=True)
                 sys.exit(1)
             # Start on a specific host to prevent unwanted migrations back to source
-            if not vm_instance.start(destination_host):
-                logging.error(f"Starting failed for VM '{vm_instance['name']}'", log_to_slack=True)
+            if not vm.start(destination_host):
+                logging.error(f"Starting failed for VM '{vm['name']}'", log_to_slack=True)
                 sys.exit(1)
         logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
 

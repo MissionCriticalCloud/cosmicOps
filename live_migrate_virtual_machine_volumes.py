@@ -174,7 +174,7 @@ def live_migrate_volumes(target_storage_pool_name, co, cs, dry_run, is_router, i
         # get the source host to read the blkjobinfo
         source_host = co.get_host(id=vm['hostid'])
 
-        if not volume.migrate(target_storage_pool, live_migrate=True, source_host=source_host, vm_instance=vm_instance):
+        if not volume.migrate(target_storage_pool, live_migrate=True, source_host=source_host):
             continue
 
         with click_spinner.spinner():

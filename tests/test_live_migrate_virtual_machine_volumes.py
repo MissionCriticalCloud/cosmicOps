@@ -113,7 +113,7 @@ class TestLiveMigrateVirtualMachineVolumes(TestCase):
         self.host.set_iops_limit.assert_has_calls([call(self.vm['instancename'], 1000), call(self.vm['instancename'], 0)])
         self.host.merge_backing_files.assert_called_with(self.vm['instancename'])
         self.vm.get_volumes.assert_called()
-        self.volume.migrate.assert_called_with(self.target_storage_pool, live_migrate=True, source_host=self.host, vm_instance=self.vm['instancename'])
+        self.volume.migrate.assert_called_with(self.target_storage_pool, live_migrate=True, source_host=self.host)
         self.volume.refresh.assert_called()
 
     def test_main_dry_run(self):
