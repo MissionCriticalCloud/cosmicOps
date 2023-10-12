@@ -355,7 +355,7 @@ class TestLiveMigrateVirtualMachine(TestCase):
 
         self.co_instance.get_storage_pool.assert_has_calls([call(name='zwps_pool'), call(name='root_pool')])
         self.root_volume.migrate.assert_called_with(self.zwps_storage_pool, live_migrate=True,
-                                                    source_host=self.source_host, vm_instance=self.vm['instancename'])
+                                                    source_host=self.source_host, vm_instancename=self.vm['instancename'])
 
     def test_root_migration_to_zwps_dry_run(self):
         self.vm.get_volumes.return_value = [self.zwps_volume, self.root_volume]
@@ -388,4 +388,4 @@ class TestLiveMigrateVirtualMachine(TestCase):
 
         self.co_instance.get_storage_pool.assert_called_with(name='zwps_pool')
         self.root_volume.migrate.assert_called_with(self.zwps_storage_pool, live_migrate=True,
-                                                    source_host=self.source_host, vm_instance=self.vm['instancename'])
+                                                    source_host=self.source_host, vm_instancename=self.vm['instancename'])

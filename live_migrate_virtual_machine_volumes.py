@@ -74,10 +74,10 @@ def live_migrate_volumes(target_storage_pool_name, co, cs, dry_run, is_router, i
 
     if is_router:
         logging.instance_name = vm['name']
-        vm_instance = vm['name']
+        vm_instancename = vm['name']
     else:
         logging.instance_name = vm['instancename']
-        vm_instance = vm['instancename']
+        vm_instancename = vm['instancename']
     logging.slack_value = vm['domain']
     logging.vm_name = vm['name']
     logging.zone_name = vm['zonename']
@@ -114,7 +114,7 @@ def live_migrate_volumes(target_storage_pool_name, co, cs, dry_run, is_router, i
             logging.info('Would have changed the diskoffering from ZWPS to CWPS of all ZWPS volumes')
 
     if not dry_run:
-        disk_info = host.get_disks(vm_instance)
+        disk_info = host.get_disks(vm_instancename)
         for path, disk_info in disk_info.items():
             _, path, _, _, size = cs.get_volume_size(path)
 
@@ -125,7 +125,7 @@ def live_migrate_volumes(target_storage_pool_name, co, cs, dry_run, is_router, i
 
     if set_max_iops:
         if not dry_run:
-            if not host.set_iops_limit(vm_instance, max_iops):
+            if not host.set_iops_limit(vm_instancename, max_iops):
                 return False
         else:
             logging.info(
@@ -135,9 +135,9 @@ def live_migrate_volumes(target_storage_pool_name, co, cs, dry_run, is_router, i
             f'Not setting an IOPS limit as it is disabled')
 
     if not dry_run:
-        if not host.merge_backing_files(vm_instance):
+        if not host.merge_backing_files(vm_instancename):
             if set_max_iops:
-                host.set_iops_limit(vm_instance, 0)
+                host.set_iops_limit(vm_instancename, 0)
             return False
     else:
         logging.info(
@@ -198,7 +198,7 @@ def live_migrate_volumes(target_storage_pool_name, co, cs, dry_run, is_router, i
 
     if set_max_iops:
         if not dry_run:
-            host.set_iops_limit(vm_instance, 0)
+            host.set_iops_limit(vm_instancename, 0)
         else:
             logging.info(
                 f"Would have disable an IOPS limit")

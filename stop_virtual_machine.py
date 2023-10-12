@@ -26,8 +26,8 @@ from cosmicops import CosmicOps, logging
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click.option('--is-project-vm', is_flag=True, help='The specified VM is a project VM')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
-@click.argument('vm')
-def main(profile, dry_run, vm, is_project_vm):
+@click.argument('vm-name')
+def main(profile, dry_run, vm_name, is_project_vm):
     """Stop VM"""
 
     click_log.basic_config()
@@ -42,20 +42,20 @@ def main(profile, dry_run, vm, is_project_vm):
 
     co = CosmicOps(profile=profile, dry_run=dry_run, log_to_slack=log_to_slack)
 
-    vm_instance = co.get_vm(name=vm, is_project_vm=is_project_vm)
+    vm = co.get_vm(name=vm_name, is_project_vm=is_project_vm)
 
-    if not vm_instance:
+    if not vm:
         sys.exit(1)
 
-    if vm_instance['state'] == 'Stopped':
+    if vm['state'] == 'Stopped':
         logging.warning(f"Cannot stop, VM already stopped")
         sys.exit(0)
 
-    if not vm_instance['state'] == 'Running':
-        logging.warning(f"Cannot stop, VM has has state: '{vm_instance['state']}'")
+    if not vm['state'] == 'Running':
+        logging.warning(f"Cannot stop, VM has has state: '{vm['state']}'")
         sys.exit(1)
 
-    if not vm_instance.stop():
+    if not vm.stop():
         sys.exit(1)
 
 

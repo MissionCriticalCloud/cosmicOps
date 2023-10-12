@@ -553,7 +553,7 @@ def temp_migrate_volume(co, dry_run, log_to_slack, volume, vm, target_pool_name)
             f"Migrating volume '{volume['name']}' of VM '{vm['name']}' to pool '{target_pool_name}'",
             log_to_slack=log_to_slack)
 
-        if not volume.migrate(target_storage_pool, live_migrate=True, source_host=source_host, vm_instance=vm['instancename']):
+        if not volume.migrate(target_storage_pool, live_migrate=True, source_host=source_host, vm_instancename=vm['instancename']):
             logging.error(f"Migration failed for volume '{volume['name']}' of VM '{vm['name']}'",
                           log_to_slack=log_to_slack)
             return False
