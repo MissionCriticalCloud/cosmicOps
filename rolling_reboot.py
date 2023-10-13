@@ -46,11 +46,11 @@ from cosmicops import CosmicOps, logging, RebootAction
               help='Script to run on host after live migrations have completed')
 @click.option('--post-reboot-script', metavar='<script>', help='Script to run after host has rebooted')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
-@click.option('--target-host', help='Target hypervisor the migrate VMS to', required=False)
+@click.option('--proxy-host', help='Hypervisor the migrate VMS to, after which we migrate them back to origin', required=False)
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('cluster')
 def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_empty_script, post_empty_script,
-         post_reboot_script, dry_run, target_host, cluster):
+         post_reboot_script, dry_run, proxy_host, cluster):
     """Perform rolling reboot of hosts in CLUSTER"""
 
     click_log.basic_config()
@@ -75,6 +75,19 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
     hosts = cluster.get_all_hosts()
     logging.debug(f"Found hosts: {hosts}")
 
+    if proxy_host:
+        proxy_host = co.get_host(name=proxy_host)
+        if proxy_host is None:
+            logging.info(f"Cannot find proxy host {proxy_host} in Cosmic!")
+            sys.exit(1)
+
+        logging.info(f"Using proxy host: migrate ALL VMs to {proxy_host['name']}, then back to origin")
+        if not ignore_hosts:
+            logging.info(f"Adding proxy host {proxy_host['name']} to ignore list")
+            ignore_hosts = proxy_host['name']
+        else:
+            ignore_hosts += f",{proxy_host['name']}"
+
     if ignore_hosts:
         ignore_hosts = ignore_hosts.replace(' ', '').split(',')
         logging.info(f"Ignoring hosts: {str(ignore_hosts)}")
@@ -91,8 +104,8 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
 
     hosts.sort(key=itemgetter('name'))
 
-    if target_host:
-        target_host = co.get_host(name=target_host)
+    target_host = None
+
     for host in hosts:
         logging.slack_value = host['name']
         logging.zone_name = host['zonename']
@@ -119,6 +132,8 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
             log_to_slack)
 
         while True:
+            if proxy_host:
+                target_host = proxy_host
             (_, _, failed) = host.empty(target=target_host)
             if failed == 0:
                 break
@@ -154,6 +169,15 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
         host.wait_for_agent()
 
         host.restart_vms_with_shutdown_policy()
+
+        if proxy_host:
+            logging.info(f"Host '{host['name']}' is now empty (VMs are on proxy host {proxy_host['name']}). "
+                         f"Will now migrate VMs back to origin {host['name']}...", log_to_slack)
+            while True:
+                (_, _, failed) = proxy_host.empty(target=host)
+                if failed == 0:
+                    break
+            logging.info(f"Host '{host['name']}' is done. It should now have the same VMs as before", log_to_slack)
 
         target_host = host
 

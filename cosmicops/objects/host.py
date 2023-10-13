@@ -420,12 +420,12 @@ class CosmicHost(CosmicObject):
             logging.info(f"Would wait for '{self['name']}' to come back online")
         else:
             logging.info(f"Waiting for '{self['name']}' to come back online", self.log_to_slack)
-            with click_spinner.spinner():
-                # adding retry tests, so we need to be able to connect to SSH three times in one minute
-                # before we consider the host up
-                tests = 1
+            # adding retry tests, so we need to be able to connect to SSH three times in one minute
+            # before we consider the host up
+            tests = 1
+            while tests <= 3:
                 logging.info(f"Waiting for SSH connection, attempt {tests} of 3", False)
-                while tests <= 3:
+                with click_spinner.spinner():
                     while True:
                         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                             s.settimeout(5)
@@ -434,7 +434,7 @@ class CosmicHost(CosmicObject):
                         if result == 0:
                             break
                     time.sleep(20)
-                    tests += 1
+                tests += 1
 
         if self.dry_run:
             logging.info(f"Would wait for libvirt on '{self['name']}'")
