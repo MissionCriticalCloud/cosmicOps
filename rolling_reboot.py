@@ -177,6 +177,8 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
                 (_, _, failed) = proxy_host.empty(target=host)
                 if failed == 0:
                     break
+            proxy_host.restart_vms_with_shutdown_policy()
+
             logging.info(f"Host '{host['name']}' is done. It should now have the same VMs as before", log_to_slack)
 
         target_host = host
