@@ -429,7 +429,11 @@ class CosmicHost(CosmicObject):
                     while True:
                         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                             s.settimeout(5)
-                            result = s.connect_ex((self['name'], 22))
+                            try:
+                                result = s.connect_ex((self['name'], 22))
+                            except Exception as e:
+                                logging.warning(f'Connection failed due to {e}')
+                                result = 1
 
                         if result == 0:
                             break
