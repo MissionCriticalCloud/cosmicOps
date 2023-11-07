@@ -67,13 +67,16 @@ class CosmicVM(CosmicObject):
         return True
 
     def get_affinity_groups(self):
-        affinity_groups = []
+        affinity_groups = {}
         try:
-            affinity_groups = self._ops.cs.listAffinityGroups(fetch_list=True, virtualmachineid=self['id'])
+            affinity_groups = self._ops.cs.listAffinityGroups(fetch_list=False, virtualmachineid=self['id'])
         except CloudStackException:
             pass
 
-        return affinity_groups
+        if not affinity_groups:
+            return []
+
+        return affinity_groups['affinitygroup']
 
     def get_snapshots(self):
         vm_snapshots = []
