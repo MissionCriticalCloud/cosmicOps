@@ -216,7 +216,7 @@ class CosmicHost(CosmicObject):
 
                 # If the host is disabled, try to restart the VM. Will fail if the host is on NVMe.
                 if self['resourcestate'] == 'Disabled':
-                    if vm.start():
+                    if vm.start(host=target):
                         continue
 
                 self.vms_with_shutdown_policy.append(vm)
