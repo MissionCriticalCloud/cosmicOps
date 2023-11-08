@@ -89,7 +89,7 @@ class TestCosmicVM(TestCase):
         self.assertFalse(self.vm.start())
 
     def test_get_affinity_groups(self):
-        self.cs_instance.listAffinityGroups.return_value = [{'id': 'a1'}]
+        self.cs_instance.listAffinityGroups.return_value = {'affinitygroup': [{'id': 'a1'}]}
         self.assertEqual([{'id': 'a1'}], self.vm.get_affinity_groups())
 
     def test_get_affinity_groups_exception(self):
