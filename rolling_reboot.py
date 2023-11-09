@@ -173,11 +173,15 @@ def main(profile, ignore_hosts, only_hosts, skip_os_version, reboot_action, pre_
         if proxy_host:
             logging.info(f"Host '{host['name']}' is now empty (VMs are on proxy host {proxy_host['name']}). "
                          f"Will now migrate VMs back to origin {host['name']}...", log_to_slack)
+            # Disable host, so we can start the VMs with StopStartPolicy
+            proxy_host.disable()
             while True:
                 (_, _, failed) = proxy_host.empty(target=host)
                 if failed == 0:
                     break
             proxy_host.restart_vms_with_shutdown_policy()
+            # Enable the proxy_host again
+            proxy_host.enable()
 
             logging.info(f"Host '{host['name']}' is done. It should now have the same VMs as before", log_to_slack)
 
