@@ -353,7 +353,7 @@ def live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, i
         return False
 
     if not dry_run:
-        disk_info = source_host.get_disks(vm)
+        disk_info = source_host.get_disks(vm['instancename'])
         for path, disk_info in disk_info.items():
             _, path, _, _, size = cs.get_volume_size(path)
 
