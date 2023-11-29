@@ -40,12 +40,14 @@ DATACENTERS = ["SBP1", "EQXAMS2", "EVO"]
 @click.option('--skip-backingfile-merge', is_flag=True, help='Do not attempt merge backing file')
 @click.option('--skip-within-cluster', is_flag=True, default=False, show_default=True,
               help='Enable/disable migration within cluster')
+@click.option('--only-within-cluster', is_flag=True, default=False, show_default=True,
+              help='Only do migration within cluster')
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('vm-name')
 @click.argument('cluster')
 def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, add_affinity_group, destination_dc, is_project_vm,
-         avoid_storage_pool, skip_backingfile_merge, skip_within_cluster, dry_run, vm_name, cluster):
+         avoid_storage_pool, skip_backingfile_merge, skip_within_cluster, only_within_cluster, dry_run, vm_name, cluster):
     """Live migrate VM to CLUSTER"""
     """Unless --migrate-offline-with-rsync is passed, then we migrate offline"""
 
@@ -72,6 +74,11 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
         logging.error(f"Cannot migrate, VM '{vm_name}' not found!")
         sys.exit(1)
 
+    # Cannot mix these two
+    if skip_within_cluster and only_within_cluster:
+        logging.error(f"Cannot use 'skip_within_cluster' together with 'only_within_cluster'!")
+        sys.exit(1)
+
     # Live migrate requires running VM. Unless migrate_offline_with_rsync==True, then we stop the VM as this is offline
     if not migrate_offline_with_rsync:
         if not vm['state'] == 'Running':
@@ -86,10 +93,11 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
                 logging.info(f"VM Migration failed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
                 sys.exit(1)
 
-        if not live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
-                            log_to_slack, dry_run):
-            logging.info(f"VM Migration failed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
-            sys.exit(1)
+        if not only_within_cluster:
+            if not live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, is_project_vm, zwps_to_cwps,
+                                log_to_slack, dry_run):
+                logging.info(f"VM Migration failed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
+                sys.exit(1)
         logging.info(f"VM Migration completed at {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
 
     if migrate_offline_with_rsync:
