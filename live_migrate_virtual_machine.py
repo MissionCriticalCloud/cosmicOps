@@ -45,10 +45,10 @@ DATACENTERS = ["SBP1", "EQXAMS2", "EVO"]
 @click.option('--dry-run/--exec', is_flag=True, default=True, show_default=True, help='Enable/disable dry-run')
 @click_log.simple_verbosity_option(logging.getLogger(), default="INFO", show_default=True)
 @click.argument('vm-name')
-@click.argument('cluster')
+@click.argument('cluster', required=False)
 def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, add_affinity_group, destination_dc, is_project_vm,
          avoid_storage_pool, skip_backingfile_merge, skip_within_cluster, only_within_cluster, dry_run, vm_name, cluster):
-    """Live migrate VM to CLUSTER"""
+    """Live migrate VM"""
     """Unless --migrate-offline-with-rsync is passed, then we migrate offline"""
 
     click_log.basic_config()
@@ -77,6 +77,11 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
     # Cannot mix these two
     if skip_within_cluster and only_within_cluster:
         logging.error(f"Cannot use 'skip_within_cluster' together with 'only_within_cluster'!")
+        sys.exit(1)
+
+    # Need a cluster if not only migrating withing cluster
+    if not only_within_cluster and not cluster:
+        logging.error(f"We need a cluster name if you're not only migrating within the cluster!")
         sys.exit(1)
 
     # Live migrate requires running VM. Unless migrate_offline_with_rsync==True, then we stop the VM as this is offline
@@ -324,10 +329,12 @@ def live_migrate(co, cs, cluster, vm_name, destination_dc, add_affinity_group, i
 
     target_cluster = co.get_cluster(name=cluster)
     if not target_cluster:
+        logging.error(f"Cannot migrate, cluster '{cluster}' not found!")
         return False
 
     vm = co.get_vm(name=vm_name, is_project_vm=is_project_vm)
     if not vm:
+        logging.error(f"Cannot migrate, VM '{vm_name}' not found!")
         return False
 
     if not vm['state'] == 'Running':
