@@ -50,6 +50,14 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
          avoid_storage_pool, skip_backingfile_merge, skip_within_cluster, only_within_cluster, dry_run, vm_name, cluster):
     """Live migrate VM"""
     """Unless --migrate-offline-with-rsync is passed, then we migrate offline"""
+    # TODO break this down into funtions no more than 30 lines  # noqa
+    # TODO change the default behaviour to "migrate within the current cluster" and add a specific option to "migrate to another cluster" e.g. --to-cluster  # noqa
+
+    # 2022-01-01, after an upgrade of an unknow component of KVM/CentOS, the migration to another cluster caused a network hiccup,
+    # the migration within a cluster is added to mitigate a network hiccup during a migration to another cluster
+
+    # Live migrate requires running VM. Unless migrate_offline_with_rsync==True, then we stop the VM as this is offline
+
 
     click_log.basic_config()
 
@@ -67,24 +75,20 @@ def main(profile, zwps_to_cwps, migrate_offline_with_rsync, rsync_target_host, a
 
     cs = CosmicSQL(server=profile, dry_run=dry_run)
 
-    # Work around migration issue: first in the same pod to limit possible hiccup
     vm = co.get_vm(name=vm_name, is_project_vm=is_project_vm)
 
     if not vm:
         logging.error(f"Cannot migrate, VM '{vm_name}' not found!")
         sys.exit(1)
 
-    # Cannot mix these two
     if skip_within_cluster and only_within_cluster:
         logging.error(f"Cannot use 'skip_within_cluster' together with 'only_within_cluster'!")
         sys.exit(1)
 
-    # Need a cluster if not only migrating withing cluster
     if not only_within_cluster and not cluster:
         logging.error(f"We need a cluster name if you're not only migrating within the cluster!")
         sys.exit(1)
 
-    # Live migrate requires running VM. Unless migrate_offline_with_rsync==True, then we stop the VM as this is offline
     if not migrate_offline_with_rsync:
         if not vm['state'] == 'Running':
             logging.error(f"Cannot migrate, VM has has state: '{vm['state']}'")
