@@ -17,7 +17,7 @@ import click_log
 from cosmicops import CosmicOps, RebootAction, logging
 
 
-def empty_host(profile, shutdown, skip_disable, dry_run, host, target_host):
+def empty_host(profile, shutdown, skip_disable, dry_run, hostname, target_host):
     click_log.basic_config()
 
     log_to_slack = True
@@ -27,9 +27,9 @@ def empty_host(profile, shutdown, skip_disable, dry_run, host, target_host):
         log_to_slack = False
     co = CosmicOps(profile=profile, dry_run=dry_run, log_to_slack=log_to_slack)
 
-    host = co.get_host(name=host)
+    host = co.get_host(name=hostname)
     if not host:
-        raise RuntimeError(f"Host '{host['name']}' not found")
+        raise RuntimeError(f"Host '{hostname}' not found")
 
     if not skip_disable and host['resourcestate'] != 'Disabled':
         if not host.disable():
